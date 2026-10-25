@@ -10,7 +10,7 @@
 <p align="center">
   <a href="../../releases/latest"><img src="https://img.shields.io/badge/Download%20the%20APK-72D6E8?style=flat-square&logo=android&logoColor=0B0B0E&labelColor=72D6E8" alt="Download the APK" height="34"></a>
   &nbsp;
-  <a href="https://apps.obtainium.imranr.dev/redirect.html?r=obtainium://add/https://github.com/dakingeman/inlay"><img src="https://img.shields.io/badge/Get%20it%20with%20Obtainium-2A2C35?style=flat-square" alt="Get it with Obtainium" height="34"></a>
+  <a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/dakingeman/inlay"><img src="https://img.shields.io/badge/Get%20it%20with%20Obtainium-2A2C35?style=flat-square" alt="Get it with Obtainium" height="34"></a>
 </p>
 
 <p align="center">
