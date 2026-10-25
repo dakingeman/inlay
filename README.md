@@ -1,18 +1,24 @@
 <p align="center"><img src="docs/images/pack/hero.png" alt="Inlay: a gamepad keyboard for Android handhelds"></p>
 
-**A gamepad keyboard for Android handhelds.** You drive it with the controller, not your thumbs on the glass.
+<p align="center">
+  <a href="../../releases/latest"><img src="https://img.shields.io/github/v/release/dakingeman/inlay?color=72D6E8\&labelColor=0B0B0E" alt="Latest release"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/dakingeman/inlay?color=72D6E8\&labelColor=0B0B0E" alt="Licence"></a>
+  <img src="https://img.shields.io/badge/Android-10%2B-72D6E8?labelColor=0B0B0E" alt="Android 10+">
+</p>
 
-Move with the D-pad or stick, press A to type, and never reach for the touchscreen again. Made for handhelds like the AYN Odin and Retroid Pocket, and for any Android device with a gamepad connected.
+<p align="center">
+  <a href="../../releases/latest"><b>Download the latest version</b></a> · <a href="#install">How to install</a> · <a href="../../issues/new/choose">Report a problem</a>
+</p>
+
+You drive Inlay with the controller, not your thumbs on the glass. Move with the D-pad or stick, press A to type, and never reach for the touchscreen again. Made for handhelds like the AYN Odin and Retroid Pocket, and for any Android device with a gamepad connected.
 
 Free, open source, no ads, no tracking, no internet permission.
 
-[!\[Latest release](https://img.shields.io/github/v/release/dakingeman/inlay?color=72D6E8\&labelColor=0B0B0E)](../../releases/latest) [!\[Licence](https://img.shields.io/github/license/dakingeman/inlay?color=72D6E8\&labelColor=0B0B0E)](LICENSE) !\[Android 10+](https://img.shields.io/badge/Android-10%2B-72D6E8?labelColor=0B0B0E)
+<p align="center"><img src="docs/images/teaser.gif" alt="Inlay in 20 seconds" width="100%"></p>
 
-[**Download the latest version**](../../releases/latest) · [How to install](#install) · [Report a problem](../../issues/new/choose)
+<p align="center"><a href="https://youtu.be/9xe894Hsr6M"><b>Watch the full video (1:20)</b></a> · <a href="docs/images/demo.gif">A real screen recording from my Odin 2 Portal</a></p>
 
-!\[Inlay in 20 seconds](docs/images/teaser.gif)
-
-*Drawn from the app's real layouts, colours and sizes.* [*Watch the full video (1:20)*](VIDEO_LINK) *· a real screen recording from my Odin 2 Portal is* [*here*](docs/images/demo.gif)*.*
+<p align="center"><sub>The animation above is drawn from the app's real layouts, colours and sizes.</sub></p>
 
 ## New in 1.1
 
@@ -28,16 +34,29 @@ Since I can't read the code myself, I can't promise it's flawless, and I can onl
 
 ## What it looks like
 
-|||
-|-|-|
-|!\[Move with the D-pad, type with A](docs/images/pack/typing.png)|!\[Edit text properly](docs/images/pack/editing.png)|
-|!\[Hold RT for more](docs/images/pack/hold.png)|!\[Clipboard history](docs/images/pack/clipboard.png)|
-|!\[Make it look how you want](docs/images/pack/looks.png)|!\[Icons for your controller](docs/images/pack/icons.png)|
-|!\[Eleven languages](docs/images/pack/languages.png)|!\[Smart keys](docs/images/pack/smart-keys.png)|
-|!\[Seven sound packs](docs/images/pack/sound-packs.png)|!\[TV mode](docs/images/pack/tv-mode.png)|
-|!\[A one-minute tour](docs/images/pack/tour.png)|!\[Settings, in your colour](docs/images/pack/settings.png)|
+<p align="center"><img src="docs/images/pack/typing.png" alt="Move with the D-pad, type with A" width="100%"></p>
 
-\---
+<p align="center"><img src="docs/images/pack/editing.png" alt="Edit text properly" width="100%"></p>
+
+<p align="center"><img src="docs/images/pack/hold.png" alt="Hold RT for more" width="100%"></p>
+
+<p align="center"><img src="docs/images/pack/clipboard.png" alt="Clipboard history" width="100%"></p>
+
+<p align="center"><img src="docs/images/pack/looks.png" alt="Make it look how you want" width="100%"></p>
+
+<p align="center"><img src="docs/images/pack/icons.png" alt="Icons for your controller" width="100%"></p>
+
+<p align="center"><img src="docs/images/pack/languages.png" alt="Eleven languages" width="100%"></p>
+
+<p align="center"><img src="docs/images/pack/smart-keys.png" alt="Smart keys" width="100%"></p>
+
+<p align="center"><img src="docs/images/pack/sound-packs.png" alt="Seven sound packs" width="100%"></p>
+
+<p align="center"><img src="docs/images/pack/tv-mode.png" alt="TV mode" width="100%"></p>
+
+<p align="center"><img src="docs/images/pack/tour.png" alt="A one-minute tour" width="100%"></p>
+
+<p align="center"><img src="docs/images/pack/settings.png" alt="Settings, in your colour" width="100%"></p>
 
 ## Features
 

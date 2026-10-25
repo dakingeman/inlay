@@ -57,7 +57,8 @@ function badge(x,y,S,b,style){ // a controller badge on a dark disc, top-right a
   style=style||STYLE.v; const shoulder = ["RT","LT","LB","RB","LS"].includes(b);
   const h=13*S, w=shoulder?20*S:13*S, cx=x-w/2, cy=y+h/2;
   let s=`<rect x="${x-w}" y="${y}" width="${w}" height="${h}" rx="${h/2}" fill="#0A0A0D" fill-opacity="0.95" stroke="#ffffff" stroke-opacity="0.3" stroke-width="${0.8*S}"/>`;
-  if (b==="START") s+=[-2.2,0,2.2].map(d=>`<line x1="${cx-2.6*S}" x2="${cx+2.6*S}" y1="${cy+d*S}" y2="${cy+d*S}" stroke="#fff" stroke-width="${0.9*S}" stroke-linecap="round"/>`).join("");
+  if (b==="SELECT") { const g=2.6*S, q=g*1.2; s+=`<rect x="${cx-g}" y="${cy-g}" width="${q}" height="${q}" fill="none" stroke="#fff" stroke-width="${0.9*S}"/><rect x="${cx+g-q}" y="${cy+g-q}" width="${q}" height="${q}" fill="none" stroke="#fff" stroke-width="${0.9*S}"/>`; }
+  else if (b==="START") s+=[-2.2,0,2.2].map(d=>`<line x1="${cx-2.6*S}" x2="${cx+2.6*S}" y1="${cy+d*S}" y2="${cy+d*S}" stroke="#fff" stroke-width="${0.9*S}" stroke-linecap="round"/>`).join("");
   else if (shoulder) s+=`<text x="${cx}" y="${cy}" fill="#fff" font-size="${6.6*S}" font-weight="700" font-family="I" text-anchor="middle" dominant-baseline="central">${shoulderLabel(b,style)}</text>`;
   else s+=faceGlyph(b,cx,cy,h,style);
   return s;
@@ -91,7 +92,7 @@ function kb(o){
     else s+=`<rect x="${x+S}" y="${edge+8*S}" width="${2*S}" height="${pv-16*S}" fill="${acc}"/>`;
   } else s+=`<rect width="${W}" height="${H}" fill="${th.bg}"/>`;
   const rows=rowsFor(o);
-  const tools=[{l:"Select",w:1.9},{l:"Cut",w:1.2},{l:"Copy",w:1.3},{l:"Paste",w:3.8},{l:"clock",w:0.9},{l:"gear",w:0.9}];
+  const tools=[Object.assign({l:"Select",w:1.9},o.selectBadge?{h:"SELECT"}:{}),{l:"Cut",w:1.2},{l:"Copy",w:1.3},{l:"Paste",w:3.8},{l:"clock",w:0.9},{l:"gear",w:0.9}];
   const all=[tools].concat(rows);
   const f=o.focus||[2,4]; const LABELS=[];
   const caps = o.shift && o.shift!=="off";
