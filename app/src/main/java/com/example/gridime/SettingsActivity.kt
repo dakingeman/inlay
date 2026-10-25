@@ -47,7 +47,7 @@ class SettingsActivity : Activity() {
     private val pages: List<Page> by lazy {
         listOf(
             Page("Look", this::lookPage),
-            Page("Controls", this::controlsPage),
+            Page("Typing", this::typingPage),
             Page("Sound & haptics", this::feedbackPage),
             Page("Clipboard", this::clipboardPage),
             Page("Button guide", this::guidePage),
@@ -60,26 +60,57 @@ class SettingsActivity : Activity() {
     // =====================================================================
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Black system bars on Android 14 and older (the Odin 2 Portal runs 13). Android 15+
+        // ignores these and draws the app behind the bars, which is fine on a black screen.
+        @Suppress("DEPRECATION")
         window.statusBarColor = SettingsStyle.background
+        @Suppress("DEPRECATION")
         window.navigationBarColor = SettingsStyle.background
+        Palette.init(this)
         settings = KeyboardSettings.load(this)
+        SettingsStyle.accent = settings.accent
         // The volume buttons change the same volume the sounds play at (media),
         // so what you set here is exactly what you hear on the keyboard.
         volumeControlStream = AudioManager.STREAM_MUSIC
         feedback = Feedback(this).apply { update(settings) }
         SettingRow.buttonStyle = settings.buttonStyle
         SettingRow.sounds = feedback
+        setupState = currentSetupState()
         setContentView(buildScreen().also { muteSystemSounds(it) })
         showPage(0, focusIndex = 0, animate = false)
+        // First time ever: the one-minute tour (skippable). Settings is right behind it.
+        if (!settings.tutorialDone && savedInstanceState == null) {
+            startActivity(Intent(this, TutorialActivity::class.java))
+        }
         // A soft tick whenever the focus moves to another row (console-style)
         window.decorView.viewTreeObserver.addOnGlobalFocusChangeListener { old, new ->
             if (old != null && new is SettingRow && !rebuilding) feedback.move()
         }
     }
 
+    /**
+     * Leaving with Home or Recents closes Settings completely, and it never shows up in
+     * Recents (see the manifest). Some handhelds (the Odin 2 Portal among them) don't just
+     * close an app you swipe away there, they force-stop it, and Android answers a
+     * force-stopped keyboard by switching back to the default keyboard. With nothing to
+     * swipe away, that can't happen.
+     */
+    override fun onUserLeaveHint() {
+        super.onUserLeaveHint()
+        finishAndRemoveTask()
+    }
+
+    /**
+     * Screens Settings opens itself (Android's keyboard list, GitHub, Obtainium) are marked
+     * as "not the user leaving", so opening them doesn't close Settings behind them.
+     */
+    override fun startActivity(intent: Intent, options: Bundle?) {
+        super.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NO_USER_ACTION), options)
+    }
+
     override fun onDestroy() {
         panelAnim?.cancel()
-        SettingRow.sounds = null
+        if (SettingRow.sounds === feedback) SettingRow.sounds = null     // a newer Settings may own it now
         feedback.release()
         super.onDestroy()
     }
@@ -87,10 +118,24 @@ class SettingsActivity : Activity() {
     /** Save, then show the change on the preview straight away. */
     private fun update(changed: KeyboardSettings) {
         val styleChanged = changed.buttonStyle != settings.buttonStyle
+        val accentChanged = changed.accent != settings.accent
+        // Picking or leaving the Clear theme shows or hides its See-through slider
+        val clearChanged = changed.tone.clear != settings.tone.clear
         settings = changed
+        if (accentChanged) {
+            SettingsStyle.accent = settings.accent
+            invalidateAll(window.decorView)
+        }
         settings.save(this)
         feedback.update(settings)
         preview.applySettings(settings)
+        // Show TV mode on the preview when it's set to On, with a sample line of text
+        preview.setTvMode(settings.tvMode == TvMode.ON)
+        preview.setPreview("See you at 8", "", "")
+        if (clearChanged && !styleChanged) {
+            val focused = focusableRows.indexOfFirst { it.hasFocus() }.coerceAtLeast(0)
+            showPage(currentPage, focusIndex = focused, animate = false)
+        }
         if (styleChanged) {
             // Button icons appear all over Settings: redraw them in the new style
             SettingRow.buttonStyle = settings.buttonStyle
@@ -99,6 +144,79 @@ class SettingsActivity : Activity() {
             val focused = focusableRows.indexOfFirst { it.hasFocus() }.coerceAtLeast(0)
             showPage(currentPage, focusIndex = focused, animate = false)
         }
+    }
+
+    /** Redraws every view, so a new accent colour shows everywhere at once. */
+    private fun invalidateAll(view: View) {
+        view.invalidate()
+        if (view is ViewGroup) for (i in 0 until view.childCount) invalidateAll(view.getChildAt(i))
+    }
+
+    // =====================================================================
+    // SET-UP: is Inlay switched on, and is it the keyboard in use?
+    // =====================================================================
+    private fun inlayEnabled(): Boolean = runCatching {
+        getSystemService(InputMethodManager::class.java).enabledInputMethodList.any { it.packageName == packageName }
+    }.getOrDefault(true)
+
+    private fun inlayActive(): Boolean = runCatching {
+        Settings.Secure.getString(contentResolver, Settings.Secure.DEFAULT_INPUT_METHOD)
+            ?.startsWith("$packageName/") == true
+    }.getOrDefault(true)
+
+    private var setupState = 0          // 0 = needs turning on, 1 = needs choosing, 2 = ready
+
+    private fun currentSetupState() = when {
+        !inlayEnabled() -> 0
+        !inlayActive() -> 1
+        else -> 2
+    }
+
+    /** Coming back from Android's keyboard list or picker: update the card (or let it go). */
+    private fun refreshSetup() {
+        val now = currentSetupState()
+        if (now == setupState) return
+        val finished = now == 2
+        setupState = now
+        if (currentPage == 0) showPage(0, focusIndex = 0, animate = false)
+        if (finished) feedback.lock()          // a small "all set" moment
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // The tour saves "seen" itself; take that on board so our next save keeps it
+        val saved = KeyboardSettings.load(this)
+        val changedElsewhere = saved.sizeLevel != settings.sizeLevel || saved.activeLanguage != settings.activeLanguage
+        settings = settings.copy(tutorialDone = saved.tutorialDone, sizeLevel = saved.sizeLevel,
+            activeLanguage = saved.activeLanguage)
+        if (changedElsewhere) {
+            // L3 or RT + LT was pressed on the keyboard meanwhile: show it here too
+            preview.applySettings(settings)
+            if (currentPage == 1) {
+                val focused = focusableRows.indexOfFirst { it.hasFocus() }.coerceAtLeast(0)
+                showPage(currentPage, focusIndex = focused, animate = false)
+            }
+        }
+        refreshSetup()
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) {
+            refreshSetup()                     // the keyboard picker is a pop-up, so there's no onResume
+            scroll.postDelayed({ refreshSetup() }, 300)    // Android can take a moment to note the new keyboard
+        }
+    }
+
+    private fun setupSection(): Section? {
+        if (setupState == 2) return null
+        val enabled = setupState >= 1
+        return Section("Get started", listOf(
+            SetupRow(this, enabled) {
+                if (!enabled) startActivity(Intent(Settings.ACTION_INPUT_METHOD_SETTINGS))
+                else getSystemService(InputMethodManager::class.java)?.showInputMethodPicker()
+            }
+        ))
     }
 
     // =====================================================================
@@ -183,7 +301,8 @@ class SettingsActivity : Activity() {
         content.removeAllViews()
 
         val rows = mutableListOf<SettingRow>()
-        pages[index].build().forEach { section ->
+        val sections = pages[index].build().let { if (index == 0) listOfNotNull(setupSection()) + it else it }
+        sections.forEach { section ->
             content.addView(SectionHeader(this, section.title))
             val card = SettingsCard(this)
             section.rows.forEach { row ->
@@ -324,7 +443,7 @@ class SettingsActivity : Activity() {
     private fun lookPage(): List<Section> {
         lateinit var swatches: SwatchRow
         lateinit var custom: HueRow
-        swatches = SwatchRow(this, "Highlight colour", "The glow that follows your selection",
+        swatches = SwatchRow(this, "Highlight colour", "The glow that follows your selection, also used all over Settings",
             Palette.accents.map { it.second }, settings.accentIndex) {
             custom.setActive(false)
             update(settings.copy(accentIndex = it))
@@ -335,14 +454,18 @@ class SettingsActivity : Activity() {
             update(settings.copy(accentIndex = -1, customHue = it))
         }
         return listOf(
-        Section("Colour", listOf(
-            swatches,
-            custom,
-            ChoiceRow(this, "Key colours", "Every theme is made for OLED screens",
-                Palette.tones.map { it.name }, settings.toneIndex) {
+        Section("Theme", listOf(
+            StepperRow(this, "Theme", "Dark themes suit OLED screens. Clear lets the app behind show through",
+                Palette.tones.map { it.name }, settings.toneIndex.coerceIn(0, Palette.tones.lastIndex)) {
                 update(settings.copy(toneIndex = it))
             }
+        ) + listOfNotNull(
+            if (settings.tone.clear) SliderRow(this, "See-through", "How much of the app behind shows. Lower is easier to read",
+                0, 10, settings.seeThrough, { it.toString() }) {
+                update(settings.copy(seeThrough = it))
+            } else null
         )),
+        Section("Colour", listOf(swatches, custom)),
         Section("Style", listOf(
             ChoiceRow(this, "Button icons", "Match the controller you're holding",
                 ButtonStyle.values().map { it.label }, settings.buttonStyle.ordinal) {
@@ -370,35 +493,56 @@ class SettingsActivity : Activity() {
                 { it.toString() }) {
                 update(settings.copy(letterWeight = it))
             }
-        )),
-        Section("Layout", listOf(
-            ChoiceRow(this, "Key layout", "Grid lines keys up in straight columns, so up and down never guess",
-                KeyLayout.values().map { it.label }, settings.layout.ordinal) {
-                update(settings.copy(layout = KeyLayout.values()[it]))
-            },
-            ChoiceRow(this, "Keyboard size", "Also on the keyboard: press {L3}",
-                listOf("Normal", "Large", "Largest"), settings.sizeLevel) {
-                update(settings.copy(sizeLevel = it))
-            }
         ))
         )
     }
 
-    private fun controlsPage() = listOf(
+    /** Language pickers for the quick switch: "None" first, then every language. */
+    private fun extraLanguageOptions() = listOf("None") + Language.values().map { it.label }
+    private fun extraIndex(l: Language?) = l?.let { it.ordinal + 1 } ?: 0
+    private fun extraFrom(index: Int): Language? = if (index == 0) null else Language.values()[index - 1]
+
+    private fun typingPage() = listOf(
+        Section("Languages", listOf(
+            StepperRow(this, "Language", "Italian, Dutch, Polish and more type on English",
+                Language.values().map { it.label }, settings.language1.ordinal) {
+                update(settings.copy(language1 = Language.values()[it], activeLanguage = 0))
+            },
+            StepperRow(this, "Second language", "Hold {R2} and press {L2} to switch while typing",
+                extraLanguageOptions(), extraIndex(settings.language2)) {
+                update(settings.copy(language2 = extraFrom(it), activeLanguage = 0))
+            },
+            StepperRow(this, "Third language", "Optional. The switch goes round all of them in order",
+                extraLanguageOptions(), extraIndex(settings.language3)) {
+                update(settings.copy(language3 = extraFrom(it), activeLanguage = 0))
+            },
+            ToggleRow(this, "Language on the space bar", "Off keeps the space bar clean. A switch still shows it for a moment",
+                settings.showLanguageLabel) {
+                update(settings.copy(showLanguageLabel = it))
+            }
+        )),
+        Section("Keys", listOf(
+            ChoiceRow(this, "Key layout", "Grid lines keys up in straight columns, so up and down never guess",
+                KeyLayout.values().map { it.label }, settings.layout.ordinal) {
+                update(settings.copy(layout = KeyLayout.values()[it]))
+            },
+            ToggleRow(this, "Smart keys", "Adds / and .com for web addresses, @ for email, and a number pad for numbers",
+                settings.smartKeys) {
+                update(settings.copy(smartKeys = it))
+            },
+            ChoiceRow(this, "Keyboard size", "Also on the keyboard: press {L3}",
+                listOf("Normal", "Large", "Largest"), settings.sizeLevel.coerceIn(0, 2)) {
+                update(settings.copy(sizeLevel = it))
+            },
+            ChoiceRow(this, "TV mode", "A compact floating keyboard with a big line showing what you type. Automatic: when docked to a TV, or on Android TV",
+                TvMode.values().map { it.label }, settings.tvMode.ordinal) {
+                update(settings.copy(tvMode = TvMode.values()[it]))
+            }
+        )),
         Section("Navigation", listOf(
             SliderRow(this, "Stick speed", "How fast the highlight moves while you hold the stick",
                 0, 4, settings.stickSpeed, { STICK_LABELS[it] }) {
                 update(settings.copy(stickSpeed = it))
-            }
-        )),
-        Section("Hints", listOf(
-            ToggleRow(this, "Button icons on keys", "Small {X} {Y} style badges in the key corners",
-                settings.showHints) {
-                update(settings.copy(showHints = it))
-            },
-            ToggleRow(this, "Combo tips", "Shows what you can do while holding {R2}",
-                settings.comboHints) {
-                update(settings.copy(comboHints = it))
             }
         )),
         Section("Shortcuts", listOf(
@@ -413,6 +557,16 @@ class SettingsActivity : Activity() {
             ToggleRow(this, "Undo shortcut", "Hold {R2} and press {X}",
                 settings.undoCombo) {
                 update(settings.copy(undoCombo = it))
+            }
+        )),
+        Section("Hints", listOf(
+            ToggleRow(this, "Button icons on keys", "Small {X} {Y} style badges in the key corners",
+                settings.showHints) {
+                update(settings.copy(showHints = it))
+            },
+            ToggleRow(this, "Combo tips", "Shows what you can do while holding {R2}",
+                settings.comboHints) {
+                update(settings.copy(comboHints = it))
             }
         ))
     )
@@ -444,12 +598,12 @@ class SettingsActivity : Activity() {
                     feedback::off, feedback::lock, feedback::selectAll, feedback::confirm
                 ))
             },
-            ChoiceRow(this, "Sound pack", "Soft is a gentle thud with a crisp click. Soft Deep is darker and weightier. Tactile is dry clicks. Chime is soft notes",
-                SoundPack.values().map { it.label }, settings.soundPack.ordinal) {
+            StepperRow(this, "Sound pack", null,
+                SoundPack.values().map { it.label }, settings.soundPack.ordinal,
+                descriptions = SoundPack.values().map { it.description }, silent = true) {
                 update(settings.copy(soundPack = SoundPack.values()[it]))
-                // Give the new pack a moment to load, then play a short sample of it
-                scroll.postDelayed({ feedback.key() }, 220)
-                scroll.postDelayed({ feedback.on() }, 520)
+                // A short phrase in the new pack: two letters, space, a letter, Enter
+                feedback.sample()
             },
             SliderRow(this, "Volume", "Follows your media volume, so turn that up too",
                 0, 10, settings.soundVolume, this::offOr, silent = true) {
@@ -475,14 +629,28 @@ class SettingsActivity : Activity() {
                 settings.saveClipHistory) {
                 update(settings.copy(saveClipHistory = it))
             },
-            ActionRow(this, "Clear clipboard history", null) {
-                ClipboardHistory.clear(this)
-                Toast.makeText(this, "Clipboard history cleared", Toast.LENGTH_SHORT).show()
+            UndoActionRow(this, "Clear clipboard history", "Removes your saved copies from this device",
+                "Clipboard history cleared", "Changed your mind? Press it again to bring it back") {
+                ClipboardHistory.clearWithUndo(this)
             }
         ))
     )
 
+    /** Every button and combo, kept in step with the features that are switched on. */
     private fun guidePage(): List<Section> {
+        val typing = mutableListOf(
+            GuideRow(this, "Type the highlighted key", "{A}"),
+            GuideRow(this, "Delete · hold to speed up", "{X}"),
+            GuideRow(this, "Space", "{Y}"),
+            GuideRow(this, "Shift · tap twice for caps lock", "{R2}"),
+            GuideRow(this, "One capital letter", "{R2} + {A}"),
+            GuideRow(this, "Accent the last letter · press again for more", "{R2} + {Y}"),
+            GuideRow(this, if (settings.smartKeys) "Symbols · in number boxes, letters" else "Letters and symbols", "{L2}"),
+            GuideRow(this, "Enter · Search · Go", "{START}")
+        )
+        if (settings.languages.size > 1) {
+            typing += GuideRow(this, "Switch language (${settings.languages.joinToString(" → ") { it.label }})", "{R2} + {L2}")
+        }
         val editing = mutableListOf(
             GuideRow(this, "Move the text cursor", "{L1} {R1}"),
             GuideRow(this, "Jump a whole word", "{R2} + {L1} {R1}"),
@@ -491,19 +659,11 @@ class SettingsActivity : Activity() {
         )
         if (settings.undoCombo) editing += GuideRow(this, "Undo", "{R2} + {X}")
         return listOf(
-            Section("Typing", listOf(
-                GuideRow(this, "Type the highlighted key", "{A}"),
-                GuideRow(this, "Delete · hold to speed up", "{X}"),
-                GuideRow(this, "Space", "{Y}"),
-                GuideRow(this, "Shift · tap twice for caps lock", "{R2}"),
-                GuideRow(this, "One capital letter", "{R2} + {A}"),
-                GuideRow(this, "Letters and symbols", "{L2}"),
-                GuideRow(this, "Enter · Search · Go", "{START}")
-            )),
+            Section("Typing", typing),
             Section("Editing", editing),
             Section("Keyboard", listOf(
-                GuideRow(this, "Close the keyboard", "{B}"),
-                GuideRow(this, "Change keyboard size", "{L3}")
+                GuideRow(this, "Close the keyboard · leave select mode or the clipboard", "{B}"),
+                GuideRow(this, "Keyboard size · Normal, Large, Largest", "{L3}")
             ))
         )
     }
@@ -515,6 +675,9 @@ class SettingsActivity : Activity() {
             },
             ActionRow(this, "Switch keyboard", "Choose which keyboard is active right now") {
                 getSystemService(InputMethodManager::class.java)?.showInputMethodPicker()
+            },
+            ActionRow(this, "Replay the tour", "The one-minute walk through the buttons and combos") {
+                startActivity(Intent(this, TutorialActivity::class.java))
             }
         )),
         Section("Inlay", listOfNotNull(
@@ -526,8 +689,27 @@ class SettingsActivity : Activity() {
                 }
             },
             InfoRow(this, "Fonts: Atkinson Hyperlegible Next and Inter", "Open Font Licence")
+        )),
+        Section("Updates", listOf(
+            ActionRow(this, "Get updates automatically",
+                "Adds Inlay to Obtainium, a free app that installs new versions from GitHub") {
+                addToObtainium()
+            }
         ))
     )
+
+    /**
+     * Opens Obtainium (or a fork that understands its links) with Inlay ready to add.
+     * Without it, opens the releases page so the update can still be downloaded by hand.
+     */
+    private fun addToObtainium() {
+        val add = Intent(Intent.ACTION_VIEW, android.net.Uri.parse("obtainium://add/$SOURCE_URL"))
+        val opened = runCatching { startActivity(add) }.isSuccess
+        if (!opened) {
+            Toast.makeText(this, "Obtainium isn't installed, so here's the download page instead", Toast.LENGTH_LONG).show()
+            runCatching { startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse("$SOURCE_URL/releases"))) }
+        }
+    }
 
     /** The version number set in the app's build file, so it's only ever written in one place. */
     private fun appVersion(): String = runCatching {

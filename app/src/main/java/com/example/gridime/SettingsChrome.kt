@@ -94,7 +94,7 @@ class TabBar(
     private val fill = Paint(Paint.ANTI_ALIAS_FLAG)
     private val text = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         textAlign = Paint.Align.CENTER
-        textSize = 14f * resources.displayMetrics.scaledDensity
+        textSize = android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_SP, 14f, resources.displayMetrics)
         typeface = SettingsStyle.medium
     }
     private val tabHeight = 36f * dp
@@ -162,7 +162,7 @@ class TabBar(
         val a = tabRects[floor(indicator).toInt().coerceIn(0, tabRects.lastIndex)]
         val b = tabRects[ceil(indicator).toInt().coerceIn(0, tabRects.lastIndex)]
         val t = indicator - floor(indicator)
-        fill.color = SettingsStyle.textPrimary
+        fill.color = SettingsStyle.accent
         canvas.drawRoundRect(
             a.left + (b.left - a.left) * t, a.top, a.right + (b.right - a.right) * t, a.bottom, r, r, fill
         )
@@ -170,7 +170,7 @@ class TabBar(
         val baseline = tabRects[0].centerY() - (text.descent() + text.ascent()) / 2f
         titles.forEachIndexed { i, title ->
             val onIndicator = 1f - min(1f, abs(indicator - i))
-            text.color = SettingsStyle.blend(SettingsStyle.textSecondary, android.graphics.Color.BLACK, onIndicator)
+            text.color = SettingsStyle.blend(SettingsStyle.textSecondary, SettingsStyle.onAccent, onIndicator)
             canvas.drawText(title, tabRects[i].centerX(), baseline, text)
         }
 
@@ -192,10 +192,10 @@ class TabBar(
 class ControlBar(context: Context) : View(context) {
 
     private val dp = resources.displayMetrics.density
-    private val painter = BadgePainter(dp).apply { scale = 1.35f }
+    private val painter = BadgePainter(dp).apply { scale = 1.35f; gapBadgeToBadge = 3f; gapBadgeToText = 6f }
     private val text = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         textAlign = Paint.Align.LEFT
-        textSize = Design.TYPE_CAPTION * resources.displayMetrics.scaledDensity
+        textSize = android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_SP, Design.TYPE_CAPTION, resources.displayMetrics)
         typeface = SettingsStyle.medium
         color = SettingsStyle.textSecondary
     }

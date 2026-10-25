@@ -37,6 +37,7 @@ class KeyGridView(context: Context) : View(context) {
     // SIZES
     // =====================================================================
     private val dp = resources.displayMetrics.density
+    /** Normal, Large, Largest. (TV use is TV mode, below: not a bigger size.) */
     private val sizeScales = floatArrayOf(1f, 1.2f, 1.4f)
     private var sizeLevel = 0
     /**
@@ -44,6 +45,9 @@ class KeyGridView(context: Context) : View(context) {
      * never covers more than [MAX_SCREEN_SHARE] of the height. 1 = no shrinking needed.
      */
     private var fit = 1f
+    /** Previews (the tour): when the view is narrower than the real keyboard, scale everything down with it. */
+    var keepProportions = false
+        set(v) { field = v; requestLayout() }
     private val scale get() = sizeScales[sizeLevel] * fit
     private fun u(v: Float) = v * dp * scale          // design units -> pixels at this size
 
@@ -64,8 +68,12 @@ class KeyGridView(context: Context) : View(context) {
     private var colAccent = Color.BLUE
     private var colAccentSoft = Color.BLUE
     private var colGlow = Color.BLUE
-    private val chipFill = Contrast.withAlpha(Color.WHITE, 0x12)
-    private val chipEdge = Contrast.withAlpha(Color.WHITE, 0x24)
+    /** What sits behind the keys for contrast maths: the background, or black for the Clear theme. */
+    private var colBackdrop = Color.BLACK
+    private var colEdge = 0                  // key borders (Outline and Clear themes), 0 = none
+    private var clear = false
+    private var chipFill = Contrast.withAlpha(Color.WHITE, 0x12)
+    private var chipEdge = Contrast.withAlpha(Color.WHITE, 0x24)
 
     private val badges = BadgePainter(dp)
 
@@ -74,18 +82,37 @@ class KeyGridView(context: Context) : View(context) {
     private var symbolRows = Layouts.symbolRows(KeyLayout.GRID)
 
     fun applySettings(s: KeyboardSettings) {
-        val layoutChanged = s.layout != settings.layout || s.selectAllButton != settings.selectAllButton
+        val layoutChanged = s.layout != settings.layout || s.language != settings.language || s.smartKeys != settings.smartKeys ||
+            s.selectAllButton != settings.selectAllButton
         settings = s
-        colBackground = s.tone.background
-        colKey = s.tone.key
-        colSpecialKey = s.tone.special
+        val tone = s.tone
+        clear = tone.clear
+        if (clear) {
+            // See-through: 0 = a dark veil behind the keys, 10 = fully clear.
+            // The keys keep a dark tint at every level, so white letters stay readable on anything.
+            val t = s.seeThrough.coerceIn(0, 10) / 10f
+            colBackground = Contrast.withAlpha(Color.BLACK, ((1f - t) * 0.6f * 255).roundToInt())
+            colKey = Contrast.withAlpha(Color.BLACK, ((0.88f - 0.38f * t) * 255).roundToInt())
+            colSpecialKey = Contrast.withAlpha(Color.BLACK, ((0.96f - 0.38f * t) * 255).roundToInt())
+            colBackdrop = Color.BLACK
+        } else {
+            colBackground = tone.background
+            colKey = tone.key
+            colSpecialKey = tone.special
+            colBackdrop = tone.background
+        }
+        colEdge = tone.edge
+        val chipInk = Contrast.inkFor(colBackdrop)
+        chipFill = Contrast.withAlpha(chipInk, 0x12)
+        chipEdge = Contrast.withAlpha(chipInk, 0x24)
         colAccent = s.accent
         colAccentSoft = Contrast.withAlpha(s.accent, 0x40)
         colGlow = Contrast.withAlpha(s.accent, 0x59)
         badges.style = s.buttonStyle
         toolRow = Layouts.toolRow(s.selectAllButton)
-        letterRows = Layouts.letterRows(s.layout)
-        symbolRows = Layouts.symbolRows(s.layout)
+        letterRows = Layouts.letterRows(s.layout, s.language, if (s.smartKeys) field else FieldKind.TEXT)
+        symbolRows = Layouts.symbolRows(s.layout, s.language)
+        if (layer == Layer.NUMPAD && !numeric) layer = Layer.LETTERS     // smart keys just turned off
         val level = s.sizeLevel.coerceIn(0, sizeScales.lastIndex)
         val sizeChanged = level != sizeLevel
         if (sizeChanged) {
@@ -127,6 +154,7 @@ class KeyGridView(context: Context) : View(context) {
     private fun applyFont(paint: Paint, weight: Int) {
         val custom = customFont
         if (custom != null) {
+            paint.fontVariationSettings = null          // reset, so the new weight always applies
             paint.typeface = custom
             paint.fontVariationSettings = "'wght' $weight"
         } else {
@@ -160,6 +188,106 @@ class KeyGridView(context: Context) : View(context) {
         Layer.LETTERS -> letterRows
         Layer.SYMBOLS -> symbolRows
         Layer.CLIPS -> Layouts.clipRows(clips)
+        Layer.NUMPAD -> Layouts.numpadRows(field)
+    }
+
+    // =====================================================================
+    // TV MODE: a compact floating keyboard with a big line showing what you type
+    // =====================================================================
+    private var tv = false
+    private var previewBefore = ""
+    private var previewSelected = ""
+    private var previewAfter = ""
+
+    fun setTvMode(on: Boolean) {
+        if (tv == on) return
+        tv = on
+        focusReady = false
+        requestLayout()
+        invalidate()
+    }
+
+    /** The text around the cursor, from the app's text box (dots for passwords). */
+    fun setPreview(before: String, selected: String, after: String) {
+        previewBefore = before
+        previewSelected = selected
+        previewAfter = after
+        if (tv) invalidate()
+    }
+
+    /**
+     * The preview line: big enough to read from the sofa, so you never have to find the
+     * app's own (often small, far away or hidden) text box. The cursor and selection show too.
+     */
+    private fun drawPreview(canvas: Canvas) {
+        val box = RectF(contentLeft(), edge, contentLeft() + contentWidth(), edge + previewHeight)
+        fillPaint.color = Contrast.withAlpha(Contrast.inkFor(colBackdrop), 0x14)
+        canvas.drawRoundRect(box, u(10f), u(10f), fillPaint)
+        val ink = Contrast.inkFor(colBackdrop)
+        textPaint.textSize = u(TV_PREVIEW_TEXT_DP)
+        applyFont(textPaint, 500)
+        coverMissingGlyphs(textPaint, previewBefore + previewSelected + previewAfter)
+        textPaint.textAlign = Paint.Align.LEFT
+        val padX = u(12f)
+        val room = box.width() - 2 * padX
+        // Keep the cursor in view: trim the text before it from the left if needed
+        var before = previewBefore
+        val selW = textPaint.measureText(previewSelected)
+        while (before.isNotEmpty() && textPaint.measureText(before) + selW > room * 0.8f) before = before.drop(1)
+        val baseline = box.centerY() - (textPaint.descent() + textPaint.ascent()) / 2f
+        var x = box.left + padX
+        if (previewBefore.isEmpty() && previewSelected.isEmpty() && previewAfter.isEmpty()) {
+            textPaint.color = Contrast.withAlpha(ink, 90)
+            canvas.drawText("Type with your controller", x, baseline, textPaint)
+        }
+        textPaint.color = ink
+        canvas.drawText(before, x, baseline, textPaint)
+        x += textPaint.measureText(before)
+        if (previewSelected.isNotEmpty()) {
+            fillPaint.color = Contrast.withAlpha(colAccent, 0x59)
+            canvas.drawRoundRect(x - u(1f), box.top + u(7f), x + selW + u(1f), box.bottom - u(7f), u(4f), u(4f), fillPaint)
+            canvas.drawText(previewSelected, x, baseline, textPaint)
+            x += selW
+        } else {
+            fillPaint.color = colAccent
+            canvas.drawRect(x + u(1f), box.top + u(8f), x + u(3f), box.bottom - u(8f), fillPaint)
+            x += u(4f)
+        }
+        textPaint.color = Contrast.withAlpha(ink, 160)
+        canvas.save()
+        canvas.clipRect(box.left, box.top, box.right - padX, box.bottom)
+        canvas.drawText(previewAfter, x, baseline, textPaint)
+        canvas.restore()
+        textPaint.textAlign = Paint.Align.CENTER
+    }
+
+    /** After a quick language switch the name shows on the space bar for a moment, even when hidden. */
+    private var languageFlashUntil = 0L
+
+    /** Called after RT + LT changed the language. */
+    fun flashLanguage() {
+        languageFlashUntil = SystemClock.uptimeMillis() + LANGUAGE_FLASH_MS
+        invalidate()
+        postDelayed({ invalidate() }, LANGUAGE_FLASH_MS + 20)
+    }
+
+    /** The kind of text box in use (set by the keyboard service for every new box). */
+    private var field = FieldKind.TEXT
+    private val numeric get() = settings.smartKeys && (field == FieldKind.NUMBER || field == FieldKind.PHONE)
+
+    /**
+     * A new text box: smart keys follow its kind, and number boxes open on the number pad.
+     */
+    fun setField(kind: FieldKind) {
+        field = kind
+        letterRows = Layouts.letterRows(settings.layout, settings.language, if (settings.smartKeys) field else FieldKind.TEXT)
+        layer = if (numeric) Layer.NUMPAD else Layer.LETTERS
+        selRow = 2                                          // middle of the keys
+        selCol = if (layer == Layer.NUMPAD) 1 else 4
+        preferredCentre = null
+        focusReady = false
+        clampFocus()
+        invalidate()
     }
 
     private fun rowWidth(row: List<Key>) = row.fold(0f) { sum, k -> sum + k.weight }
@@ -188,7 +316,9 @@ class KeyGridView(context: Context) : View(context) {
 
     private val capitals get() = layer == Layer.LETTERS && (shiftState != ShiftState.OFF || heldShift)
 
-    private fun displayLabel(key: Key): String = if (capitals) key.label.uppercase() else key.label
+    /** Capitals for single letters only: ".com" stays lowercase, like web addresses are. */
+    private fun displayLabel(key: Key): String =
+        if (capitals && key.label.length == 1) settings.language.upper(key.label) else key.label
 
     // =====================================================================
     // ANIMATION
@@ -204,12 +334,21 @@ class KeyGridView(context: Context) : View(context) {
     private fun lerp(a: Float, b: Float, t: Float) = a + (b - a) * t
 
     private companion object {
+        const val LANGUAGE_FLASH_MS = 1400L
+        // TV mode (Android TV design guide: ~3 m viewing distance, 5 % safe area)
+        const val TV_WIDTH_DP = 600f          // compact keyboard, centred
+        const val TV_SAFE_SIDE = 0.05f
+        const val TV_SAFE_BOTTOM = 0.05f
+        const val TV_SCREEN_SHARE = 0.55f     // leave the game visible
+        const val TV_PREVIEW_DP = 34f
+        const val TV_PREVIEW_TEXT_DP = 18f
         const val LEAD_AHEAD = 1.3f
         const val LIFT_SCALE = 1.07f
         /** Height of the keyboard at size 1, in dp (edges, tool strip, four key rows, gaps). */
         const val DESIGN_HEIGHT_DP = 178f
         /** The keyboard never takes more than this share of the screen height. */
         const val MAX_SCREEN_SHARE = 0.6f
+        const val PREVIEW_MIN_FIT = 0.75f
     }
 
     private var lastMoveAt = 0L
@@ -319,6 +458,29 @@ class KeyGridView(context: Context) : View(context) {
         animateFocus(wrapped)
     }
 
+    /**
+     * One D-pad step towards the key with this label (" " = the space bar) on the current layer.
+     * Returns true when the highlight is already on it, null if the key isn't on this layer.
+     * Used by the tour to type real words.
+     */
+    fun stepTowards(label: String): Boolean? {
+        val rows = allRows()
+        var targetRow = -1
+        var targetCol = -1
+        rows.forEachIndexed { r, row ->
+            row.forEachIndexed { c, key ->
+                val hit = if (label == " ") key.type == KeyType.SPACE
+                else key.type == KeyType.CHAR && displayLabel(key).equals(label, ignoreCase = true)
+                if (hit && targetRow < 0) { targetRow = r; targetCol = c }
+            }
+        }
+        if (targetRow < 0) return null
+        clampFocus()
+        if (selRow != targetRow) { moveFocus(0, if (targetRow > selRow) 1 else -1); return false }
+        if (selCol != targetCol) { moveFocus(if (targetCol > selCol) 1 else -1, 0); return false }
+        return true
+    }
+
     fun pressSelected() {
         clampFocus()
         press(allRows()[selRow][selCol])
@@ -335,6 +497,13 @@ class KeyGridView(context: Context) : View(context) {
         invalidate()
     }
 
+    /** Back to lowercase (used by the tour between pages). */
+    fun resetShift() {
+        shiftState = ShiftState.OFF
+        heldShift = false
+        invalidate()
+    }
+
     /** R2 held: capitals on the keys, and the RT combos fade in over the tool strip. */
     fun setHeldShift(on: Boolean) {
         if (heldShift == on) return
@@ -346,8 +515,11 @@ class KeyGridView(context: Context) : View(context) {
     fun toggleLayer() {
         val centre = centreOf(allRows()[selRow], selCol)
         layer = when (layer) {
+            // Text boxes: letters <-> symbols. Number boxes go round all three:
+            // number pad -> letters -> symbols -> number pad, so every character is reachable.
             Layer.LETTERS -> Layer.SYMBOLS.also { feedback?.on() }
-            Layer.SYMBOLS -> Layer.LETTERS.also { feedback?.off() }
+            Layer.SYMBOLS -> (if (numeric) Layer.NUMPAD else Layer.LETTERS).also { feedback?.off() }
+            Layer.NUMPAD -> Layer.LETTERS.also { feedback?.on() }
             Layer.CLIPS -> Layer.LETTERS.also { feedback?.off() }
         }
         clampFocus()
@@ -481,15 +653,26 @@ class KeyGridView(context: Context) : View(context) {
     // =====================================================================
     override fun onMeasure(widthSpec: Int, heightSpec: Int) {
         // Height at the chosen size, before any shrinking: 6+26+4+4×31+3×4+6 = 178 dp
-        val designHeight = DESIGN_HEIGHT_DP * dp * sizeScales[sizeLevel]
+        // (TV mode adds the preview line and keeps a safe margin at the bottom of the screen)
         val screenHeight = resources.displayMetrics.heightPixels.toFloat()
-        val newFit = min(1f, screenHeight * MAX_SCREEN_SHARE / designHeight)
+        val tvExtraDp = if (tv) TV_PREVIEW_DP + Design.SPACE_XS else 0f
+        val designHeight = (DESIGN_HEIGHT_DP + tvExtraDp) * dp * sizeScales[sizeLevel]
+        val share = if (tv) TV_SCREEN_SHARE else MAX_SCREEN_SHARE
+        var newFit = min(1f, (screenHeight * share) / designHeight)
+        if (keepProportions && !tv) {
+            // A preview narrower than the real keyboard: shrink the height to match, so the
+            // keys keep their real shape and the hints their real size relative to the keys
+            val realWidth = min(resources.displayMetrics.widthPixels.toFloat(), maxWidth)
+            val given = MeasureSpec.getSize(widthSpec).toFloat()
+            // ...but never below 3/4, so letters and hints stay readable in a small preview
+            if (given > 0f && given < realWidth) newFit = min(newFit, max(PREVIEW_MIN_FIT, given / realWidth))
+        }
         if (newFit != fit) {
             fit = newFit
             badges.scale = scale
             focusReady = false
         }
-        val h = 2 * edge + toolHeight + gap + 4 * keyHeight + 3 * gap
+        val h = rowTop(4) + keyHeight + edge + tvBottomMargin()
         setMeasuredDimension(MeasureSpec.getSize(widthSpec), h.roundToInt())
     }
 
@@ -498,11 +681,20 @@ class KeyGridView(context: Context) : View(context) {
         focusReady = false
     }
 
-    private fun contentWidth() = min(width - 2 * edge, maxWidth)
+    private fun contentWidth() =
+        if (tv) min(width * (1f - 2 * TV_SAFE_SIDE), u(TV_WIDTH_DP))      // compact: shorter D-pad trips
+        else min(width - 2 * edge, maxWidth)
     private fun contentLeft() = (width - contentWidth()) / 2f
 
+    /** Top of the keys area: in TV mode the preview line sits above the tool strip. */
+    private val keysTop get() = edge + if (tv) previewHeight + gap else 0f
+    private val previewHeight get() = u(TV_PREVIEW_DP)
+
+    /** TV mode keeps clear of the screen's bottom edge (about 5 %, Android TV's safe area). */
+    private fun tvBottomMargin() = if (tv) resources.displayMetrics.heightPixels * TV_SAFE_BOTTOM else 0f
+
     private fun rowTop(r: Int) =
-        if (r == 0) edge else edge + toolHeight + gap + (r - 1) * (keyHeight + gap)
+        if (r == 0) keysTop else keysTop + toolHeight + gap + (r - 1) * (keyHeight + gap)
 
     private fun rowHeight(r: Int) = if (r == 0) toolHeight else keyHeight
 
@@ -520,7 +712,21 @@ class KeyGridView(context: Context) : View(context) {
     // DRAWING
     // =====================================================================
     override fun onDraw(canvas: Canvas) {
-        canvas.drawColor(colBackground)
+        if (tv) {
+            // TV mode: a floating panel; the app or game stays visible around it
+            canvas.drawColor(Color.TRANSPARENT, android.graphics.PorterDuff.Mode.SRC)
+            val pad = u(10f)
+            val panel = RectF(contentLeft() - pad, edge - pad * 0.6f, contentLeft() + contentWidth() + pad, rowTop(4) + keyHeight + pad)
+            fillPaint.color = if (clear) colBackground else Contrast.withAlpha(colBackground, 0xF2)
+            canvas.drawRoundRect(panel, u(20f), u(20f), fillPaint)
+            ringPaint.color = Contrast.withAlpha(Contrast.inkFor(colBackdrop), 0x1F)
+            ringPaint.strokeWidth = u(1f)
+            canvas.drawRoundRect(panel, u(20f), u(20f), ringPaint)
+            drawPreview(canvas)
+        } else {
+            // SRC replaces what's there, so a see-through background really is see-through
+            canvas.drawColor(colBackground, android.graphics.PorterDuff.Mode.SRC)
+        }
         clampFocus()
         val rows = allRows()
         if (!focusReady) {
@@ -534,7 +740,15 @@ class KeyGridView(context: Context) : View(context) {
             row.forEachIndexed { c, key ->
                 val bg = backgroundFor(key) ?: return@forEachIndexed
                 fillPaint.color = if (r == 0) fade(bg, 1f - comboFade) else bg
-                canvas.drawRoundRect(keyRect(r, row, c), corner, corner, fillPaint)
+                val rect = keyRect(r, row, c)
+                canvas.drawRoundRect(rect, corner, corner, fillPaint)
+                // Key borders: on every key, but not on tool-strip buttons (they have no key shape)
+                if (colEdge != 0 && key.type != KeyType.TOOL) {
+                    ringPaint.color = colEdge
+                    ringPaint.strokeWidth = u(1f)
+                    val inset = ringPaint.strokeWidth / 2f
+                    canvas.drawRoundRect(RectF(rect).apply { inset(inset, inset) }, corner - inset, corner - inset, ringPaint)
+                }
             }
         }
 
@@ -566,7 +780,7 @@ class KeyGridView(context: Context) : View(context) {
         // 4. RT combo chips, faded in over the tool strip
         if (comboFade > 0f) {
             val saved = canvas.saveLayerAlpha(stripRect(), (comboFade * 255).roundToInt())
-            drawChips(canvas, stripRect(), colBackground, comboChips())
+            drawChips(canvas, stripRect(), colBackdrop, comboChips())
             canvas.restoreToCount(saved)
         }
 
@@ -574,7 +788,7 @@ class KeyGridView(context: Context) : View(context) {
         if (layer == Layer.CLIPS && settings.showHints) {
             val top = rowTop(4)
             drawChips(
-                canvas, RectF(contentLeft(), top, contentLeft() + contentWidth(), top + keyHeight), colBackground,
+                canvas, RectF(contentLeft(), top, contentLeft() + contentWidth(), top + keyHeight), colBackdrop,
                 listOf(
                     listOf(HintPart.Badge(ControllerButton.A), HintPart.Text("Paste")),
                     listOf(HintPart.Badge(ControllerButton.X), HintPart.Text("Remove")),
@@ -632,10 +846,11 @@ class KeyGridView(context: Context) : View(context) {
         val pill = RectF(cx - hw, cy - hh, cx + hw, cy + hh)
         val r = corner * lift
 
-        if (style == HighlightStyle.GLOW) {
-            val grow = u(2.5f)
-            ringPaint.color = colGlow
-            ringPaint.strokeWidth = u(2f)
+        if (style == HighlightStyle.GLOW || tv) {
+            // TV mode always adds the halo, thicker, so the highlight reads from across the room
+            val grow = u(if (tv) 3.5f else 2.5f)
+            ringPaint.color = if (tv) Contrast.withAlpha(colAccent, 0x8C) else colGlow
+            ringPaint.strokeWidth = u(if (tv) 3f else 2f)
             canvas.drawRoundRect(RectF(pill).apply { inset(-grow, -grow) }, r + grow, r + grow, ringPaint)
         }
         fillPaint.color = focusFill
@@ -663,8 +878,8 @@ class KeyGridView(context: Context) : View(context) {
 
     private fun visibleBg(key: Key, focused: Boolean): Int {
         if (focused) return focusFill
-        val bg = backgroundFor(key) ?: return colBackground
-        return if (Color.alpha(bg) == 255) bg else Contrast.over(bg, colBackground)
+        val bg = backgroundFor(key) ?: return colBackdrop
+        return if (Color.alpha(bg) == 255) bg else Contrast.over(bg, colBackdrop)
     }
 
     /** The accent colour if readable on this background, otherwise plain ink. */
@@ -689,14 +904,21 @@ class KeyGridView(context: Context) : View(context) {
                     drawChips(canvas, rect, bg, selectChips())
                     return                                  // the chips replace the Y badge
                 }
-                iconPaint.color = soft
-                iconPaint.style = Paint.Style.STROKE
-                canvas.drawLine(cx - rect.width() * 0.12f, cy + s * 0.5f, cx + rect.width() * 0.12f, cy + s * 0.5f, iconPaint)
+                val showName = settings.showLanguageLabel || SystemClock.uptimeMillis() < languageFlashUntil
+                if (showName && labelFits(settings.language.label, rect)) {
+                    // The language you're typing in, quietly, like phone keyboards do
+                    drawLabel(canvas, settings.language.label, cx, cy, Contrast.withAlpha(ink, 120), Design.TYPE_KEY_LABEL, 500)
+                } else {
+                    // Clean: just a short line, as in 1.0
+                    iconPaint.color = soft
+                    iconPaint.style = Paint.Style.STROKE
+                    canvas.drawLine(cx - rect.width() * 0.12f, cy + s * 0.5f, cx + rect.width() * 0.12f, cy + s * 0.5f, iconPaint)
+                }
             }
             KeyType.SHIFT -> drawShift(canvas, cx, cy, s, focused, bg, ink)
             KeyType.DELETE -> if (undoOnDelete) drawUndo(canvas, cx, cy, s, ink) else drawBackspace(canvas, cx, cy, s, ink)
             KeyType.ENTER -> drawEnter(canvas, cx, cy, s, ink)
-            KeyType.TOOL -> drawTool(canvas, key, cx, cy, s, focused, bg, ink, soft)
+            KeyType.TOOL -> drawTool(canvas, key, rect, s, focused, bg, ink, soft)
             KeyType.CLIP -> drawClip(canvas, key, rect, ink)
             KeyType.EMPTY -> drawLabel(canvas, key.label, cx, cy, soft, 12.5f, 400)
         }
@@ -709,11 +931,22 @@ class KeyGridView(context: Context) : View(context) {
     // ---- Hint chips ---------------------------------------------------------
 
     /** Shown over the tool strip while RT is held. */
-    private fun comboChips(): List<List<HintPart>> = listOfNotNull(
-        listOf(HintPart.Badge(ControllerButton.L1), HintPart.Badge(ControllerButton.R1), HintPart.Text("Jump word")),
-        listOf(HintPart.Badge(ControllerButton.A), HintPart.Text("Capital")),
-        if (settings.undoCombo) listOf(HintPart.Badge(ControllerButton.X), HintPart.Text("Undo")) else null
-    )
+    private fun comboChips(): List<List<HintPart>> {
+        val accent = listOf(HintPart.Badge(ControllerButton.Y), HintPart.Text("Accent"))
+        val undo = if (settings.undoCombo) listOf(HintPart.Badge(ControllerButton.X), HintPart.Text("Undo")) else null
+        // Languages with accented letters need the accent tip more than undo, so it comes first.
+        // Chips that don't fit are dropped from the end.
+        val accentsMatter = settings.language != Language.ENGLISH
+        val switchLanguage = if (settings.languages.size > 1)
+            listOf(HintPart.Badge(ControllerButton.L2), HintPart.Text("Language")) else null
+        return listOfNotNull(
+            listOf(HintPart.Badge(ControllerButton.L1), HintPart.Badge(ControllerButton.R1), HintPart.Text("Jump word")),
+            listOf(HintPart.Badge(ControllerButton.A), HintPart.Text("Capital")),
+            if (accentsMatter) accent else undo,
+            switchLanguage,
+            if (accentsMatter) undo else accent
+        )
+    }
 
     /** Shown on the space bar in select mode, most useful first. */
     private fun selectChips(): List<List<HintPart>> = listOfNotNull(
@@ -737,9 +970,11 @@ class KeyGridView(context: Context) : View(context) {
     // ---- Keys ---------------------------------------------------------------
 
     private fun drawTool(
-        canvas: Canvas, key: Key, cx: Float, cy: Float, s: Float,
+        canvas: Canvas, key: Key, rect: RectF, s: Float,
         focused: Boolean, bg: Int, ink: Int, soft: Int
     ) {
+        val cx = rect.centerX()
+        val cy = rect.centerY()
         val active = (key.tool == Tool.SELECT && selecting) || (key.tool == Tool.HISTORY && layer == Layer.CLIPS)
         val colour = when {
             focused -> ink
@@ -751,8 +986,9 @@ class KeyGridView(context: Context) : View(context) {
             Tool.SETTINGS -> drawGear(canvas, cx, cy, s * 0.95f, colour)
             else -> {
                 val text = when (key.tool) {
-                    Tool.SELECT -> if (selecting) "Selecting · $selectedCount" else "Select"
-                    Tool.PASTE -> clipPreview?.let { "Paste  “$it”" } ?: "Paste"
+                    // The count only if it fits next to the corner badge; the word never overlaps anything
+                    Tool.SELECT -> if (selecting) toolLabelThatFits(rect, "Selecting · $selectedCount", "Selecting", "Sel.") else "Select"
+                    Tool.PASTE -> clipPreview?.let { toolLabelThatFits(rect, "Paste  “$it”", "Paste") } ?: "Paste"
                     else -> key.label
                 }
                 drawLabel(canvas, text, cx, cy, colour, 12.5f, 500)
@@ -780,6 +1016,8 @@ class KeyGridView(context: Context) : View(context) {
         textPaint.color = colour
         textPaint.textSize = u(Design.TYPE_KEY)
         applyFont(textPaint, 400 + settings.letterWeight * 25)
+        coverMissingGlyphs(textPaint, text)
+        shadowForClear(textPaint)
         if (customFont == null && settings.letterWeight > 0) {
             // The system font can't change weight smoothly, so thicken the outline instead
             textPaint.style = Paint.Style.FILL_AND_STROKE
@@ -791,10 +1029,55 @@ class KeyGridView(context: Context) : View(context) {
         textPaint.strokeWidth = 0f
     }
 
+    /**
+     * Hyperlegible has no Cyrillic letters (and no ₺ ₽ ₴). For those, switch to Inter,
+     * which has them all, instead of letting Android mix in a font that doesn't match.
+     */
+    private fun coverMissingGlyphs(paint: Paint, text: String) {
+        if (settings.font != FontChoice.HYPERLEGIBLE) return
+        val inter = fontInter ?: return
+        val missing = glyphCache.getOrPut(text) {
+            val probe = Paint(paint).apply { typeface = fontHyperlegible }
+            text.any { !it.isWhitespace() && !probe.hasGlyph(it.toString()) }
+        }
+        if (missing) {
+            val variation = paint.fontVariationSettings
+            paint.typeface = inter
+            paint.fontVariationSettings = variation            // keep the chosen letter weight
+        }
+    }
+
+    /** Which labels Hyperlegible can't draw, worked out once per label (not every frame). */
+    private val glyphCache = HashMap<String, Boolean>()
+
+    /** The first of these labels that fits a tool key, clear of its corner badge. The last one is used regardless. */
+    private fun toolLabelThatFits(rect: RectF, vararg options: String): String {
+        textPaint.textSize = u(12.5f)
+        applyFont(textPaint, 500)
+        val badge = if (settings.showHints) u(18f) else u(6f)
+        val room = rect.width() - 2 * badge
+        return options.firstOrNull { textPaint.measureText(it) <= room } ?: options.last()
+    }
+
+    /** True when a space-bar label fits with room to spare (short space bars in web boxes, narrow screens). */
+    private fun labelFits(text: String, rect: RectF): Boolean {
+        textPaint.textSize = u(Design.TYPE_KEY_LABEL)
+        applyFont(textPaint, 500)
+        return textPaint.measureText(text) <= rect.width() - 2 * u(18f)       // clear of the corner badge
+    }
+
+    /** On the Clear theme a soft dark shadow keeps letters crisp over busy pictures. */
+    private fun shadowForClear(paint: Paint) {
+        if (clear) paint.setShadowLayer(u(2f), 0f, u(0.5f), Contrast.withAlpha(Color.BLACK, 0x99))
+        else paint.clearShadowLayer()
+    }
+
     private fun drawLabel(canvas: Canvas, text: String, cx: Float, cy: Float, colour: Int, sizeDp: Float, weight: Int) {
         textPaint.color = colour
         textPaint.textSize = u(sizeDp)
         applyFont(textPaint, weight)
+        coverMissingGlyphs(textPaint, text)
+        shadowForClear(textPaint)
         val y = cy - (textPaint.descent() + textPaint.ascent()) / 2f
         canvas.drawText(text, cx, y, textPaint)
     }

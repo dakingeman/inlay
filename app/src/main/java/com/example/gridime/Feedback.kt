@@ -14,11 +14,14 @@ import kotlin.random.Random
 /**
  * Sound and vibration for every keyboard action, in one place.
  *
- * Four sound packs share the same ten cues and the same meanings:
+ * Seven sound packs share the same ten cues and the same meanings (see SoundPack):
  *  - Soft (default) and Soft Deep: a short low thud for weight plus a crisp click for
  *    texture, together, gone within ~15 ms. Letters rotate between four takes.
- *  - Tactile: dry mechanical clicks with no notes
- *  - Chime: soft mallet notes in C major pentatonic
+ *  - Tactile: dry mechanical clicks with no notes. Chime: soft mallet notes.
+ *  - Retro: band-limited 8-bit blips. Typewriter: a metal strike, a bell on Enter.
+ *    Felt: thud only, a little quieter, for night.
+ * Pitched packs use C major pentatonic in pure ratios, so sounds never clash.
+ * Loudness is mastered into the files (tools/ scripts), one felt-loudness order for all packs.
  * The rule in every pack: ONE action = ONE hit, and one vibration pulse.
  * Actions differ by weight, pitch and length, never by counting hits:
  * keys are short, switches (on / off, triggers) are a heavier "latch" that bends up
@@ -53,6 +56,15 @@ class Feedback(context: Context) {
     private enum class Cue { MOVE, KEY, SPACE, DELETE, ON, OFF, LOCK, SELECT_ALL, CONFIRM, BACK }
 
     private val appContext = context.applicationContext
+
+    /**
+     * Sounds load in the background. A sound asked for before it's ready waits here and
+     * plays the moment it is, instead of being silently skipped (the first key press after
+     * switching packs used to make no sound).
+     */
+    private val ready = HashSet<Int>()
+    private val waiting = HashMap<Int, Float>()
+    private val handler = android.os.Handler(android.os.Looper.getMainLooper())
     private var loadedPack: SoundPack? = null
     private val ids = IntArray(Cue.values().size)
 
@@ -78,11 +90,26 @@ class Feedback(context: Context) {
             R.raw.chime_move, R.raw.chime_type, R.raw.chime_space, R.raw.chime_delete, R.raw.chime_on,
             R.raw.chime_off, R.raw.chime_lock, R.raw.chime_select_all, R.raw.chime_confirm, R.raw.chime_back
         )
+        SoundPack.RETRO -> intArrayOf(
+            R.raw.retro_move, R.raw.retro_type, R.raw.retro_space, R.raw.retro_delete, R.raw.retro_on,
+            R.raw.retro_off, R.raw.retro_lock, R.raw.retro_select_all, R.raw.retro_confirm, R.raw.retro_back
+        )
+        SoundPack.TYPEWRITER -> intArrayOf(
+            R.raw.typewriter_move, R.raw.typewriter_type, R.raw.typewriter_space, R.raw.typewriter_delete, R.raw.typewriter_on,
+            R.raw.typewriter_off, R.raw.typewriter_lock, R.raw.typewriter_select_all, R.raw.typewriter_confirm, R.raw.typewriter_back
+        )
+        SoundPack.FELT -> intArrayOf(
+            R.raw.felt_move, R.raw.felt_type, R.raw.felt_space, R.raw.felt_delete, R.raw.felt_on,
+            R.raw.felt_off, R.raw.felt_lock, R.raw.felt_select_all, R.raw.felt_confirm, R.raw.felt_back
+        )
     }
 
     private fun takesFor(pack: SoundPack): IntArray = when (pack) {
         SoundPack.SOFT -> intArrayOf(R.raw.soft_type1, R.raw.soft_type2, R.raw.soft_type3)
         SoundPack.SOFT_DEEP -> intArrayOf(R.raw.softdeep_type1, R.raw.softdeep_type2, R.raw.softdeep_type3)
+        SoundPack.RETRO -> intArrayOf(R.raw.retro_type1, R.raw.retro_type2, R.raw.retro_type3)
+        SoundPack.TYPEWRITER -> intArrayOf(R.raw.typewriter_type1, R.raw.typewriter_type2, R.raw.typewriter_type3)
+        SoundPack.FELT -> intArrayOf(R.raw.felt_type1, R.raw.felt_type2, R.raw.felt_type3)
         else -> intArrayOf()
     }
 
@@ -91,6 +118,8 @@ class Feedback(context: Context) {
         if (pack == loadedPack) return
         ids.forEach { if (it != 0) pool.unload(it) }
         keyTakes.forEach { pool.unload(it) }
+        ready.clear()
+        waiting.clear()
         keyTakes.clear()
         resourcesFor(pack).forEachIndexed { i, res -> ids[i] = pool.load(appContext, res, 1) }
         keyTakes += ids[Cue.KEY.ordinal]
@@ -114,10 +143,32 @@ class Feedback(context: Context) {
     }
 
     init {
+        pool.setOnLoadCompleteListener { _, id, status ->
+            if (status != 0) return@setOnLoadCompleteListener
+            ready += id
+            waiting.remove(id)?.let { volume -> pool.play(id, volume, volume, 1, 0, 1f) }
+        }
         loadPack(settings.soundPack)
     }
 
-    fun release() = pool.release()
+    fun release() {
+        handler.removeCallbacksAndMessages(null)
+        pool.release()
+    }
+
+    /**
+     * A short phrase in the current pack, for trying packs in Settings:
+     * two letters, a space, a letter, Enter. Sound only, no vibration.
+     */
+    fun sample() {
+        handler.removeCallbacksAndMessages(null)
+        val phrase = listOf(Cue.KEY to 0L, Cue.KEY to 170L, Cue.SPACE to 340L, Cue.KEY to 520L, Cue.CONFIRM to 760L)
+        phrase.forEach { (cue, at) ->
+            handler.postDelayed({
+                if (cue == Cue.KEY) playId(nextKeyTake(), Design.SOUND_KEY) else play(cue, Design.SOUND_KEY)
+            }, at)
+        }
+    }
 
     // =====================================================================
     // EVENTS
@@ -271,6 +322,10 @@ class Feedback(context: Context) {
         // changes: every sound is tuned to the same scale and must stay in tune.
         val jitter = 1f + (Random.nextFloat() * 2f - 1f) * Design.SOUND_GAIN_JITTER
         val volume = ((level * level * 0.35f + level * 0.65f) * gain * jitter).coerceIn(0f, 1f)
+        if (soundId !in ready) {
+            waiting[soundId] = volume                // plays as soon as it has loaded
+            return
+        }
         pool.play(soundId, volume, volume, 1, 0, 1f)
     }
 }

@@ -91,7 +91,7 @@ When adding anything new, check it against these rules first.
 
 ## 9. Sound
 
-Four **sound packs** share the same ten cues and the same meanings, so switching packs never changes what a sound tells you.
+Seven **sound packs** share the same ten cues and the same meanings, so switching packs never changes what a sound tells you.
 
 | Pack | Character |
 |---|---|
@@ -99,6 +99,11 @@ Four **sound packs** share the same ten cues and the same meanings, so switching
 | **Soft Deep** | The same recipe, with a darker click and more weight |
 | **Tactile** | Dry mechanical clicks, no notes |
 | **Chime** | Soft mallet notes in C major pentatonic |
+| **Retro** (1.1) | Band-limited 8-bit blips: odd harmonics only (all exact multiples), pentatonic pitches, on = up a fifth, off = down a fifth, lock = up an octave |
+| **Typewriter** (1.1) | The Soft recipe with a harder, brighter metal strike; Enter is the carriage-return bell (root, octave and double octave only) |
+| **Felt** (1.1) | Thud only, almost no click, mastered 3 dB lower: the night pack |
+
+New packs are made by `tools/new-packs.py`, using the same felt-loudness meter and target levels as Soft. Sharp hits are rounded off with a soft limiter until they reach their target without touching the ceiling, so the loudness order (move < keys < switches < lock) holds in every pack. Every file is checked to land within 0.5 dB of its target.
 
 **The Soft recipe (from the reference button sounds Emre chose)**
 - **Thud:** two very damped low resonances (~150–650 Hz). They last only 1–4 vibrations, so you get weight with no pitch.
@@ -163,19 +168,37 @@ Four **sound packs** share the same ten cues and the same meanings, so switching
 | X | delete (hold to speed up) | — |
 | Y | space | show or hide the keyboard preview |
 | LB / RB | move cursor | switch sections |
-| LT | letters and symbols | — |
-| RT | tap: shift. Hold: combos | — |
+| LT | letters and symbols (number boxes: number pad → letters → symbols) | — |
+| RT | tap: shift. Hold: combos (A capital, LB/RB word jump, X undo, Y accent, LT language) | — |
 | View / Select | select mode · ×2 select all | — |
 | Menu / Start | enter | — |
-| LS (press) | keyboard size | — |
+| LS (press) | keyboard size: Normal, Large, Largest | — |
+
+The first-run tour uses A / Right = next, B / Left = back, Start = skip.
 
 ## App icon
 
-A miniature of the keyboard itself: three rows of keys, one of them lit in the accent colour.
+A miniature of the keyboard itself: two rows of keys and a space bar, one key lit in the accent colour. Refreshed in 1.1; the full kit and rules are in `docs/brand/BRAND.md`.
 
-- **Canvas:** 108 dp adaptive icon. The logo is 50 × 48 dp, inside the 66 dp safe zone, so no launcher mask can cut it.
-- **Background:** solid `#0B0B0E`. **Keys:** `#F2F3F5`. **Lit key:** `#72D6E8` (the accent).
-- **Keys:** 14 dp squares with 4 dp gaps and a 12 dp space bar across the bottom. Corner radius 4 dp, the same soft shape as the keys in the app.
-- **Themed icon (Android 13+):** the same shape in one colour. The lit key becomes a cut-out, so it still reads as the "selected" key.
-- **Rules:** flat vector shapes only, no shadows, no gradients, no text.
-- **Files:** `res/drawable/ic_launcher_*.xml` and `res/mipmap-anydpi-v26/ic_launcher*.xml`. The store-size version is `docs/images/icon.png` (512 × 512).
+- **Canvas:** 108 dp adaptive icon. The logo is 47.5 × 44 dp and fits inside a 62 dp circle (Android's safe zone is 66), so no launcher mask can cut it.
+- **Background:** solid `#0B0B0E`. **Keys:** `#F2F3F5`. **Lit key:** `#72D6E8` (Inlay teal, also the default highlight colour).
+- **Keys:** 13 dp squares with 4.25 dp gaps (opened up for light-on-dark), and a 9.5 dp space bar. Corner radius 3.8 dp (29 % of a key, the same as the app's Soft keys). The group sits 0.5 dp above centre (optical centre).
+- **Small cut** for 16–24 px: one row of three keys plus the bar.
+- **Themed icon (Android 13+):** the same shape in one colour. The lit key becomes an empty slot, so it still reads as the "selected" key.
+- **TV banner:** `res/drawable/tv_banner.xml`, symbol and name on ink.
+- **Rules:** flat vector shapes only, no shadows, no gradients, no text in the icon.
+- **Files:** `res/drawable/ic_launcher_*.xml`, `res/mipmap-anydpi-v26/ic_launcher*.xml`, `docs/images/icon.png` (512 × 512) and `docs/brand/`.
+
+## TV mode
+
+For a docked handheld or Android TV, viewed from about 3 m (Android TV design guide). A bigger keyboard is not the answer; the problems on a TV are different:
+
+| Problem on a TV | What TV mode does |
+|---|---|
+| The app's text box is small, far away or hidden behind the keyboard | A preview line on top of the keyboard shows the text around the cursor in big type (18 dp), with the cursor and selection |
+| A full-width keyboard means long D-pad trips | The keyboard stays compact: at most 600 dp wide, centred |
+| The edge of a TV picture can be cut off, and the keyboard hides the game | A floating panel with 5 % safe margins at the sides and bottom; the game stays visible around it; never more than 55 % of the height |
+| A thin highlight is hard to see from the sofa | The halo is always on in TV mode, thicker and brighter |
+| A TV is a shared screen | Password boxes show dots in the preview line |
+
+Turns on by itself (Automatic) on Android TV devices and whenever a TV or monitor is connected; On and Off are in Settings → Typing. Docking or undocking while typing switches straight away.

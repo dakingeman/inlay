@@ -35,6 +35,23 @@ object SettingsStyle {
     val medium: Typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
 
     /**
+     * Your highlight colour. Settings uses it for everything that shows "you are here" or
+     * "this is on": the active tab, the focus ring, chosen options, switches and sliders.
+     * Text stays white, so the colour only appears where it means something.
+     */
+    var accent: Int = Color.parseColor("#8AB4F8")
+        set(value) {
+            field = value
+            focusRings.forEach { it.setStroke(ringWidth, value) }
+        }
+    /** Readable text on top of the accent (white or near-black, picked by contrast). */
+    val onAccent: Int get() = Contrast.inkFor(accent)
+
+    /** Every focus ring made so far, so a new colour reaches them all at once. */
+    private val focusRings = java.util.Collections.newSetFromMap(java.util.WeakHashMap<GradientDrawable, Boolean>())
+    private var ringWidth = 0
+
+    /**
      * True on narrow screens (portrait, small handhelds). Wide controls then sit under
      * their title instead of beside it, so nothing gets squeezed.
      */
@@ -46,10 +63,14 @@ object SettingsStyle {
     /** Rounded background: filled + white ring when focused, soft fill when pressed. */
     fun focusBackground(context: Context, radiusDp: Float): Drawable {
         val dp = context.resources.displayMetrics.density
+        ringWidth = (Design.STROKE_FOCUS * dp).roundToInt()
         fun shape(fill: Int, ring: Boolean) = GradientDrawable().apply {
             cornerRadius = radiusDp * dp
             setColor(fill)
-            if (ring) setStroke((Design.STROKE_FOCUS * dp).roundToInt(), Color.WHITE)
+            if (ring) {
+                setStroke(ringWidth, accent)
+                focusRings.add(this)
+            }
         }
         return StateListDrawable().apply {
             setEnterFadeDuration(Design.MOTION_FADE.toInt())
@@ -89,6 +110,15 @@ abstract class SettingRow(
     protected val dp = resources.displayMetrics.density
     protected fun px(v: Float) = (v * dp).roundToInt()
     private val stackedLayout = stacked
+    private val titleView = TextView(context)
+    private var subtitleView: View? = null
+    private var control: View? = null
+
+    /** Changes the row's words in place (for rows that change state, like "Cleared · Undo"). */
+    protected fun setTexts(title: String, subtitle: String) {
+        titleView.text = title
+        (subtitleView as? TextView)?.text = subtitle
+    }
 
     init {
         orientation = if (stacked) VERTICAL else HORIZONTAL
@@ -103,14 +133,15 @@ abstract class SettingRow(
 
         val texts = LinearLayout(context).apply {
             orientation = VERTICAL
-            addView(TextView(context).apply {
+            addView(titleView.apply {
                 text = title
                 textSize = Design.TYPE_ROW
                 typeface = SettingsStyle.medium
                 setTextColor(SettingsStyle.textPrimary)
             })
             subtitle?.let {
-                addView(subtitleView(context, it), LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT)
+                addView(subtitleView(context, it).also { v -> subtitleView = v },
+                    LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT)
                     .apply { topMargin = px(Design.SPACE_XS / 2) })
             }
         }
@@ -134,6 +165,8 @@ abstract class SettingRow(
     }
 
     protected fun setControl(view: View) {
+        control?.let { removeView(it) }
+        control = view
         val params = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT)
         if (stackedLayout) params.topMargin = px(Design.SPACE_M) else params.marginStart = px(Design.SPACE_L)
         addView(view, params)
@@ -218,6 +251,50 @@ class ChoiceRow(
         segments.select(index)
         sounds?.key()
         onChange(index)
+    }
+}
+
+/**
+ * Pick one of many options (too many for a segmented pill): the current one sits
+ * between two arrows. Left/Right step through them, A moves to the next one.
+ * The live keyboard preview shows the result, so no list is needed.
+ */
+class StepperRow(
+    context: Context,
+    private val title: String,
+    subtitle: String?,
+    options: List<String>,
+    selected: Int,
+    /** One line per option, shown as the subtitle while that option is chosen (optional). */
+    private val descriptions: List<String>? = null,
+    /** True when [onChange] makes its own sound (e.g. a sound-pack sample). */
+    private val silent: Boolean = false,
+    private val onChange: (Int) -> Unit
+) : SettingRow(context, title, descriptions?.getOrNull(selected) ?: subtitle, stacked = SettingsStyle.isNarrow(context)) {
+
+    private val stepper = StepperView(context, options, selected) { onChange(it) }
+
+    init {
+        setControl(stepper)
+    }
+
+    override fun step(dir: Int): Boolean {
+        choose(stepper.selectedIndex + dir)
+        return true
+    }
+
+    override fun activate() = choose((stepper.selectedIndex + 1) % stepper.count)
+
+    private fun choose(index: Int) {
+        if (index !in 0 until stepper.count || index == stepper.selectedIndex) return
+        stepper.select(index)
+        if (!silent) sounds?.key()
+        descriptions?.getOrNull(index)?.let { setTexts(title, it) }
+        onChange(index)
+    }
+
+    override fun onFocusLook(focused: Boolean) {
+        stepper.focused = focused
     }
 }
 
@@ -421,7 +498,7 @@ class GuideRow(
 // CONTROLS (drawn by hand so they look the same everywhere)
 // =========================================================================
 
-/** Pill-shaped option picker with a sliding white indicator. */
+/** Pill-shaped option picker with a sliding accent indicator. */
 class SegmentedView(
     context: Context,
     private val options: List<String>,
@@ -438,7 +515,7 @@ class SegmentedView(
     private val fill = Paint(Paint.ANTI_ALIAS_FLAG)
     private val text = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         textAlign = Paint.Align.CENTER
-        textSize = 14f * resources.displayMetrics.scaledDensity
+        textSize = android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_SP, 14f, resources.displayMetrics)
         typeface = SettingsStyle.medium
     }
     private val pad = 4f * dp
@@ -486,13 +563,13 @@ class SegmentedView(
         canvas.drawRoundRect(0f, 0f, width.toFloat(), h, r, r, fill)
 
         val left = pad + indicator * segmentWidth
-        fill.color = Color.WHITE
+        fill.color = SettingsStyle.accent
         canvas.drawRoundRect(left, pad, left + segmentWidth, h - pad, r - pad, r - pad, fill)
 
         val baseline = h / 2f - (text.descent() + text.ascent()) / 2f
         options.forEachIndexed { i, label ->
             val onIndicator = 1f - min(1f, abs(indicator - i))
-            text.color = SettingsStyle.blend(SettingsStyle.textPrimary, Color.BLACK, onIndicator)
+            text.color = SettingsStyle.blend(SettingsStyle.textPrimary, SettingsStyle.onAccent, onIndicator)
             canvas.drawText(label, pad + segmentWidth * (i + 0.5f), baseline, text)
         }
     }
@@ -539,16 +616,16 @@ class SwitchView(context: Context, initial: Boolean) : View(context) {
     override fun onDraw(canvas: Canvas) {
         val h = height.toFloat()
         val r = h / 2f
-        paint.color = SettingsStyle.blend(Color.parseColor("#3A3A42"), Color.WHITE, position)
+        paint.color = SettingsStyle.blend(Color.parseColor("#3A3A42"), SettingsStyle.accent, position)
         canvas.drawRoundRect(0f, 0f, width.toFloat(), h, r, r, paint)
         val knobR = r - 4f * dp
         val x = r + (width - 2 * r) * position
-        paint.color = SettingsStyle.blend(Color.parseColor("#C8C8CE"), Color.BLACK, position)
+        paint.color = SettingsStyle.blend(Color.parseColor("#C8C8CE"), SettingsStyle.onAccent, position)
         canvas.drawCircle(x, r, knobR, paint)
     }
 }
 
-/** Slider: white fill on a dark track, draggable by touch. */
+/** Slider: accent fill on a dark track, draggable by touch. */
 class SliderView(
     context: Context,
     val min: Int,
@@ -582,7 +659,7 @@ class SliderView(
         paint.color = SettingsStyle.track
         canvas.drawRoundRect(thumbR, cy - t, width - thumbR, cy + t, t, t, paint)
         val x = xFor(value)
-        paint.color = Color.WHITE
+        paint.color = SettingsStyle.accent
         canvas.drawRoundRect(thumbR, cy - t, x, cy + t, t, t, paint)
         canvas.drawCircle(x, cy, thumbR, paint)
     }
@@ -598,6 +675,111 @@ class SliderView(
                     value = v
                     onDrag(v)
                 }
+            }
+        }
+        return true
+    }
+}
+
+/**
+ * "‹  Norsk  ›" in a pill, sized for the longest option so it never jumps.
+ * An arrow fades out at either end of the list, so you can see there's no more.
+ */
+class StepperView(
+    context: Context,
+    private val options: List<String>,
+    initial: Int,
+    private val onTap: (Int) -> Unit
+) : View(context) {
+
+    private val dp = resources.displayMetrics.density
+    val count get() = options.size
+    var selectedIndex = initial.coerceIn(0, options.lastIndex)
+        private set
+    var focused = false
+        set(v) {
+            field = v
+            invalidate()
+        }
+
+    private val fill = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val arrow = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        strokeWidth = Design.STROKE_ICON * dp
+        strokeCap = Paint.Cap.ROUND
+        strokeJoin = Paint.Join.ROUND
+    }
+    private val text = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        textAlign = Paint.Align.CENTER
+        textSize = android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_SP, 14f, resources.displayMetrics)
+        typeface = SettingsStyle.medium
+        color = SettingsStyle.textPrimary
+    }
+    private val arrowZone = 36f * dp
+    private var slide = 0f            // -1..1 while the new label slides in
+    private var anim: ValueAnimator? = null
+
+    override fun onMeasure(widthSpec: Int, heightSpec: Int) {
+        val natural = (options.maxOf { text.measureText(it) } + 2 * arrowZone + 16f * dp).roundToInt()
+        setMeasuredDimension(resolveSize(natural, widthSpec), (40f * dp).roundToInt())
+    }
+
+    fun select(index: Int) {
+        val dir = if (index > selectedIndex) 1f else -1f
+        selectedIndex = index
+        anim?.cancel()
+        anim = ValueAnimator.ofFloat(dir, 0f).apply {
+            duration = Design.MOTION_CONTROL
+            interpolator = Design.EASE_OUT
+            addUpdateListener {
+                slide = it.animatedValue as Float
+                invalidate()
+            }
+            start()
+        }
+    }
+
+    override fun onDraw(canvas: Canvas) {
+        val w = width.toFloat()
+        val h = height.toFloat()
+        val r = h / 2f
+        fill.color = SettingsStyle.track
+        canvas.drawRoundRect(0f, 0f, w, h, r, r, fill)
+
+        // Label: slides a little and fades in from the side you moved towards
+        val shift = slide * 10f * dp
+        text.alpha = ((1f - abs(slide)) * 255).roundToInt()
+        val baseline = h / 2f - (text.descent() + text.ascent()) / 2f
+        canvas.drawText(options[selectedIndex], w / 2f + shift, baseline, text)
+        text.alpha = 255
+
+        // Arrows: bright when focused, dim otherwise, gone at the ends of the list
+        val s = 5f * dp
+        val bright = if (focused) SettingsStyle.accent else SettingsStyle.textSecondary
+        fun chevron(cx: Float, left: Boolean, visible: Boolean) {
+            arrow.color = if (visible) bright else Contrast.withAlpha(SettingsStyle.textSecondary, 0x40)
+            val d = if (left) 1f else -1f
+            val path = Path().apply {
+                moveTo(cx + d * s * 0.5f, r - s)
+                lineTo(cx - d * s * 0.5f, r)
+                lineTo(cx + d * s * 0.5f, r + s)
+            }
+            canvas.drawPath(path, arrow)
+        }
+        chevron(arrowZone / 2f + 4f * dp, left = true, visible = selectedIndex > 0)
+        chevron(w - arrowZone / 2f - 4f * dp, left = false, visible = selectedIndex < options.lastIndex)
+    }
+
+    override fun onTouchEvent(e: MotionEvent): Boolean {
+        if (e.actionMasked == MotionEvent.ACTION_UP) {
+            val next = when {
+                e.x < arrowZone -> selectedIndex - 1
+                e.x > width - arrowZone -> selectedIndex + 1
+                else -> (selectedIndex + 1) % options.size
+            }
+            if (next in options.indices && next != selectedIndex) {
+                select(next)
+                onTap(next)
             }
         }
         return true
@@ -693,24 +875,29 @@ class BadgeLineView(
     style: ButtonStyle,
     textSizeSp: Float,
     colour: Int,
-    badgeScale: Float
+    badgeScale: Float,
+    gapBadgeToBadge: Float = 2f,
+    gapBadgeToText: Float = 4f
 ) : View(context) {
 
     private val painter = BadgePainter(resources.displayMetrics.density).apply {
         this.style = style
         scale = badgeScale
+        this.gapBadgeToBadge = gapBadgeToBadge
+        this.gapBadgeToText = gapBadgeToText
     }
     private val text = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         textAlign = Paint.Align.LEFT
-        textSize = textSizeSp * resources.displayMetrics.scaledDensity
+        textSize = android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_SP, textSizeSp, resources.displayMetrics)
         color = colour
     }
 
     override fun onMeasure(widthSpec: Int, heightSpec: Int) {
         val textHeight = text.descent() - text.ascent()
+        // Honour a fixed width from the layout (the tour lines badges up in a column), otherwise wrap
         setMeasuredDimension(
-            painter.measureLine(parts, text).roundToInt() + 2,
-            (maxOf(painter.height, textHeight) + 4).roundToInt()
+            resolveSize(painter.measureLine(parts, text).roundToInt() + 2, widthSpec),
+            resolveSize((maxOf(painter.height, textHeight) + 4).roundToInt(), heightSpec)
         )
     }
 
@@ -783,5 +970,178 @@ class HueSliderView(
             }
         }
         return true
+    }
+}
+
+// =========================================================================
+// SET-UP CARD AND UNDO ROW
+// =========================================================================
+
+/**
+ * Shown at the top of Settings until Inlay is ready: two steps with ticks and one
+ * accent button for whatever comes next. It disappears once both are done.
+ */
+class SetupRow(
+    context: Context,
+    enabled: Boolean,
+    private val onAct: () -> Unit
+) : SettingRow(context, "Set up Inlay", "Two quick steps, then you can type with your controller anywhere", stacked = true) {
+
+    init {
+        val body = LinearLayout(context).apply {
+            orientation = VERTICAL
+            addView(step(1, "Turn on Inlay",
+                if (enabled) "Done" else "Switch Inlay on in the list that opens",
+                done = enabled, current = !enabled))
+            addView(step(2, "Make it your keyboard", "Pick Inlay in the list that opens",
+                done = false, current = enabled), LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
+                .apply { topMargin = px(Design.SPACE_M) })
+            addView(AccentButton(context).apply {
+                text = if (enabled) "Choose Inlay" else "Turn on Inlay"
+                textSize = Design.TYPE_ROW
+                typeface = SettingsStyle.medium
+                gravity = Gravity.CENTER
+                setPadding(px(Design.SPACE_XL), px(Design.SPACE_M), px(Design.SPACE_XL), px(Design.SPACE_M))
+            }, LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT)
+                .apply { topMargin = px(Design.SPACE_L) })
+        }
+        setControl(body)
+    }
+
+    private fun step(n: Int, title: String, subtitle: String, done: Boolean, current: Boolean): View =
+        LinearLayout(context).apply {
+            orientation = HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            alpha = if (done) 0.6f else 1f
+            addView(StepDot(context, n, done, current), LayoutParams(px(28f), px(28f)))
+            addView(LinearLayout(context).apply {
+                orientation = VERTICAL
+                addView(TextView(context).apply {
+                    text = title
+                    textSize = 15f
+                    typeface = SettingsStyle.medium
+                    setTextColor(SettingsStyle.textPrimary)
+                })
+                addView(TextView(context).apply {
+                    text = subtitle
+                    textSize = Design.TYPE_CAPTION
+                    setTextColor(SettingsStyle.textSecondary)
+                })
+            }, LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT).apply { marginStart = px(Design.SPACE_M) })
+        }
+
+    override fun activate() {
+        sounds?.confirm()
+        onAct()
+    }
+}
+
+/** A step marker: a tick when done, the number in an accent ring when it's next, grey after that. */
+class StepDot(context: Context, private val n: Int, private val done: Boolean, private val current: Boolean) : View(context) {
+    private val dp = resources.displayMetrics.density
+    private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val text = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        textAlign = Paint.Align.CENTER
+        textSize = android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_SP, 13f, resources.displayMetrics)
+        typeface = SettingsStyle.medium
+    }
+
+    override fun onDraw(canvas: Canvas) {
+        val cx = width / 2f
+        val cy = height / 2f
+        val r = minOf(width, height) / 2f - dp
+        if (done) {
+            paint.style = Paint.Style.FILL
+            paint.color = SettingsStyle.accent
+            canvas.drawCircle(cx, cy, r, paint)
+            paint.style = Paint.Style.STROKE
+            paint.strokeWidth = 2f * dp
+            paint.strokeCap = Paint.Cap.ROUND
+            paint.strokeJoin = Paint.Join.ROUND
+            paint.color = SettingsStyle.onAccent
+            val g = r * 0.42f
+            canvas.drawPath(Path().apply {
+                moveTo(cx - g, cy)
+                lineTo(cx - g * 0.25f, cy + g * 0.7f)
+                lineTo(cx + g, cy - g * 0.6f)
+            }, paint)
+        } else {
+            val colour = if (current) SettingsStyle.accent else SettingsStyle.textSecondary
+            paint.style = Paint.Style.STROKE
+            paint.strokeWidth = 1.8f * dp
+            paint.color = colour
+            canvas.drawCircle(cx, cy, r, paint)
+            text.color = colour
+            canvas.drawText(n.toString(), cx, cy - (text.descent() + text.ascent()) / 2f, text)
+        }
+    }
+}
+
+/**
+ * An action that can be taken back: after pressing, the row itself says what happened
+ * and offers Undo (no pop-up, no "Are you sure?"). [onDo] does the action and returns
+ * how to undo it, or null if there was nothing to do.
+ */
+class UndoActionRow(
+    context: Context,
+    private val title: String,
+    private val subtitle: String,
+    private val doneTitle: String,
+    private val doneSubtitle: String,
+    private val onDo: () -> (() -> Unit)?
+) : SettingRow(context, title, subtitle) {
+
+    private var undo: (() -> Unit)? = null
+
+    init {
+        showReady()
+    }
+
+    private fun showReady() {
+        setTexts(title, subtitle)
+        setControl(TextView(context).apply {
+            text = "›"
+            textSize = 26f
+            setTextColor(SettingsStyle.textSecondary)
+        })
+    }
+
+    private fun showDone() {
+        setTexts(doneTitle, doneSubtitle)
+        setControl(BadgeLineView(context,
+            listOf(HintPart.Badge(ControllerButton.A), HintPart.Text("Undo")),
+            buttonStyle, 15f, SettingsStyle.accent, badgeScale = 1.35f))
+    }
+
+    override fun activate() {
+        val pending = undo
+        if (pending != null) {
+            pending()
+            undo = null
+            sounds?.off()
+            showReady()
+        } else {
+            undo = onDo()
+            if (undo == null) {
+                setTexts(title, "Nothing to clear right now")    // say so, rather than doing nothing silently
+                sounds?.off()
+                return
+            }
+            sounds?.confirm()
+            showDone()
+        }
+    }
+}
+
+/** A pill button filled with the current accent; follows colour changes live. */
+class AccentButton(context: Context) : TextView(context) {
+    private val fill = Paint(Paint.ANTI_ALIAS_FLAG)
+
+    override fun onDraw(canvas: Canvas) {
+        fill.color = SettingsStyle.accent
+        val h = height.toFloat()
+        canvas.drawRoundRect(0f, 0f, width.toFloat(), h, h / 2f, h / 2f, fill)
+        if (currentTextColor != SettingsStyle.onAccent) setTextColor(SettingsStyle.onAccent)
+        super.onDraw(canvas)
     }
 }

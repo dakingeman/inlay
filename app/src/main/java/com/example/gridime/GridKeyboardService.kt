@@ -7,6 +7,7 @@ import android.inputmethodservice.InputMethodService
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
+import android.text.InputType
 import android.view.InputDevice
 import android.view.KeyEvent
 import android.view.MotionEvent
@@ -29,6 +30,61 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
     private lateinit var history: ClipboardHistory
 
     private var clipboard: ClipboardManager? = null
+
+    // ---- TV mode ---------------------------------------------------------------
+    private val displays by lazy { getSystemService(android.hardware.display.DisplayManager::class.java) }
+
+    /** Docking or undocking while the keyboard is up switches TV mode straight away. */
+    private val displayListener = object : android.hardware.display.DisplayManager.DisplayListener {
+        override fun onDisplayAdded(displayId: Int) = refreshTvMode()
+        override fun onDisplayRemoved(displayId: Int) = refreshTvMode()
+        override fun onDisplayChanged(displayId: Int) = Unit
+    }
+
+    /**
+     * TV mode is on when set to On, or on Automatic when this is an Android TV device or a
+     * TV / monitor is connected (a docked handheld shows its screen there).
+     */
+    private fun tvModeActive(): Boolean = when (settings.tvMode) {
+        TvMode.ON -> true
+        TvMode.OFF -> false
+        TvMode.AUTO -> {
+            val isTv = (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_TYPE_MASK) ==
+                android.content.res.Configuration.UI_MODE_TYPE_TELEVISION
+            val external = runCatching {
+                displays?.getDisplays(android.hardware.display.DisplayManager.DISPLAY_CATEGORY_PRESENTATION)?.isNotEmpty() == true
+            }.getOrDefault(false)
+            isTv || external
+        }
+    }
+
+    private fun refreshTvMode() {
+        gridView?.setTvMode(tvModeActive())
+        updatePreview()
+    }
+
+    /** Password boxes never show their text on the big screen: dots instead. */
+    private fun isPassword(): Boolean {
+        val type = currentInputEditorInfo?.inputType ?: return false
+        val v = type and InputType.TYPE_MASK_VARIATION
+        return when (type and InputType.TYPE_MASK_CLASS) {
+            InputType.TYPE_CLASS_TEXT -> v == InputType.TYPE_TEXT_VARIATION_PASSWORD ||
+                v == InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD || v == InputType.TYPE_TEXT_VARIATION_WEB_PASSWORD
+            InputType.TYPE_CLASS_NUMBER -> v == InputType.TYPE_NUMBER_VARIATION_PASSWORD
+            else -> false
+        }
+    }
+
+    /** Feeds the TV preview line with the text around the cursor. */
+    private fun updatePreview() {
+        val grid = gridView ?: return
+        val ic = currentInputConnection ?: return grid.setPreview("", "", "")
+        val before = ic.getTextBeforeCursor(PREVIEW_CHARS, 0)?.toString().orEmpty()
+        val selected = ic.getSelectedText(0)?.toString().orEmpty()
+        val after = ic.getTextAfterCursor(PREVIEW_CHARS / 2, 0)?.toString().orEmpty()
+        fun hide(t: String) = if (isPassword()) "•".repeat(t.length) else t.replace('\n', ' ')
+        grid.setPreview(hide(before), hide(selected), hide(after))
+    }
     private val clipListener = ClipboardManager.OnPrimaryClipChangedListener { onClipboardChanged() }
 
     // Cursor / selection position, kept up to date by Android
@@ -62,6 +118,7 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
     private var r2LastRelease = 0L
 
     private var lastSpaceTime = 0L
+    private var lastField: FieldKind? = null
     private var bConsumed = false
 
     // =====================================================================
@@ -69,29 +126,37 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
     // =====================================================================
     override fun onCreate() {
         super.onCreate()
+        Palette.init(this)
         settings = KeyboardSettings.load(this)
         feedback = Feedback(this).apply { update(settings) }
         history = ClipboardHistory(this).apply { reload() }
         clipboard = getSystemService(ClipboardManager::class.java)
         clipboard?.addPrimaryClipChangedListener(clipListener)
+        displays?.registerDisplayListener(displayListener, handler)
     }
 
     override fun onDestroy() {
         clipboard?.removePrimaryClipChangedListener(clipListener)
+        displays?.unregisterDisplayListener(displayListener)
         handler.removeCallbacksAndMessages(null)
         feedback.release()
         super.onDestroy()
     }
 
-    override fun onCreateInputView(): View =
-        KeyGridView(this).also { view ->
+    override fun onCreateInputView(): View {
+        // The keyboard window itself has no background, so the Clear theme can show the app
+        // behind it. Every other theme paints its own solid background, so nothing changes there.
+        window.window?.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT))
+        return KeyGridView(this).also { view ->
             view.listener = this
             view.feedback = feedback
             view.applySettings(settings)
             view.setClips(history.all)
             gridView = view
             updateClipPreview()
+            view.setTvMode(tvModeActive())
         }
+    }
 
     /** Keep the keyboard visible even though a gamepad counts as a hardware keyboard. */
     override fun onEvaluateInputViewShown(): Boolean {
@@ -132,12 +197,37 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
             applySettings(settings)
             setClips(history.all)
             closeClips(focusOnHistoryButton = false)
+            // A restart of the same box (chat apps after Send) keeps the layer and highlight
+            val kind = fieldKind(info)
+            if (!restarting || kind != lastField) setField(kind)
+            lastField = kind
+            setTvMode(tvModeActive())
         }
         selStart = info?.initialSelStart?.coerceAtLeast(0) ?: 0
         selEnd = info?.initialSelEnd?.coerceAtLeast(0) ?: 0
         exitSelectMode(collapse = false)
         refreshAutoShift()
         updateClipPreview()
+        updatePreview()
+    }
+
+    /** Reads what kind of box this is from the app's own description (for smart keys). */
+    private fun fieldKind(info: EditorInfo?): FieldKind {
+        val type = info?.inputType ?: return FieldKind.TEXT
+        val variation = type and InputType.TYPE_MASK_VARIATION
+        return when (type and InputType.TYPE_MASK_CLASS) {
+            InputType.TYPE_CLASS_NUMBER -> FieldKind.NUMBER
+            // Times and dates need ":" and "/", which the number pad doesn't have
+            InputType.TYPE_CLASS_DATETIME -> FieldKind.TEXT
+            InputType.TYPE_CLASS_PHONE -> FieldKind.PHONE
+            InputType.TYPE_CLASS_TEXT -> when (variation) {
+                InputType.TYPE_TEXT_VARIATION_URI -> FieldKind.URL
+                InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS,
+                InputType.TYPE_TEXT_VARIATION_WEB_EMAIL_ADDRESS -> FieldKind.EMAIL
+                else -> FieldKind.TEXT
+            }
+            else -> FieldKind.TEXT
+        }
     }
 
     override fun onFinishInputView(finishingInput: Boolean) {
@@ -173,6 +263,7 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
         selStart = newSelStart
         selEnd = newSelEnd
         if (selecting) gridView?.setSelecting(true, abs(selEnd - selStart)) else refreshAutoShift()
+        updatePreview()
     }
 
     // =====================================================================
@@ -287,6 +378,26 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
             if (selecting) exitSelectMode(collapse = false)
             refreshAutoShift()
         }
+    }
+
+    /**
+     * Hold RT + Y: the letter just before the cursor steps through its accented
+     * forms (e → é → è → ê …), so accents never need a touch screen.
+     */
+    private fun cycleAccent() {
+        val ic = currentInputConnection ?: return
+        if (selStart != selEnd) return feedback.off()
+        val before = ic.getTextBeforeCursor(1, 0)
+        val next = before?.firstOrNull()?.let { Accents.next(it, settings.language) }
+        if (next == null) {
+            feedback.off()                           // nothing to accent: a soft "no"
+            return
+        }
+        ic.beginBatchEdit()
+        ic.deleteSurroundingText(1, 0)
+        ic.commitText(next, 1)
+        ic.endBatchEdit()
+        feedback.key()
     }
 
     private fun undo() {
@@ -451,8 +562,13 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
             }
             KeyEvent.KEYCODE_BUTTON_X -> if (first) onXButton(grid)
             KeyEvent.KEYCODE_BUTTON_Y -> if (first) {
-                feedback.space()
-                onText(" ")
+                if (r2Held) {
+                    r2UsedAsModifier = true
+                    cycleAccent()
+                } else {
+                    feedback.space()
+                    onText(" ")
+                }
             }
             KeyEvent.KEYCODE_BUTTON_L1 -> if (first) startCursor(-1)
             KeyEvent.KEYCODE_BUTTON_R1 -> if (first) startCursor(1)
@@ -521,7 +637,24 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
         val now = SystemClock.uptimeMillis()
         if (now - lastL2Time < TRIGGER_DEDUPE_MS) return
         lastL2Time = now
+        // Hold RT + LT: next language (when more than one is picked in Settings)
+        if (r2Held && settings.languages.size > 1) {
+            r2UsedAsModifier = true
+            switchLanguage()
+            return
+        }
         gridView?.toggleLayer()
+    }
+
+    /** RT + LT: the next language in the quick switch. Saved, so it stays after closing. */
+    private fun switchLanguage() {
+        settings = KeyboardSettings.load(this).nextLanguage()
+        settings.save(this)
+        gridView?.apply {
+            applySettings(settings)
+            flashLanguage()
+        }
+        feedback.on()
     }
 
     /** R2 down: show capitals, then wait to see whether it's a tap or a hold. */
@@ -544,7 +677,7 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
 
     /** L3: normal -> large -> largest -> normal. */
     private fun cycleSize() {
-        settings = KeyboardSettings.load(this).let { it.copy(sizeLevel = (it.sizeLevel + 1) % 3) }
+        settings = KeyboardSettings.load(this).let { it.copy(sizeLevel = (it.sizeLevel + 1) % SIZE_COUNT) }
         settings.save(this)
         gridView?.applySettings(settings)
         feedback.on()
@@ -650,6 +783,8 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
         const val TRIGGER_RELEASE = 0.3f
         const val TRIGGER_DEDUPE_MS = 80L
         const val DOUBLE_PRESS_MS = 350L
+        const val PREVIEW_CHARS = 60
+        const val SIZE_COUNT = 3          // Normal, Large, Largest
 
         val HANDLED_KEYS = setOf(
             KeyEvent.KEYCODE_BUTTON_A, KeyEvent.KEYCODE_BUTTON_Y,

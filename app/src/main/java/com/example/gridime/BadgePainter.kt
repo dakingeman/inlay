@@ -22,6 +22,12 @@ class BadgePainter(private val dp: Float) {
 
     var style = ButtonStyle.XBOX
     var scale = 1f
+    /**
+     * Breathing room in hint lines (dp, before scaling). The keyboard's chips are tight;
+     * Settings and the tour set these wider, so badges and words never look jammed together.
+     */
+    var gapBadgeToBadge = 2f
+    var gapBadgeToText = 4f
 
     private val plate = Color.parseColor("#F20A0A0D")
     private val edge = Color.parseColor("#4DFFFFFF")
@@ -135,8 +141,8 @@ class BadgePainter(private val dp: Float) {
     }
 
     private fun spacingAfter(part: HintPart, next: HintPart): Float = when {
-        part is HintPart.Badge && next is HintPart.Badge -> 2f * dp * scale
-        else -> 4f * dp * scale
+        part is HintPart.Badge && next is HintPart.Badge -> gapBadgeToBadge * dp * scale
+        else -> gapBadgeToText * dp * scale
     }
 
     // ---- Hint chips: the one shape every hint uses --------------------------

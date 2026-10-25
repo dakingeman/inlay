@@ -41,6 +41,7 @@ object Design {
     val TEXT_SECONDARY: Int = Color.parseColor("#9A9DA5")          // 7:1 on the card colour
 
     // ---- Type (sp in Settings, dp on the keyboard) ---------------------------
+    const val TYPE_DISPLAY = 28f    // one big line per screen (the tour)
     const val TYPE_TITLE = 22f
     const val TYPE_ROW = 16f
     const val TYPE_CAPTION = 13f
