@@ -5,7 +5,12 @@ function controller(w, on, style) {
   const VW = 657, VH = 423, h = w * VH / VW, line = '#5a5e6a', ACC = '#72D6E8';
   const v = k => on[k] || 0;
   const lit = (k) => v(k) > 0 ? `fill="${ACC}" fill-opacity="${0.9 * v(k)}" stroke="${ACC}" stroke-opacity="${0.5 + 0.5 * v(k)}" filter="url(#g)"` : `fill="#0f1014" stroke="${line}"`;
-  const stick = (x, y) => `<circle cx="${x}" cy="${y}" r="36" fill="#0f1014" stroke="${line}" stroke-width="2"/><circle cx="${x}" cy="${y}" r="24" fill="none" stroke="#33363f" stroke-width="2"/>`;
+  // A stick lights up like a button; 'sideways' adds a left-right arrow (the right stick moving the cursor)
+  const stick = (x, y, k) => {
+    if (!(v(k) > 0)) return `<circle cx="${x}" cy="${y}" r="36" fill="#0f1014" stroke="${line}" stroke-width="2"/><circle cx="${x}" cy="${y}" r="24" fill="none" stroke="#33363f" stroke-width="2"/>`;
+    const arrows = on[k + 'dir'] === 'sideways' ? [-1, 1].map(d => `<path d="M${x + d * 48},${y - 9}L${x + d * 60},${y}L${x + d * 48},${y + 9}" fill="none" stroke="${ACC}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>`).join('') : '';
+    return `<circle cx="${x}" cy="${y}" r="36" ${lit(k)} stroke-width="2"/><circle cx="${x}" cy="${y}" r="24" fill="none" stroke="#0B0F17" stroke-opacity=".5" stroke-width="2"/>${arrows}`;
+  };
   // D-pad: a traditional cross, rounded ends, each arm lights separately
   const dx = 289, dy = 261, t = 11, L = 36, r = 5;
   const arm = (dir) => {
@@ -33,7 +38,7 @@ function controller(w, on, style) {
     <path d="${CTRL.lb}" ${lit('LB')} stroke-width="2.5" stroke-linejoin="round"/><path d="${CTRL.rb}" ${lit('RB')} stroke-width="2.5" stroke-linejoin="round"/>
     ${lab(218, 59, sh[0], 'LT')}${lab(494, 59, sh[1], 'RT')}${lab(240, 118, sh[2], 'LB')}${lab(474, 118, sh[3], 'RB')}
     <path d="${CTRL.body}" fill="#101116" stroke="${line}" stroke-width="2.5" stroke-linejoin="round"/>
-    ${stick(226, 176)}${dpad}${face}${stick(424, 255)}${small(322, 176, 'SELECT')}${small(393, 176, 'START')}
+    ${stick(226, 176, 'LS')}${dpad}${face}${stick(424, 255, 'RS')}${small(322, 176, 'SELECT')}${small(393, 176, 'START')}
   </svg>`;
 }
 function psGlyph(k, cx, cy, g, col) {

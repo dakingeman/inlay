@@ -201,6 +201,7 @@ class BadgePainter(private val dp: Float) {
             ControllerButton.L2 -> if (sony) "L2" else if (nintendo) "ZL" else "LT"
             ControllerButton.R2 -> if (sony) "R2" else if (nintendo) "ZR" else "RT"
             ControllerButton.L3 -> if (sony) "L3" else "LS"
+            ControllerButton.R3 -> if (sony) "R3" else "RS"
             else -> null
         }
     }

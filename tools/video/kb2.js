@@ -52,7 +52,7 @@ function faceGlyph(b,cx,cy,sz,style){ // b = physical A/B/X/Y (Xbox positions)
   const col = style==='switch' ? '#F2F2F2' : {A:'#6CC24A',B:'#F0503C',X:'#3E9BFF',Y:'#F5C518'}[b];
   return `<text x="${cx}" y="${cy}" fill="${col}" font-size="${sz*0.62}" font-weight="700" font-family="I" text-anchor="middle" dominant-baseline="central">${lab}</text>`;
 }
-function shoulderLabel(b,style){ const m={xbox:{LB:'LB',RB:'RB',LT:'LT',RT:'RT',LS:'LS'},ps:{LB:'L1',RB:'R1',LT:'L2',RT:'R2',LS:'L3'},switch:{LB:'L',RB:'R',LT:'ZL',RT:'ZR',LS:'LS'}}; return m[style][b]; }
+function shoulderLabel(b,style){ const m={xbox:{LB:'LB',RB:'RB',LT:'LT',RT:'RT',LS:'LS',RS:'RS'},ps:{LB:'L1',RB:'R1',LT:'L2',RT:'R2',LS:'L3',RS:'R3'},switch:{LB:'L',RB:'R',LT:'ZL',RT:'ZR',LS:'LS',RS:'RS'}}; return m[style][b]; }
 function badge(x,y,S,b,style){ // a controller badge on a dark disc, top-right anchored at (x,y)
   style=style||STYLE.v; const shoulder = ["RT","LT","LB","RB","LS"].includes(b);
   const h=13*S, w=shoulder?20*S:13*S, cx=x-w/2, cy=y+h/2;

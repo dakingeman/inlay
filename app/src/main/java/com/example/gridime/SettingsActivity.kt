@@ -81,6 +81,9 @@ class SettingsActivity : Activity() {
         // First time ever: the one-minute tour (skippable). Settings is right behind it.
         if (!settings.tutorialDone && savedInstanceState == null) {
             startActivity(Intent(this, TutorialActivity::class.java))
+        } else if (WhatsNew.shouldShow(settings) && savedInstanceState == null) {
+            // First open after an update: the highlights, once
+            startActivity(Intent(this, TutorialActivity::class.java).putExtra(TutorialActivity.EXTRA_WHATS_NEW, true))
         }
         // A soft tick whenever the focus moves to another row (console-style)
         window.decorView.viewTreeObserver.addOnGlobalFocusChangeListener { old, new ->
@@ -187,7 +190,7 @@ class SettingsActivity : Activity() {
         // The tour saves "seen" itself; take that on board so our next save keeps it
         val saved = KeyboardSettings.load(this)
         val changedElsewhere = saved.sizeLevel != settings.sizeLevel || saved.activeLanguage != settings.activeLanguage
-        settings = settings.copy(tutorialDone = saved.tutorialDone, sizeLevel = saved.sizeLevel,
+        settings = settings.copy(tutorialDone = saved.tutorialDone, whatsNewSeen = saved.whatsNewSeen, sizeLevel = saved.sizeLevel,
             activeLanguage = saved.activeLanguage)
         if (changedElsewhere) {
             // L3 or RT + LT was pressed on the keyboard meanwhile: show it here too
@@ -540,9 +543,13 @@ class SettingsActivity : Activity() {
             }
         )),
         Section("Navigation", listOf(
-            SliderRow(this, "Stick speed", "How fast the highlight moves while you hold the stick",
+            SliderRow(this, "Stick speed", "How fast the highlight moves while you hold the left stick all the way. A lighter push goes more gently",
                 0, 4, settings.stickSpeed, { STICK_LABELS[it] }) {
                 update(settings.copy(stickSpeed = it))
+            },
+            ToggleRow(this, "Right stick moves the text cursor", "Push {R3} sideways to move, further is faster. Up and down go a line, or to the start or end. Grows a selection too",
+                settings.rightStick) {
+                update(settings.copy(rightStick = it))
             }
         )),
         Section("Shortcuts", listOf(
@@ -657,6 +664,11 @@ class SettingsActivity : Activity() {
             GuideRow(this, "Select text", "{SELECT}"),
             GuideRow(this, "Select everything", "{SELECTx2}")
         )
+        if (settings.rightStick) {
+            editing.add(1, GuideRow(this, "Move the text cursor · push further to go faster", "{R3}"))
+            editing.add(3, GuideRow(this, "Jump a whole word with the stick", "{R2} + {R3}"))
+            editing += GuideRow(this, "Go to the start or end · a line in long text", "{R3} up or down")
+        }
         if (settings.undoCombo) editing += GuideRow(this, "Undo", "{R2} + {X}")
         return listOf(
             Section("Typing", typing),
@@ -678,6 +690,12 @@ class SettingsActivity : Activity() {
             },
             ActionRow(this, "Replay the tour", "The one-minute walk through the buttons and combos") {
                 startActivity(Intent(this, TutorialActivity::class.java))
+            },
+            ActionRow(this, "What's new in ${WhatsNew.VERSION}", "The highlights of this update, acted out") {
+                startActivity(Intent(this, TutorialActivity::class.java).putExtra(TutorialActivity.EXTRA_WHATS_NEW, true))
+            },
+            ActionRow(this, "Full changelog", "Every change in every version, on GitHub") {
+                runCatching { startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse("$SOURCE_URL/blob/main/CHANGELOG.md"))) }
             }
         )),
         Section("Inlay", listOfNotNull(

@@ -1,5 +1,26 @@
 # Changelog
 
+## 1.1.1 — Faster, and the right stick joins in
+
+A speed update. Moving around and typing should now feel instant, even when you type fast, and the right stick finally has a job. It's also the first update to say hello: a short What's new screen shows the highlights.
+
+**Speed**
+- **No more waiting behind the app.** The keyboard used to ask the app about its text up to five times after every letter (for automatic capitals and the TV line), and every button press had to wait for the answers. It now asks once, when you pause, and only reads the TV line in TV mode.
+- **The highlight keeps up with you.** It now lands most of the way on the next key on the very first frame, instead of sliding there.
+- **Smoother drawing.** The chosen font used to be rebuilt for every key on every frame. It's now built once.
+- **Clicks and buzzes run on their own.** Sounds and vibration start on a separate helper, so they never hold up the next press.
+- **Holding a direction repeats sooner and faster**, and so do holding X (delete) and LB / RB (cursor). The triggers react to a lighter press.
+
+**New**
+- **The right stick moves the text cursor.** Push it sideways to move, and the further you push, the faster it goes. Hold RT for whole words. Up and down go a line in long text, or to the start and end of short boxes. In select mode it grows the selection. Inlay checks where your controller keeps its right stick, so it never confuses it with a trigger. On by default; turn it off in Settings → Typing. It's in the Button guide too.
+- **What's new.** The first time you open Settings after an update, a short screen shows its highlights, acted out on the keyboard like the tour, with your button icons and colour. Once per update, never on the keyboard itself, and new users get the tour instead. See it again in About, next to a link to the full changelog.
+
+**Better**
+- **The left stick is more precise.** It reacts to a lighter push, has no dead spots on the diagonals, and quick left-right flicks all land now (the spring-back filter used to swallow some). Held repeats follow how far you push: a light push moves gently, a full push at your Stick speed. Medium now matches the D-pad.
+- **Tour pages always fit.** On shorter screens (like a 1080p handheld), the last rows of a long tour page sat below the edge where the controller couldn't reach them. The words now shrink a step until every row shows, and up and down scroll as a backup.
+- **Respects "Remove animations".** With Android's accessibility setting on, the tour and What's new show still pictures instead of moving ones.
+- **Capitals after a full stop in more apps.** Some apps, like the Play Store search, never ask for capitals. Inlay now starts a new sentence with a capital there too, after . ! or ? and a space. Never at the very start of a box, and never in web address, email or password boxes.
+
 ## 1.1.0 — Languages, themes, smart keys and a TV mode
 
 The first big update, shaped by the comments on GitHub and Reddit. Thank you to everyone who tried 1.0 and wrote back.

@@ -6,14 +6,20 @@ import kotlin.math.max
 
 /**
  * Turns an analog stick into one clean direction, the way console menus do:
- * - a deliberate push to start (ENGAGE), a near-centre return to stop (RELEASE)
- * - a push must be clearly more along one axis than the other (DOMINANCE)
- * - the small bounce the other way when you let go is ignored (REBOUND_MS)
+ * - a light push to start (ENGAGE), a near-centre return to stop (RELEASE)
+ * - the push picks whichever way it leans more, so there are no dead diagonals
+ * - while held, it only turns on a clear push the other way (TURN), so it never wobbles
+ * - the small spring-back the other way when you let go is ignored, but a real,
+ *   firm flick back the other way still counts, so quick left-right taps all land
+ * [strength] says how far the stick is pushed (0 at the start point, 1 at the edge),
+ * so held repeats can go faster the further you push.
  */
 class StickDirection {
     var dx = 0
         private set
     var dy = 0
+        private set
+    var strength = 0f
         private set
 
     private var lastDx = 0
@@ -26,22 +32,22 @@ class StickDirection {
         val ay = abs(y)
         val oldDx = dx
         val oldDy = dy
+        val push = max(ax, ay)
+        strength = ((push - ENGAGE) / (1f - ENGAGE)).coerceIn(0f, 1f)
 
         if (dx == 0 && dy == 0) {
-            if (max(ax, ay) >= ENGAGE) {
-                val horizontal = ax >= ay * DOMINANCE
-                val vertical = ay >= ax * DOMINANCE
-                if (horizontal || vertical) {
-                    val nx = if (horizontal) (if (x > 0) 1 else -1) else 0
-                    val ny = if (vertical) (if (y > 0) 1 else -1) else 0
-                    val bounce = now - releasedAt < REBOUND_MS && nx == -lastDx && ny == -lastDy
-                    if (!bounce) {
-                        dx = nx
-                        dy = ny
-                    }
+            if (push >= ENGAGE) {
+                val horizontal = ax >= ay
+                val nx = if (horizontal) (if (x > 0) 1 else -1) else 0
+                val ny = if (horizontal) 0 else (if (y > 0) 1 else -1)
+                // A spring-back is quick AND weak. A firm push the other way is a real move.
+                val springBack = now - releasedAt < REBOUND_MS && nx == -lastDx && ny == -lastDy && push < FIRM
+                if (!springBack) {
+                    dx = nx
+                    dy = ny
                 }
             }
-        } else if (max(ax, ay) < RELEASE) {
+        } else if (push < RELEASE) {
             lastDx = dx
             lastDy = dy
             releasedAt = now
@@ -51,7 +57,7 @@ class StickDirection {
             // Turn only on a clear push along the other axis
             val along = if (dx != 0) ax else ay
             val across = if (dx != 0) ay else ax
-            if (across >= ENGAGE && across >= along * DOMINANCE) {
+            if (across >= ENGAGE && across >= along * TURN) {
                 if (dx != 0) {
                     dx = 0
                     dy = if (y > 0) 1 else -1
@@ -67,13 +73,17 @@ class StickDirection {
     fun reset() {
         dx = 0
         dy = 0
+        strength = 0f
     }
 
     private companion object {
-        const val ENGAGE = 0.5f
-        const val RELEASE = 0.3f
-        const val DOMINANCE = 1.2f
-        const val REBOUND_MS = 150L
+        // A quick flick counts once the stick is a bit over a third of the way out.
+        // Letting go below a quarter keeps worn, slightly drifting sticks from moving on their own.
+        const val ENGAGE = 0.38f
+        const val RELEASE = 0.25f
+        const val TURN = 1.15f
+        const val FIRM = 0.7f
+        const val REBOUND_MS = 110L
     }
 }
 

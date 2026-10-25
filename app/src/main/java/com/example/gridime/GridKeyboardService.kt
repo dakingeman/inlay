@@ -106,6 +106,15 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
 
     // D-pad (hat) and left stick
     private val stick = StickDirection()
+
+    // Right stick: moves the text cursor (Settings → Typing → Right stick)
+    private val rightStick = StickDirection()
+    private var rightAxes: IntArray? = null           // which two axes this controller uses for it
+    private var rightAxesDevice = -1
+    private var rightArmed = false                    // seen resting in the centre at least once
+    private var rightDx = 0
+    private var rightDy = 0
+    private var rightSteps = 0
     private var hatDx = 0
     private var hatDy = 0
 
@@ -206,9 +215,8 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
         selStart = info?.initialSelStart?.coerceAtLeast(0) ?: 0
         selEnd = info?.initialSelEnd?.coerceAtLeast(0) ?: 0
         exitSelectMode(collapse = false)
-        refreshAutoShift()
+        scheduleAppSync()
         updateClipPreview()
-        updatePreview()
     }
 
     /** Reads what kind of box this is from the app's own description (for smart keys). */
@@ -246,6 +254,9 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
         deleteRepeater.stop()
         cursorRepeater.stop()
         stick.reset()
+        stopRightStick()
+        rightStick.reset()
+        rightArmed = false
         hatDx = 0
         hatDy = 0
         r2Held = false
@@ -262,8 +273,31 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
         super.onUpdateSelection(oldSelStart, oldSelEnd, newSelStart, newSelEnd, candidatesStart, candidatesEnd)
         selStart = newSelStart
         selEnd = newSelEnd
-        if (selecting) gridView?.setSelecting(true, abs(selEnd - selStart)) else refreshAutoShift()
-        updatePreview()
+        if (selecting) {
+            gridView?.setSelecting(true, abs(selEnd - selStart))
+            scheduleAppSync(previewOnly = true)
+        } else scheduleAppSync()
+    }
+
+    /*
+     * SPEED: asking the app about its text (is a capital due? what's around the cursor?)
+     * makes the keyboard stop and wait until the app answers. It used to ask up to five
+     * times after every single letter, right when the app is busiest drawing that letter,
+     * and every button press waits in line behind those questions.
+     * Now it asks once, a moment after typing stops, and only what's needed:
+     * the TV text line is only read when TV mode is actually showing.
+     */
+    private var syncAutoShift = false
+    private val appSync = Runnable {
+        if (syncAutoShift) refreshAutoShift()
+        syncAutoShift = false
+        if (gridView?.isTvMode() == true) updatePreview()
+    }
+
+    private fun scheduleAppSync(previewOnly: Boolean = false) {
+        if (!previewOnly) syncAutoShift = true
+        handler.removeCallbacks(appSync)
+        handler.postDelayed(appSync, SYNC_DELAY_MS)
     }
 
     // =====================================================================
@@ -273,13 +307,13 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
         if (text == " " && tryDoubleSpacePeriod()) return
         if (selecting) exitSelectMode(collapse = false)
         currentInputConnection?.commitText(text, 1)
-        refreshAutoShift()
+        scheduleAppSync()
     }
 
     override fun onDelete() {
         sendDownUpKeyEvents(KeyEvent.KEYCODE_DEL)
         if (selecting) exitSelectMode(collapse = false)
-        refreshAutoShift()
+        scheduleAppSync()
     }
 
     override fun onEnter() {
@@ -291,7 +325,7 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
         } else {
             sendDownUpKeyEvents(KeyEvent.KEYCODE_ENTER)              // new line
         }
-        refreshAutoShift()
+        scheduleAppSync()
     }
 
     override fun onTool(tool: Tool) {
@@ -311,7 +345,7 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
                 val text = clipText()
                 if (text != null) ic.commitText(text, 1) else ic.performContextMenuAction(android.R.id.paste)
                 exitSelectMode(collapse = false)
-                refreshAutoShift()
+                scheduleAppSync()
             }
             Tool.HISTORY -> gridView?.toggleClips()
             Tool.SETTINGS -> {
@@ -325,7 +359,7 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
         val text = history.all.getOrNull(index) ?: return
         if (selecting) exitSelectMode(collapse = false)
         currentInputConnection?.commitText(text, 1)
-        refreshAutoShift()
+        scheduleAppSync()
     }
 
     private fun openSettings() {
@@ -353,7 +387,7 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
         ic.commitText(". ", 1)
         ic.endBatchEdit()
         lastSpaceTime = 0L
-        refreshAutoShift()
+        scheduleAppSync()
         return true
     }
 
@@ -376,7 +410,7 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
                 }
             }
             if (selecting) exitSelectMode(collapse = false)
-            refreshAutoShift()
+            scheduleAppSync()
         }
     }
 
@@ -403,7 +437,30 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
     private fun undo() {
         currentInputConnection?.let { TextOps.undo(it) }
         feedback.off()
-        refreshAutoShift()
+        scheduleAppSync()
+    }
+
+    /**
+     * Many apps (search boxes, the Play Store) never ask for capitals, so Android's own
+     * check always says "no". For plain text boxes like those, Inlay still starts a new
+     * sentence with a capital after . ! or ? and a space. Never at the very start of a box,
+     * so usernames and searches don't suddenly get a capital, and never in web address,
+     * email, password or number boxes.
+     */
+    private fun sentenceEnded(ic: android.view.inputmethod.InputConnection, inputType: Int): Boolean {
+        if (inputType and InputType.TYPE_MASK_CLASS != InputType.TYPE_CLASS_TEXT) return false
+        val capFlags = InputType.TYPE_TEXT_FLAG_CAP_SENTENCES or InputType.TYPE_TEXT_FLAG_CAP_WORDS or
+            InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS
+        if (inputType and capFlags != 0) return false            // the app asked: Android's answer stands
+        val plain = when (inputType and InputType.TYPE_MASK_VARIATION) {
+            InputType.TYPE_TEXT_VARIATION_NORMAL, InputType.TYPE_TEXT_VARIATION_WEB_EDIT_TEXT,
+            InputType.TYPE_TEXT_VARIATION_SHORT_MESSAGE, InputType.TYPE_TEXT_VARIATION_LONG_MESSAGE,
+            InputType.TYPE_TEXT_VARIATION_EMAIL_SUBJECT, InputType.TYPE_TEXT_VARIATION_FILTER -> true
+            else -> false
+        }
+        if (!plain) return false
+        val before = ic.getTextBeforeCursor(8, 0)?.toString() ?: return false
+        return SENTENCE_END.containsMatchIn(before)
     }
 
     private fun refreshAutoShift() {
@@ -411,7 +468,7 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
         val ic = currentInputConnection ?: return
         val inputType = currentInputEditorInfo?.inputType ?: 0
         val caps = if (inputType != 0) ic.getCursorCapsMode(inputType) else 0
-        grid.setAutoShift(caps != 0)
+        grid.setAutoShift(caps != 0 || sentenceEnded(ic, inputType))
     }
 
     // =====================================================================
@@ -692,6 +749,7 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
         if (event.action == MotionEvent.ACTION_MOVE) {
             readTriggers(event)
             readDirections(event)
+            if (settings.rightStick) readRightStick(event)
         }
         // Claim every joystick sample. If any slipped through, Android would turn
         // it into its own D-pad presses and the highlight would jump twice.
@@ -735,6 +793,101 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
         }
     }
 
+    // =====================================================================
+    // RIGHT STICK: the text cursor
+    // Sideways = move the cursor (like LB / RB, further = faster; hold RT for whole words).
+    // Up / down = a line up or down in long text, otherwise jump to the start or end.
+    // In select mode it grows the selection, just like LB / RB.
+    // =====================================================================
+
+    /**
+     * Controllers don't agree where the right stick lives. Most use Z / RZ, but some put
+     * the triggers there and the stick on RX / RY. Reading the wrong pair would turn a
+     * trigger press into cursor moves, so Inlay only uses Z / RZ when the triggers have
+     * their own axes, and otherwise RX / RY. No right stick found = it simply stays off.
+     */
+    private fun rightAxesFor(event: MotionEvent): IntArray? {
+        val device = event.device ?: return null
+        if (device.id == rightAxesDevice) return rightAxes
+        fun has(axis: Int) = device.getMotionRange(axis, InputDevice.SOURCE_JOYSTICK) != null
+        val ownTriggers = (has(MotionEvent.AXIS_LTRIGGER) && has(MotionEvent.AXIS_RTRIGGER)) ||
+            (has(MotionEvent.AXIS_BRAKE) && has(MotionEvent.AXIS_GAS))
+        rightAxes = when {
+            ownTriggers && has(MotionEvent.AXIS_Z) && has(MotionEvent.AXIS_RZ) ->
+                intArrayOf(MotionEvent.AXIS_Z, MotionEvent.AXIS_RZ)
+            has(MotionEvent.AXIS_RX) && has(MotionEvent.AXIS_RY) ->
+                intArrayOf(MotionEvent.AXIS_RX, MotionEvent.AXIS_RY)
+            else -> null
+        }
+        rightAxesDevice = device.id
+        rightArmed = false
+        return rightAxes
+    }
+
+    private fun readRightStick(event: MotionEvent) {
+        val axes = rightAxesFor(event) ?: return
+        val x = event.getAxisValue(axes[0])
+        val y = event.getAxisValue(axes[1])
+        // Safety: only start listening once the stick has been seen resting in the middle,
+        // so an axis that sits off-centre (a trigger on an odd controller) never moves anything.
+        if (!rightArmed) {
+            if (abs(x) < 0.2f && abs(y) < 0.2f) rightArmed = true
+            return
+        }
+        if (!rightStick.update(x, y, SystemClock.uptimeMillis())) return
+        if (rightStick.dx == 0 && rightStick.dy == 0) stopRightStick()
+        else startRightStick(rightStick.dx, rightStick.dy)
+    }
+
+    private val rightTick = object : Runnable {
+        override fun run() {
+            rightStep()
+            rightSteps++
+            // Sideways and multi-line up / down repeat; a jump to the start or end happens once
+            if (rightDy != 0 && !multiLine()) return
+            val pace = RIGHT_SLOWEST_MS - (RIGHT_SLOWEST_MS - RIGHT_FASTEST_MS) * rightStick.strength
+            handler.postDelayed(this, max(RIGHT_FASTEST_MS, (pace * 0.94.pow(rightSteps)).toLong()))
+        }
+    }
+
+    private fun startRightStick(dx: Int, dy: Int) {
+        stopRightStick()
+        rightDx = dx
+        rightDy = dy
+        rightSteps = 0
+        rightStep()                                     // the first step is instant
+        if (dy == 0 || multiLine()) handler.postDelayed(rightTick, RIGHT_DELAY_MS)
+    }
+
+    private fun stopRightStick() {
+        handler.removeCallbacks(rightTick)
+        rightDx = 0
+        rightDy = 0
+    }
+
+    private fun rightStep() {
+        val ic = currentInputConnection ?: return
+        feedback.move()
+        when {
+            rightDx != 0 -> if (r2Held) {
+                r2UsedAsModifier = true
+                jumpWord(rightDx)
+            } else moveCursor(rightDx)
+            selecting || !multiLine() -> {
+                // Grow the selection to, or jump the cursor to, the start or the end
+                val end = if (rightDy < 0) 0 else TextOps.textLength(ic, selStart, selEnd)
+                if (selecting) {
+                    movingEnd = end
+                    ic.setSelection(min(anchor, end), max(anchor, end))
+                } else ic.setSelection(end, end)
+            }
+            else -> sendDownUpKeyEvents(if (rightDy < 0) KeyEvent.KEYCODE_DPAD_UP else KeyEvent.KEYCODE_DPAD_DOWN)
+        }
+    }
+
+    private fun multiLine(): Boolean =
+        (currentInputEditorInfo?.inputType ?: 0) and InputType.TYPE_TEXT_FLAG_MULTI_LINE != 0
+
     private fun hatValue(v: Float) = if (v > 0.5f) 1 else if (v < -0.5f) -1 else 0
 
     /** One move right away, a pause, then repeats that gently speed up. */
@@ -744,9 +897,14 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
         navDy = dy
         val speed = settings.stickSpeed.coerceIn(0, STICK_INTERVAL_MS.lastIndex)
         val base = if (fromStick) STICK_INTERVAL_MS[speed] else DPAD_INTERVAL_MS
-        val fastest = (base * 0.55).toLong()
         val delay = if (fromStick) STICK_DELAY_MS[speed] else DPAD_DELAY_MS
-        navRepeater.start(delay, { n -> max(fastest, (base * 0.92.pow(n)).toLong()) }) {
+        navRepeater.start(delay, { n ->
+            // The stick works like a gas pedal: a light push repeats gently, a full push at
+            // the chosen Stick speed. The D-pad always repeats at its own steady pace.
+            val pedal = if (fromStick) STICK_LIGHT_PUSH - (STICK_LIGHT_PUSH - 1f) * stick.strength else 1f
+            val interval = base * pedal
+            max((interval * 0.5f).toLong(), (interval * 0.92.pow(n)).toLong())
+        }) {
             gridView?.moveFocus(dx, dy)
         }
     }
@@ -762,24 +920,39 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
         private const val EXTRA_IS_SENSITIVE = "android.content.extra.IS_SENSITIVE"
 
         // Navigation timing
-        const val DPAD_DELAY_MS = 350L
-        const val DPAD_INTERVAL_MS = 110L
-        val STICK_DELAY_MS = longArrayOf(520L, 460L, 400L, 350L, 300L)      // slow ... fast
-        val STICK_INTERVAL_MS = longArrayOf(240L, 190L, 150L, 120L, 95L)
+        // Speed: the first step is always instant; these only set how soon a held
+        // direction starts repeating and how fast it goes.
+        const val DPAD_DELAY_MS = 230L
+        const val DPAD_INTERVAL_MS = 80L
+        // Medium matches the D-pad. These are the speeds at a full push.
+        val STICK_DELAY_MS = longArrayOf(330L, 280L, 230L, 200L, 170L)      // slow ... fast
+        val STICK_INTERVAL_MS = longArrayOf(130L, 105L, 80L, 65L, 52L)
+        /** A light stick push repeats this many times slower than a full push. */
+        const val STICK_LIGHT_PUSH = 1.7f
+
+        // Right stick: the text cursor. Repeats speed up the further you push.
+        const val RIGHT_DELAY_MS = 230L
+        const val RIGHT_SLOWEST_MS = 150L
+        const val RIGHT_FASTEST_MS = 30L
+
+        /** How long after typing the keyboard checks the app's text (capitals, TV line). */
+        const val SYNC_DELAY_MS = 24L
+        /** A word, then . ! or ? and at least one space, right before the cursor. */
+        val SENTENCE_END = Regex("""\w[.!?]+[\s]+$""")
 
         // Hold-to-delete curve
-        const val DELETE_DELAY_MS = 400L
+        const val DELETE_DELAY_MS = 320L
         const val DELETE_START_MS = 100L
         const val DELETE_FASTEST_MS = 50L
         const val DELETE_WORDS_AFTER = 20
         const val DELETE_WORD_MS = 160L
 
         // Hold L1 / R1
-        const val CURSOR_DELAY_MS = 400L
-        const val CURSOR_START_MS = 110L
+        const val CURSOR_DELAY_MS = 300L
+        const val CURSOR_START_MS = 90L
         const val CURSOR_FASTEST_MS = 45L
 
-        const val TRIGGER_PRESS = 0.6f
+        const val TRIGGER_PRESS = 0.45f
         const val TRIGGER_RELEASE = 0.3f
         const val TRIGGER_DEDUPE_MS = 80L
         const val DOUBLE_PRESS_MS = 350L

@@ -137,7 +137,7 @@ function promptHtml(tt, style, size) {
 }
 function bigBadge(b, size, style) {
   if (b === 'DPAD') return `<svg width="${size}" height="${size}" viewBox="0 0 34 34"><circle cx="17" cy="17" r="16" fill="#0B0B0E" stroke="#ffffff55" stroke-width="1.5"/><path d="M14,7h6v7h7v6h-7v7h-6v-7h-7v-6h7z" fill="#F2F3F5"/></svg>`;
-  const shoulder = ['RT', 'LT', 'LB', 'RB'].includes(b), wide = shoulder || b === 'SELECT' || b === 'START', w = wide ? size * 1.7 : size;
+  const shoulder = ['RT', 'LT', 'LB', 'RB', 'LS', 'RS'].includes(b), wide = shoulder || b === 'SELECT' || b === 'START', w = wide ? size * 1.7 : size;
   let inner;
   if (shoulder) inner = `<text x="${w / 2}" y="${size / 2 + 1}" fill="#F2F3F5" font-family="I" font-weight="700" font-size="${size * .4}" text-anchor="middle" dominant-baseline="central">${shoulderLabel(b, style || 'xbox')}</text>`;
   else if (b === 'START') inner = `<path d="M${w / 2 - size * .2},${size * .36}h${size * .4}M${w / 2 - size * .2},${size * .5}h${size * .4}M${w / 2 - size * .2},${size * .64}h${size * .4}" stroke="#F2F3F5" stroke-width="${size * .07}" stroke-linecap="round"/>`;

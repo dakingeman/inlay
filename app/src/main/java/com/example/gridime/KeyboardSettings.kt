@@ -75,7 +75,7 @@ enum class KeyShape(val label: String, val radiusDp: Float) {
  * The physical buttons, named by Android's keycodes.
  * A = bottom face button, B = right, X = left, Y = top (Xbox positions).
  */
-enum class ControllerButton { A, B, X, Y, L1, R1, L2, R2, SELECT, START, L3 }
+enum class ControllerButton { A, B, X, Y, L1, R1, L2, R2, SELECT, START, L3, R3 }
 
 /**
  * A key colour set: keyboard background, letter keys, special keys.
@@ -175,6 +175,7 @@ data class KeyboardSettings(
     val seeThrough: Int = 6,            // 0 to 10, only used by the Clear theme
     // Controls
     val stickSpeed: Int = 2,            // 0 slow to 4 fast
+    val rightStick: Boolean = true,     // right stick moves the text cursor
     val showHints: Boolean = true,      // badges on keys
     val comboHints: Boolean = true,     // chips while holding RT
     val selectAllButton: Boolean = false,
@@ -193,7 +194,8 @@ data class KeyboardSettings(
     val saveClipHistory: Boolean = true,
     // Settings app
     val showPreview: Boolean = true,
-    val tutorialDone: Boolean = false
+    val tutorialDone: Boolean = false,
+    val whatsNewSeen: String = ""      // the update whose "What's new" was last shown (WhatsNew.VERSION)
 ) {
     /** The languages in the quick switch, in order, without repeats. */
     val languages: List<Language> get() = listOfNotNull(language1, language2, language3).distinct()
@@ -233,11 +235,13 @@ data class KeyboardSettings(
             .put(K_SMART_KEYS, smartKeys)
             .put(K_TV_MODE, tvMode.name)
             .put(K_TUTORIAL, tutorialDone)
+            .put(K_WHATS_NEW, whatsNewSeen)
             .put(K_SHAPE, keyShape.name)
             .put(K_MOTION, motion.name)
             .put(K_HIGHLIGHT, highlightStyle.name)
             .put(K_SEE_THROUGH, seeThrough)
             .put(K_STICK, stickSpeed)
+            .put(K_RIGHT_STICK, rightStick)
             .put(K_HINTS, showHints)
             .put(K_COMBO_HINTS, comboHints)
             .put(K_SELECT_ALL_BUTTON, selectAllButton)
@@ -280,9 +284,11 @@ data class KeyboardSettings(
         private const val K_SMART_KEYS = "smart_keys"
         private const val K_TV_MODE = "tv_mode"
         private const val K_TUTORIAL = "tutorial_done"
+        private const val K_WHATS_NEW = "whats_new_seen"
         private const val NONE = "NONE"
         private const val K_SEE_THROUGH = "see_through"
         private const val K_STICK = "stick_speed"
+        private const val K_RIGHT_STICK = "right_stick"
         private const val K_HINTS = "show_hints"
         private const val K_COMBO_HINTS = "combo_hints"
         private const val K_SELECT_ALL_BUTTON = "select_all_button"
@@ -346,11 +352,13 @@ data class KeyboardSettings(
                 showLanguageLabel = p.bool(K_LANGUAGE_LABEL, d.showLanguageLabel),
                 smartKeys = p.bool(K_SMART_KEYS, d.smartKeys),
                 tutorialDone = p.bool(K_TUTORIAL, d.tutorialDone),
+                whatsNewSeen = p.str(K_WHATS_NEW) ?: d.whatsNewSeen,
                 keyShape = enumOr(p.str(K_SHAPE), d.keyShape),
                 motion = enumOr(p.str(K_MOTION), d.motion),
                 highlightStyle = enumOr(p.str(K_HIGHLIGHT), d.highlightStyle),
                 seeThrough = p.int(K_SEE_THROUGH, d.seeThrough),
                 stickSpeed = p.int(K_STICK, d.stickSpeed),
+                rightStick = p.bool(K_RIGHT_STICK, d.rightStick),
                 showHints = p.bool(K_HINTS, d.showHints),
                 comboHints = p.bool(K_COMBO_HINTS, d.comboHints),
                 selectAllButton = p.bool(K_SELECT_ALL_BUTTON, d.selectAllButton),

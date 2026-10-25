@@ -31,7 +31,7 @@ When adding anything new, check it against these rules first.
 
 ## 3. Focus
 
-- Keyboard: the key under focus is filled with the **accent colour** plus a soft glow, and it glides between keys (110 ms).
+- Keyboard: the key under focus is filled with the **accent colour** plus a soft glow, and it jumps three quarters of the way to the next key on the very first frame, then settles (70 ms).
 - Settings: the focused row gets a **2 dp white ring** on a lifted surface, faded in over 140 ms. It stays readable on any colour (WCAG two-colour focus indicator).
 - Pressing A on a row gives a tiny press-in (98.5 %) and release, so every action feels physical. Rows that only show information don't react.
 - Changing section slides the new page in from the side you moved towards.
@@ -69,8 +69,8 @@ When adding anything new, check it against these rules first.
 
 | What | Duration | Curve |
 |---|---|---|
-| Highlight glide | 120 ms, shortening to 55 ms while a direction repeats | emphasized decelerate |
-| Key press squeeze | 170 ms | emphasized decelerate |
+| Highlight glide | 75 % jump on the first frame, then 70 ms, shortening to 35 ms while a direction repeats | emphasized decelerate |
+| Key press squeeze | 110 ms | emphasized decelerate |
 | Hint chips fade | 140 ms | emphasized decelerate |
 | Switches, pickers, tabs | 200 ms | emphasized decelerate |
 | Settings page change | 200 ms | emphasized decelerate |
@@ -78,6 +78,8 @@ When adding anything new, check it against these rules first.
 
 - **Emphasized decelerate** (Material 3, `0.05, 0.7, 0.1, 1`): a quick start that settles softly. **Standard** (`0.2, 0, 0, 1`) for panels that move and stay.
 - **The highlight never lags.** When a direction repeats, each glide shortens to fit the gap since the last move.
+- **What's new uses the tour's screen.** Same layout, badges, rows and acted-out demos, so a new feature is introduced in the app's own voice. Pages must fit without scrolling.
+- **Nothing waits.** A press is drawn on the next frame. Sounds and vibration run on their own helper thread, fonts are built once, and the keyboard only asks the app about its text once typing pauses.
 - **Highlight style setting** (after Android TV's focus system: fill, glow, outline, tonal lift):
   - **Glow** (default): accent fill with a soft halo.
   - **Solid:** accent fill only, the simplest.

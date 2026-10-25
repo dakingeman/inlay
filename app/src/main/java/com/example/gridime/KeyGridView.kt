@@ -150,18 +150,47 @@ class KeyGridView(context: Context) : View(context) {
             FontChoice.SYSTEM -> null
         }
 
-    /** Sets the chosen font at a weight (400 regular, 500 medium, 600 semibold). */
+    /**
+     * Sets the chosen font at a weight (400 regular, 500 medium, 600 semibold).
+     *
+     * Speed: asking a Paint for a new weight builds a brand-new font every time, and
+     * Android then has to re-measure every letter from scratch. That ran for every label
+     * on every frame and was the main cause of the highlight lagging. Now each font and
+     * weight is built once and kept, so a frame only swaps in a ready-made font.
+     */
     private fun applyFont(paint: Paint, weight: Int) {
+        lastFontWeight = weight
+        paint.fontVariationSettings = null                  // free when it's already empty
         val custom = customFont
-        if (custom != null) {
-            paint.fontVariationSettings = null          // reset, so the new weight always applies
-            paint.typeface = custom
-            paint.fontVariationSettings = "'wght' $weight"
-        } else {
-            paint.fontVariationSettings = null
-            paint.typeface = if (weight >= 500) fontMedium else fontRegular
-        }
+        paint.typeface = if (custom != null) weighted(custom, weight)
+        else if (weight >= 500) fontMedium else fontRegular
     }
+
+    private var lastFontWeight = 400
+    private val weightedFonts = HashMap<Pair<Typeface, Int>, Typeface>()
+    private val fontMaker = Paint()
+
+    /** The font at this weight, built the first time it's needed and then reused. */
+    private fun weighted(base: Typeface, weight: Int): Typeface =
+        weightedFonts.getOrPut(base to weight) {
+            fontMaker.fontVariationSettings = null
+            fontMaker.typeface = base
+            fontMaker.fontVariationSettings = "'wght' $weight"
+            val derived = fontMaker.typeface
+            if (derived != null && derived !== base) derived else buildWeighted(base, weight) ?: base
+        }
+
+    /** Backup route for Android versions where a Paint keeps the weight to itself. */
+    private fun buildWeighted(base: Typeface, weight: Int): Typeface? = runCatching {
+        val resId = if (base === fontInter) R.font.inter else R.font.atkinson_next
+        val font = android.graphics.fonts.Font.Builder(resources, resId)
+            .setFontVariationSettings("'wght' $weight")
+            .setWeight(weight.coerceIn(1, 1000))
+            .build()
+        Typeface.CustomFallbackBuilder(android.graphics.fonts.FontFamily.Builder(font).build())
+            .setSystemFallback("sans-serif")
+            .build()
+    }.getOrNull()
 
     // =====================================================================
     // STATE
@@ -195,6 +224,7 @@ class KeyGridView(context: Context) : View(context) {
     // TV MODE: a compact floating keyboard with a big line showing what you type
     // =====================================================================
     private var tv = false
+    fun isTvMode(): Boolean = tv
     private var previewBefore = ""
     private var previewSelected = ""
     private var previewAfter = ""
@@ -388,6 +418,16 @@ class KeyGridView(context: Context) : View(context) {
         val fluid = settings.motion == HighlightMotion.FLUID
         val movingRight = to.centerX() > from.centerX()
         val movingDown = to.centerY() > from.centerY()
+        // Speed: the very first frame already shows the highlight most of the way at the
+        // new key, so the eye never waits for it. The glide only polishes the last bit.
+        from.set(
+            lerp(from.left, to.left, Design.MOTION_FOCUS_JUMP),
+            lerp(from.top, to.top, Design.MOTION_FOCUS_JUMP),
+            lerp(from.right, to.right, Design.MOTION_FOCUS_JUMP),
+            lerp(from.bottom, to.bottom, Design.MOTION_FOCUS_JUMP)
+        )
+        focusRect.set(from)
+        invalidate()
         focusAnim = ValueAnimator.ofFloat(0f, 1f).apply {
             duration = sinceLast.coerceIn(Design.MOTION_FOCUS_MIN, Design.MOTION_FOCUS)
             interpolator = null                       // edges are eased individually below
@@ -1040,11 +1080,7 @@ class KeyGridView(context: Context) : View(context) {
             val probe = Paint(paint).apply { typeface = fontHyperlegible }
             text.any { !it.isWhitespace() && !probe.hasGlyph(it.toString()) }
         }
-        if (missing) {
-            val variation = paint.fontVariationSettings
-            paint.typeface = inter
-            paint.fontVariationSettings = variation            // keep the chosen letter weight
-        }
+        if (missing) paint.typeface = weighted(inter, lastFontWeight)   // keeps the chosen letter weight
     }
 
     /** Which labels Hyperlegible can't draw, worked out once per label (not every frame). */

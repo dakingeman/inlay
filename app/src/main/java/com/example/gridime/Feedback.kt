@@ -65,6 +65,16 @@ class Feedback(context: Context) {
     private val ready = HashSet<Int>()
     private val waiting = HashMap<Int, Float>()
     private val handler = android.os.Handler(android.os.Looper.getMainLooper())
+
+    /**
+     * Speed: starting a sound or a vibration means a short call into Android's sound and
+     * vibration services. On the keyboard's main thread every one of those calls made the
+     * next button wait. They now run on their own little helper thread, so a press is
+     * drawn straight away and the click and buzz follow in parallel.
+     */
+    private val worker = android.os.HandlerThread("inlay-feedback", android.os.Process.THREAD_PRIORITY_DISPLAY)
+        .apply { start() }
+    private val workerHandler = android.os.Handler(worker.looper)
     private var loadedPack: SoundPack? = null
     private val ids = IntArray(Cue.values().size)
 
@@ -146,14 +156,18 @@ class Feedback(context: Context) {
         pool.setOnLoadCompleteListener { _, id, status ->
             if (status != 0) return@setOnLoadCompleteListener
             ready += id
-            waiting.remove(id)?.let { volume -> pool.play(id, volume, volume, 1, 0, 1f) }
+            waiting.remove(id)?.let { volume -> playNow(id, volume) }
         }
         loadPack(settings.soundPack)
     }
 
     fun release() {
         handler.removeCallbacksAndMessages(null)
-        pool.release()
+        workerHandler.removeCallbacksAndMessages(null)
+        workerHandler.post {
+            pool.release()
+            worker.quitSafely()
+        }
     }
 
     /**
@@ -287,7 +301,7 @@ class Feedback(context: Context) {
                 // Motor can only switch on and off: use the same timing, full power
                 VibrationEffect.createWaveform(timings, IntArray(amplitudes.size) { if (amplitudes[it] > 0) 255 else 0 }, -1)
             }
-            vibrateAsTouch(v, effect)
+            workerHandler.post { runCatching { vibrateAsTouch(v, effect) } }
         }
     }
 
@@ -314,8 +328,6 @@ class Feedback(context: Context) {
 
     private fun playId(soundId: Int, gain: Float) {
         if (settings.soundVolume <= 0) return
-        val silent = audio?.ringerMode != AudioManager.RINGER_MODE_NORMAL
-        if (silent && !settings.soundInSilent) return
         // Gentle curve: every slider step sounds like an even change in loudness
         val level = settings.soundVolume / 10f
         // A tiny loudness change keeps repeats from sounding robotic. Pitch never
@@ -326,6 +338,15 @@ class Feedback(context: Context) {
             waiting[soundId] = volume                // plays as soon as it has loaded
             return
         }
-        pool.play(soundId, volume, volume, 1, 0, 1f)
+        playNow(soundId, volume)
+    }
+
+    /** Plays on the helper thread. Checking silent mode is itself a call into Android, so it happens there too. */
+    private fun playNow(soundId: Int, volume: Float) {
+        val playInSilent = settings.soundInSilent
+        workerHandler.post {
+            val silent = audio?.ringerMode != AudioManager.RINGER_MODE_NORMAL
+            if (!silent || playInSilent) pool.play(soundId, volume, volume, 1, 0, 1f)
+        }
     }
 }

@@ -1,0 +1,94 @@
+<html><head><meta charset="utf-8"><style>
+@font-face{font-family:R;src:url(roboto-latin-400-normal.woff2);font-weight:400}
+@font-face{font-family:R;src:url(roboto-latin-500-normal.woff2);font-weight:500}
+@font-face{font-family:R;src:url(roboto-latin-700-normal.woff2);font-weight:700}
+@font-face{font-family:I;src:url(inter.ttf)}@font-face{font-family:A;src:url(atkinson_next.ttf)}
+body{margin:0;background:#000;font-family:R;color:#F2F3F5}
+.scr{width:1920px;height:1080px;position:relative;overflow:hidden;background:#000;margin-bottom:30px}
+.ab{position:absolute}
+.eyebrow{font-size:28px;font-weight:500;letter-spacing:3px;color:#72D6E8;text-transform:uppercase}
+.title{font-size:66px;font-weight:500;line-height:1.3;margin-top:18px;letter-spacing:-.5px}
+.body{font-size:36px;line-height:1.56;color:#9A9DA5;margin-top:26px}
+.row{display:flex;align-items:center;min-height:110px;font-size:36px;color:#F2F3F5}
+.badges{display:flex;align-items:center;gap:16px;flex:none}
+.bar{position:absolute;left:0;right:0;top:980px;height:100px;border-top:1px solid #1C1C21;display:flex;justify-content:center;align-items:center;gap:56px;font-size:32px;color:#C9CCD3}
+.bar span{display:flex;align-items:center;gap:18px}
+.field{position:absolute;left:760px;top:297px;width:1085px;height:100px;box-sizing:border-box;border-radius:50px;background:#111114;border:1px solid #ffffff10;display:flex;align-items:center;padding:0 34px;font-size:40px;font-family:R;font-weight:500;color:#F2F3F5;white-space:pre}
+.caret{display:inline-block;width:3px;height:46px;background:#72D6E8;margin:0 2px;vertical-align:middle}
+</style><script src="kb2.js" charset="utf-8"></script><script src="controller.js" charset="utf-8"></script><script src="spotlight4.js" charset="utf-8"></script></head><body>
+<div id="out"></div>
+<script>
+
+// Badges in the app's own style: circle for face buttons, pill for shoulders (bigBadge from the video tools)
+const B=(b,sz=58)=>{ // shoulder pills as compact as the tour's (1.2x the height, not 1.7x)
+  if(['RT','LT','LB','RB','RS','LS'].includes(b)){const w=Math.round(sz*1.2);return `<svg width="${w}" height="${sz}"><rect x="1" y="1" width="${w-2}" height="${sz-2}" rx="${sz/2-1}" fill="#0B0B0E" stroke="#ffffff55" stroke-width="1.5"/><text x="${w/2}" y="${sz/2+1}" fill="#F2F3F5" font-family="I" font-weight="700" font-size="${sz*.36}" text-anchor="middle" dominant-baseline="central">${shoulderLabel(b,'xbox')}</text></svg>`;}
+  return bigBadge(b,sz,'xbox');};
+const plus=`<span style="color:#9A9DA5;font-size:30px">+</span>`;
+const dots=(i,n)=>`<div class="ab" style="left:0;right:0;top:37px;display:flex;justify-content:center;gap:14px">${Array.from({length:n},(_,k)=>k===i?`<div style="width:46px;height:14px;border-radius:7px;background:${ACC}"></div>`:`<div style="width:14px;height:14px;border-radius:7px;background:#2E2E35"></div>`).join('')}</div>`;
+function words(i,n,title,body,rows){
+  return `<div class="ab" id="col${i}" style="left:75px;top:80px;width:600px">
+    <div class="eyebrow">New in 1.1.1 · ${i+1} of ${n}</div>
+    <div class="title">${title}</div><div class="body">${body}</div>
+    <div style="margin-top:34px">${rows.map(([bs,t])=>`<div class="row"><div class="badges" style="width:var(--bw)">${bs.map(b=>b==='+'?plus:B(b)).join('')}</div><div>${t}</div></div>`).join('')}</div></div>`;
+}
+const bar=(last,first)=>`<div class="bar"><span>${B('A',48)} ${last?'Got it':'Next'}</span>${first?'':`<span>${B('B',48)} Back</span>`}${last?'':`<span>${B('START',48)} Close</span>`}</div>`;
+const keyboard=(o)=>`<div class="ab" style="left:760px;top:440px;width:1085px">${kb(Object.assign({W:1280,S:2},o)).replace('<svg ','<svg style="width:1085px;height:auto;display:block" ')}</div>`;
+const field=(text,caret)=>`<div class="field">${caret==null?text:text.slice(0,caret)+'<span class="caret"></span>'+text.slice(caret)}</div>`;
+
+// The stick gauge: a ring with a knob pushed sideways, and a speed bar that fills with the push
+function gauge(push){ const cx=1173, cy=835, R=58, k=push*22;
+  return `<svg class="ab" style="left:0;top:0" width="1920" height="1080"><circle cx="${cx}" cy="${cy}" r="${R}" fill="#0B0B0E" stroke="#ffffff33" stroke-width="2"/>
+    <circle cx="${cx+k}" cy="${cy}" r="30" fill="${push>0?ACC:'#1B1B1F'}" fill-opacity="${push>0?0.25+0.75*push:1}" stroke="${push>0?ACC:'#ffffff44'}" stroke-width="2"/>
+    <text x="${cx+k}" y="${cy+1}" fill="${push>0.5?'#0B0F17':'#F2F3F5'}" font-family="I" font-weight="700" font-size="20" text-anchor="middle" dominant-baseline="central">RS</text>
+    ${[-1,1].map(d=>`<path d="M${cx+d*78},${cy-12}L${cx+d*92},${cy}L${cx+d*78},${cy+12}" fill="none" stroke="${d>0&&push>0?ACC:'#ffffff30'}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>`).join('')}
+    <rect x="${cx+130}" y="${cy-6}" width="220" height="12" rx="6" fill="#1B1B1F"/><rect x="${cx+130}" y="${cy-6}" width="${220*push}" height="12" rx="6" fill="${ACC}"/>
+    <text x="${cx+130}" y="${cy+42}" fill="#6B6E77" font-family="R" font-size="24">${push===0?'Resting':push<0.6?'Light push · slow':'Full push · fast'}</text></svg>`;}
+
+// A miniature of this very screen, nested inside itself, for the cheeky third page
+function droste(depth,x,y,w){ if(depth===0||w<40) return '';
+  const h=w*9/16, s=w/1920;
+  return `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${18*s+2}" fill="#000" stroke="#ffffff22" stroke-width="${Math.max(1,3*s)}"/>
+   ${[0,1,2].map(k=>`<rect x="${x+(909+k*28-(k==2?0:0))*s}" y="${y+37*s}" width="${(k==2?46:14)*s}" height="${14*s}" rx="${7*s}" fill="${k==2?ACC:'#2E2E35'}"/>`).join('')}
+   <rect x="${x+75*s}" y="${y+90*s}" width="${260*s}" height="${22*s}" rx="${6*s}" fill="${ACC}" opacity=".8"/>
+   <rect x="${x+75*s}" y="${y+150*s}" width="${520*s}" height="${48*s}" rx="${10*s}" fill="#F2F3F5" opacity=".85"/>
+   <rect x="${x+75*s}" y="${y+260*s}" width="${560*s}" height="${26*s}" rx="${8*s}" fill="#9A9DA5" opacity=".5"/>
+   <rect x="${x+75*s}" y="${y+310*s}" width="${480*s}" height="${26*s}" rx="${8*s}" fill="#9A9DA5" opacity=".5"/>
+   <rect x="${x+75*s}" y="${y+360*s}" width="${400*s}" height="${26*s}" rx="${8*s}" fill="#9A9DA5" opacity=".5"/>
+   <line x1="${x}" x2="${x+w}" y1="${y+980*s}" y2="${y+980*s}" stroke="#ffffff18" stroke-width="${Math.max(1,2*s)}"/>
+   ${droste(depth-1, x+w*0.40, y+h*0.275, w*0.565)}`;}
+
+
+const pages=[
+  {title:'The right stick moves the cursor', body:'Push it sideways to move through your text. The further you push, the faster it goes.',
+   rows:[[['RS'],'Move the text cursor'],[['RT','+','RS'],'Jump whole words']]},
+  {title:'Everything is faster', body:'Every press lands the moment you make it, and the left stick reacts to a lighter push.',
+   rows:[[['X'],'Hold to delete, faster'],[['LB','RB'],'Hold to move, faster']]},
+  {title:'And this screen', body:'Yes, one of the new things is the screen that shows you the new things. It appears once per update, then gets out of your way. See it again in About.',
+   rows:[]}
+];
+const PX=1085*0.40/(1-0.565), PY=(1085*9/16)*0.275/(1-0.565);
+const P1=5.0, P2=9.2, CLIP_DUR=13.6;
+const KEYPOS={}; 'qwertyuiop'.split('').forEach((c,i)=>KEYPOS[c]=[1,i]); "asdfghjkl'".split('').forEach((c,i)=>KEYPOS[c]=[2,i]); 'zxcvbnm'.split('').forEach((c,i)=>KEYPOS[c]=[3,i+1]); KEYPOS[' ']=[4,2];
+function stickState(t){ // caret position and push over page 1
+  if(t<0.8) return {c:0,p:0};
+  if(t<2.0) return {c:Math.min(4,1+Math.floor((t-0.8)/0.3)),p:0.4};
+  if(t<2.5) return {c:Math.min(13,5+Math.floor((t-2.0)/0.055)),p:1};
+  return {c:13,p:0};
+}
+function typeState(t){ const s='fast and snappy', per=0.2; const n=Math.min(s.length,Math.floor(t/per)); const nextCh=s[Math.min(n,s.length-1)];
+  return {text:s.slice(0,n), focus:KEYPOS[n<s.length?nextCh:s[s.length-1]]}; }
+function RC(t){
+  const i = t<P1?0:t<P2?1:2, start=[0,P1,P2][i], lt=t-start;
+  const p=pages[i]; let demo='';
+  if(i===0){const st=stickState(lt); demo=field('metroid prime',st.c)+keyboard({focus:[2,4]})+gauge(st.p);}
+  if(i===1){const st=typeState(Math.max(0,lt-0.4)); demo=field(st.text,st.text.length)+keyboard({focus:st.focus});}
+  if(i===2){const k=0.565, ix=760+1085*0, z=Math.pow(1/k,(lt%4.2)/4.2);
+    // zoom into the inner screen: fixed point P = inner corner / (1-k), in the stage's own frame
+    const W=1085,H=W*9/16, px=(W*0.40)/(1-k)*0+0;
+    demo=`<div class="ab" style="left:760px;top:297px;width:${W}px;height:${Math.round(H)}px;overflow:hidden;border-radius:18px">
+      <svg width="${W}" height="${Math.round(H)}" viewBox="0 0 ${W} ${Math.round(H)}"><g transform="translate(${PX} ${PY}) scale(${z}) translate(${-PX} ${-PY})">${droste(9,0,0,W)}</g></svg></div>`;}
+  const fade=Math.min(1,lt/0.22), shift=(1-fade)*14;
+  document.getElementById('out').innerHTML=`<div class="scr" id="cur">${dots(i,3)}<div style="opacity:${fade};transform:translateX(${shift}px)">${words(i,3,p.title,p.body,p.rows)}</div>${demo}${bar(i===2,i===0)}</div>`;
+  document.querySelectorAll('[id^=col]').forEach(c=>{const bs=[...c.querySelectorAll('.badges')]; if(!bs.length) return; bs.forEach(b=>b.style.width='auto'); const w=Math.max(...bs.map(b=>b.scrollWidth))+24; bs.forEach(b=>b.style.width=w+'px');});
+}
+</script></body></html>

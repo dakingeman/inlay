@@ -14,7 +14,7 @@
 </p>
 
 <p align="center">
-  <a href="#install">Install</a> · <a href="#features">Features</a> · <a href="#tested-on">Tested on</a> · <a href="CHANGELOG.md">Changelog</a> · <a href="../../issues/new/choose">Report a problem</a>
+  <a href="#install">Install</a> · <a href="#features">Features</a> · <a href="#controls">Controls</a> · <a href="#tested-on">Tested on</a> · <a href="CHANGELOG.md">Changelog</a> · <a href="../../issues/new/choose">Report a problem</a>
 </p>
 
 <br>
@@ -41,8 +41,10 @@ Free and open source. No ads, no tracking, no internet permission.
 <p align="center"><img src="docs/images/pack/tv-mode.png" alt="TV mode" width="100%"></p>
 
 <details>
-<summary><b>See all 12 screens</b></summary>
+<summary><b>See all 13 screens</b></summary>
 <br>
+
+<p align="center"><img src="docs/images/pack/right-stick.png" alt="The right stick moves the cursor" width="100%"></p>
 
 <p align="center"><img src="docs/images/pack/hold.png" alt="Hold RT for more" width="100%"></p>
 
@@ -81,10 +83,10 @@ A one-minute tour opens the first time, and you can replay it any time from **Ab
 
 | Feature | What it does |
 |-|-|
-| **Made for controllers** | D-pad or left stick moves the highlight, with smart repeat when you hold a direction. |
-| **Every button has a job** | A types, X deletes (hold to speed up), Y is space, Start is enter. LB and RB move the cursor, RT is shift, LT is symbols. |
+| **Made for controllers** | D-pad or left stick moves the highlight the instant you press, with smart repeat when you hold a direction. A light stick push moves gently, a full push fast. |
+| **Every button has a job** | A types, X deletes (hold to speed up), Y is space, Start is enter. LB and RB move the cursor, RT is shift, LT is symbols, and the right stick moves the cursor too. See [Controls](#controls). |
 | **Hold RT for more** | Small tips appear on the keys: a capital letter, word jumps, accents and undo. Nothing to memorise. |
-| **Edit text properly** | Select, cut, copy, paste and undo from the controller. Press Select twice to select everything. |
+| **Edit text properly** | Select, cut, copy, paste and undo from the controller. Press Select twice to select everything. The right stick moves the cursor or grows a selection, faster the further you push (turn it off in Settings → Typing). |
 | **Clipboard history** | Your last six copies, one button away. Anything marked as sensitive (passwords) is never kept. |
 | **11 languages** | English, German, French (AZERTY), Spanish, Portuguese, Norwegian, Danish, Swedish/Finnish, Turkish, Russian and Ukrainian. Pick up to three and switch with RT + LT. RT + Y adds accents (é, ñ, ł and more), so Italian, Dutch, Polish and others work too. |
 | **Smart keys** | / and .com in web addresses, @ in email boxes, a big number pad for numbers. |
@@ -92,8 +94,40 @@ A one-minute tour opens the first time, and you can replay it any time from **Ab
 | **Make it yours** | 12 themes (including a see-through one), 16 highlight colours plus any custom colour, four highlight styles, three key shapes, two layouts, three sizes, and Xbox, PlayStation or Switch button icons. |
 | **Seven sound packs** | Soft, Soft Deep, Tactile, Chime, Retro, Typewriter and Felt, with vibration tuned so even small motors are felt. |
 | **Fits every screen** | Wide, 4:3, portrait or split screen. The keyboard never covers more than 60 % of the screen. |
-| **A Settings app for the controller** | A live keyboard preview (press Y), the tour, and your highlight colour all through it. |
+| **A Settings app for the controller** | A live keyboard preview (press Y), the tour, a short What's new after each update, and your highlight colour all through it. |
 | **Types straight into the app** | No full-screen typing box covering your game or launcher. |
+
+## Controls
+
+<p align="center"><img src="docs/images/pack/controls.png" alt="The full button map" width="100%"></p>
+
+<details>
+<summary><b>The button map as text</b></summary>
+<br>
+
+| Button | What it does |
+|-|-|
+| D-pad or left stick | Move the highlight |
+| A | Type the highlighted key |
+| X | Delete · hold to speed up, then whole words |
+| Y | Space |
+| RT | Shift · tap twice for caps lock |
+| LT | Symbols and numbers (in number boxes: letters too) |
+| Start | Enter · Search · Go |
+| B | Close the keyboard · leave select mode or the clipboard |
+| Press the left stick | Keyboard size: Normal, Large, Largest |
+| LB / RB | Move the text cursor |
+| Right stick | Move the text cursor, faster the further you push · up and down: a line, or the start or end |
+| Select (View · Create · Minus) | Select text · press twice for everything |
+| RT + LB / RB or RT + right stick | Jump a whole word |
+| RT + A | One capital letter |
+| RT + Y | Accent the last letter (e → é → è …) |
+| RT + X | Undo |
+| RT + LT | Switch language (when you've picked more than one) |
+
+Settings → Button guide shows the same list in your controller's own icons, and leaves out anything you've switched off.
+
+</details>
 
 ## Tested on
 
@@ -115,7 +149,7 @@ Since I can't read the code myself, I can't promise it's flawless, and I can onl
 
 ## Build it yourself
 
-Open the project in Android Studio and press **Run**. No extra libraries are needed.
+Open the project in Android Studio and press **Run**. No extra libraries are needed. Before sending a change, have a look at [the update checklist](docs/UPDATING.md).
 
 ## Brand and credits
 

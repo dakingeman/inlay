@@ -26,13 +26,15 @@ import kotlin.math.max
 import kotlin.math.roundToInt
 
 /**
- * A short first-run tour: six pages, about a minute.
+ * A short first-run tour: six pages, about a minute. The same screen also shows
+ * "What's new" after an update (see [WhatsNew]), with that update's highlights as its pages.
  *
  * The screen is laid out like a real app: the words at the top, a text box and the keyboard
  * at the bottom, full width, exactly where and how the keyboard appears in use. The keyboard
  * acts out each page into the text box (typing, word jumps, selecting, the clipboard, themes).
  *
- * Controller: A or Right = next, B or Left = back, Start = skip the tour.
+ * Controller: A or Right = next, B or Left = back, Start = skip the tour (or close What's new).
+ * Up / down scroll the words if a page is ever taller than the screen.
  * Opened automatically the first time Settings opens, and from About → Replay the tour.
  */
 class TutorialActivity : Activity(), KeyGridView.Listener {
@@ -49,6 +51,13 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
     private lateinit var field: DemoFieldView
     private lateinit var demo: KeyGridView
     private lateinit var controlBar: ControlBar
+    private lateinit var wordsScroll: ScrollView
+    private lateinit var gauge: StickGaugeView
+    private lateinit var screenInScreen: ScreenInScreenView
+    private val rowTexts = mutableListOf<TextView>()
+
+    /** Opened as "What's new" instead of the tour. */
+    private val whatsNew by lazy { intent.getBooleanExtra(EXTRA_WHATS_NEW, false) }
     private val handler = Handler(Looper.getMainLooper())
     private var page = 0
 
@@ -57,7 +66,7 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
 
     /** One page: a title, one plain sentence, up to five button rows, and what the keyboard acts out. */
     private class Page(val title: String, val body: String, val rows: List<Pair<String, String>>, val demo: Demo)
-    private enum class Demo { WANDER, TYPE, SHIFT_AND_SYMBOLS, HOLD_RT, EDIT, YOURS }
+    private enum class Demo { WANDER, TYPE, SHIFT_AND_SYMBOLS, HOLD_RT, EDIT, YOURS, RIGHT_STICK, FASTER, THIS_SCREEN }
 
     /** What the "select" button is called on this controller, so the words match the badge. */
     private val selectName get() = when (settings.buttonStyle) {
@@ -66,7 +75,31 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
         ButtonStyle.SWITCH -> "Minus"
     }
 
-    private val pages: List<Page> by lazy {
+    private val pages: List<Page> by lazy { if (whatsNew) whatsNewPages else tourPages }
+
+    /** The highlights of [WhatsNew.VERSION]. One to three pages, each acted out like the tour. */
+    private val whatsNewPages: List<Page> by lazy {
+        listOf(
+            Page("The right stick moves the cursor",
+                "Push it sideways to move through your text. The further you push, the faster it goes." +
+                    if (settings.rightStick) "" else " It's switched off right now: turn it on in Settings → Typing.",
+                listOf(
+                    "Move the text cursor" to "{R3}",
+                    "Jump whole words" to "{R2} + {R3}"
+                ), Demo.RIGHT_STICK),
+            Page("Everything is faster",
+                "Every press lands the moment you make it, and the left stick reacts to a lighter push.",
+                listOf(
+                    "Hold to delete, faster" to "{X}",
+                    "Hold to move, faster" to "{L1} {R1}"
+                ), Demo.FASTER),
+            Page("And this screen",
+                "Yes, one of the new things is the screen that shows you the new things. It appears once per update, then gets out of your way. See it again in About.",
+                emptyList(), Demo.THIS_SCREEN)
+        )
+    }
+
+    private val tourPages: List<Page> by lazy {
         listOf(
             Page("Welcome to Inlay",
                 "Type anywhere with your controller, no touch screen needed. This tour shows the buttons and takes about a minute.",
@@ -249,6 +282,8 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
 
         // ---- The stage: a text box and the real keyboard, full width, as in any app ----
         field = DemoFieldView(this)
+        gauge = StickGaugeView(this).apply { accent = settings.accent; style = settings.buttonStyle; visibility = View.GONE }
+        screenInScreen = ScreenInScreenView(this).apply { accent = settings.accent; visibility = View.GONE }
         demo = KeyGridView(this).apply {
             isFocusable = false
             listener = this@TutorialActivity
@@ -262,6 +297,8 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
                 if (!wide) { marginStart = px(Design.SPACE_XXL); marginEnd = px(Design.SPACE_XXL) }
             })
             addView(demo, lpMatchWrap(topMargin = Design.SPACE_M))
+            addView(gauge, lpMatchWrap(topMargin = Design.SPACE_M))
+            addView(screenInScreen, lpMatchWrap())
         }
         if (onTv) field.visibility = View.GONE
 
@@ -269,6 +306,7 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
         words.addView(rows, lpMatchWrap(topMargin = Design.SPACE_XL))
         rowsPane = rows
         val wordsPane = noFocusScroll(words)
+        wordsScroll = wordsPane
         if (wide) {
             // Side by side: the words on the left, the text box and keyboard on the right.
             // The keyboard is a scaled-down copy of the real one, so keys and hints keep their shape.
@@ -313,18 +351,20 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
     private fun show(index: Int, animate: Boolean, direction: Int = 1) {
         page = index
         val p = pages[index]
-        eyebrow.text = "${index + 1} OF ${pages.size}"
+        eyebrow.text = if (whatsNew) "NEW IN ${WhatsNew.VERSION} · ${index + 1} OF ${pages.size}" else "${index + 1} OF ${pages.size}"
         title.text = p.title
         body.text = p.body
         buildRows(p.rows)
         rowsPane.visibility = if (p.rows.isEmpty()) View.GONE else View.VISIBLE
         refreshDots()
         controlBar.show(settings.buttonStyle, listOfNotNull(
-            if (index == pages.lastIndex) "{A} Done" else "{A} Next",
+            if (index < pages.lastIndex) "{A} Next" else if (whatsNew) "{A} Got it" else "{A} Done",
             if (index > 0) "{B} Back" else null,
-            if (index < pages.lastIndex) "{START} Skip the tour" else null
+            if (index < pages.lastIndex) (if (whatsNew) "{START} Close" else "{START} Skip the tour") else null
         ))
         startDemo(p.demo)
+        wordsScroll.scrollTo(0, 0)
+        fitWhenLaidOut()
         if (animate) {
             words.alpha = 0f
             words.translationX = px(12f * direction).toFloat()
@@ -339,6 +379,7 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
      */
     private fun buildRows(list: List<Pair<String, String>>) {
         rows.removeAllViews()
+        rowTexts.clear()
         if (list.isEmpty()) return
         val parsed = list.map { (what, buttons) -> what to HintText.parse(buttons) }
         val painter = BadgePainter(dp).apply {
@@ -362,9 +403,47 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
                     textSize = Design.TYPE_ROW
                     setTextColor(SettingsStyle.textPrimary)
                     setLineSpacing(0f, 1.2f)
+                    rowTexts += this
                 }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
             }, lpMatchWrap(topMargin = if (i > 0) Design.SPACE_XS else 0f))
         }
+    }
+
+    /**
+     * Every row must be visible without scrolling: the controller can't reach what's below
+     * the edge. On short screens (a 1080p handheld with a long page), the words shrink a
+     * step at a time until the page fits. Rows keep their 44 dp height and their badges.
+     */
+    /** Measures once the screen has its real size (on the very first page it doesn't yet). */
+    private fun fitWhenLaidOut() {
+        if (wordsScroll.height > 0 && words.width > 0) { fitWords(); return }
+        wordsScroll.viewTreeObserver.addOnGlobalLayoutListener(object : android.view.ViewTreeObserver.OnGlobalLayoutListener {
+            override fun onGlobalLayout() {
+                if (wordsScroll.height <= 0 || words.width <= 0) return
+                wordsScroll.viewTreeObserver.removeOnGlobalLayoutListener(this)
+                fitWords()
+            }
+        })
+    }
+
+    private fun fitWords() {
+        applyTextScale(1f)
+        var scale = 1f
+        repeat(FIT_STEPS) {
+            val room = wordsScroll.height - wordsScroll.paddingTop - wordsScroll.paddingBottom
+            if (room <= 0 || words.width <= 0) return
+            words.measure(View.MeasureSpec.makeMeasureSpec(words.width, View.MeasureSpec.EXACTLY),
+                View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED))
+            if (words.measuredHeight <= room) return
+            scale -= FIT_STEP
+            applyTextScale(scale)
+        }
+    }
+
+    private fun applyTextScale(f: Float) {
+        title.textSize = Design.TYPE_DISPLAY * f
+        body.textSize = Design.TYPE_ROW * f
+        rowTexts.forEach { it.textSize = Design.TYPE_ROW * f }
     }
 
     /** Progress: one dot per page, the current one a wider accent pill. */
@@ -407,11 +486,19 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
         demo.setClips(emptyList())
         typed = ""
         field.accent = settings.accent
+        field.visibility = if (onTv || demoKind == Demo.THIS_SCREEN) View.GONE else View.VISIBLE
+        demo.visibility = if (demoKind == Demo.THIS_SCREEN) View.GONE else View.VISIBLE
+        gauge.visibility = if (demoKind == Demo.RIGHT_STICK) View.VISIBLE else View.GONE
+        screenInScreen.visibility = if (demoKind == Demo.THIS_SCREEN) View.VISIBLE else View.GONE
+        gauge.push = 0f
         showText("")
+        // Android's "Remove animations" is on: one still moment per page, nothing moving
+        val moving = WhatsNew.motionAllowed()
         val path = listOf(1 to 0, 1 to 0, 0 to -1, -1 to 0, 0 to 1, 1 to 0)
         var step = 0
         fun every(ms: Long, action: () -> Long?) {
             // action returns how long to wait before the next step, or null for the default
+            if (!moving) return
             val tick = object : Runnable {
                 override fun run() { handler.postDelayed(this, action() ?: ms) }
             }
@@ -425,6 +512,7 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
             Demo.TYPE -> {
                 // Types a real sentence key by key, pauses, clears, and goes again
                 val sentence = "hello from inlay"
+                if (!moving) showText(sentence)
                 var at = 0
                 every(STEP_MS) {
                     if (at >= sentence.length) { at = 0; typed = ""; showText(""); return@every PAUSE_MS }
@@ -463,6 +551,10 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
                 val wordsOnScreen = listOf("select", " this", " text", " and", " copy", " it")
                 val earlier = listOf("metroid prime", "github.com/dakingeman/inlay", "save slot 3")
                 showText("", "", wordsOnScreen.joinToString(""))
+                if (!moving) {
+                    showText("", wordsOnScreen.take(3).joinToString(""), wordsOnScreen.drop(3).joinToString(""))
+                    demo.setSelecting(true, wordsOnScreen.take(3).joinToString("").length)
+                }
                 var at = 0
                 every(800) {
                     when {
@@ -491,6 +583,39 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
                     }
                 }
             }
+            Demo.RIGHT_STICK -> {
+                // Rest, a light push (slow steps), a full push (fast) to the end, rest, then fast back
+                val text = "metroid prime"
+                var at = 0
+                var phase = 0
+                fun place() = showText(text.take(at), "", text.drop(at))
+                place()
+                if (!moving) { at = 7; place(); gauge.push = 1f }
+                every(STICK_REST_MS) {
+                    when (phase) {
+                        0 -> { phase = 1; gauge.push = 0.4f; STICK_SLOW_MS }                 // light push begins
+                        1 -> { at++; place(); if (at >= 4) { phase = 2; gauge.push = 1f }; STICK_SLOW_MS }
+                        2 -> { at++; place(); if (at >= text.length) { phase = 3; gauge.push = 0f; STICK_REST_MS } else STICK_FAST_MS }
+                        3 -> { phase = 4; gauge.push = -1f; STICK_FAST_MS }                 // full push back
+                        else -> { at--; place(); if (at <= 0) { phase = 0; gauge.push = 0f; STICK_REST_MS } else STICK_FAST_MS }
+                    }
+                }
+            }
+            Demo.FASTER -> {
+                // The same typing as the tour, at a fast typist's pace: every press lands at once
+                val sentence = "fast and snappy"
+                if (!moving) showText(sentence)
+                var at = 0
+                every(FAST_STEP_MS) {
+                    if (at >= sentence.length) { at = 0; typed = ""; showText(""); return@every PAUSE_MS }
+                    when (demo.stepTowards(sentence[at].toString())) {
+                        true -> { demo.pressSelected(); at++; if (at == sentence.length) PAUSE_MS else FAST_PRESS_MS }
+                        false -> null
+                        null -> { at++; null }
+                    }
+                }
+            }
+            Demo.THIS_SCREEN -> Unit      // the screen-in-screen drawing runs by itself
             Demo.YOURS -> {
                 // Themes and highlight colours change, and the button icons switch Xbox → PlayStation → Switch
                 showText("")
@@ -524,6 +649,8 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
             KeyEvent.KEYCODE_BUTTON_A, KeyEvent.KEYCODE_DPAD_RIGHT, KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> next()
             KeyEvent.KEYCODE_BUTTON_B, KeyEvent.KEYCODE_BACK, KeyEvent.KEYCODE_DPAD_LEFT -> back()
             KeyEvent.KEYCODE_BUTTON_START -> finishTour()
+            KeyEvent.KEYCODE_DPAD_UP -> wordsScroll.smoothScrollBy(0, -px(SCROLL_DP))
+            KeyEvent.KEYCODE_DPAD_DOWN -> wordsScroll.smoothScrollBy(0, px(SCROLL_DP))
             else -> return super.onKeyDown(keyCode, event)
         }
         return true
@@ -544,17 +671,32 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
 
     private var finishing = false
 
-    /** Done or skipped: remember it, so the tour doesn't open by itself again. */
+    /**
+     * Done or skipped: remember it, so it doesn't open by itself again. Finishing the tour
+     * also counts as having seen this update's What's new (a new user already saw it all).
+     */
     private fun finishTour() {
         if (finishing) return
         finishing = true
-        KeyboardSettings.load(this).copy(tutorialDone = true).save(this)
+        val saved = KeyboardSettings.load(this)
+        (if (whatsNew) saved.copy(whatsNewSeen = WhatsNew.VERSION)
+        else saved.copy(tutorialDone = true, whatsNewSeen = WhatsNew.VERSION)).save(this)
         feedback.confirm()
         handler.removeCallbacksAndMessages(null)
         dots.postDelayed({ finish() }, CLOSE_DELAY_MS)
     }
 
-    private companion object {
+    companion object {
+        /** Open this screen as "What's new" instead of the tour. */
+        const val EXTRA_WHATS_NEW = "whats_new"
+        private const val FIT_STEPS = 3
+        private const val FIT_STEP = 0.08f
+        private const val SCROLL_DP = 80f
+        private const val STICK_REST_MS = 900L     // the stick resting
+        private const val STICK_SLOW_MS = 300L     // light push: a step at a time
+        private const val STICK_FAST_MS = 55L      // full push
+        private const val FAST_STEP_MS = 45L       // a fast typist's D-pad
+        private const val FAST_PRESS_MS = 110L
         const val KEY_PAGE = "page"
         const val CLOSE_DELAY_MS = 140L
         const val TV_SAFE = 0.05f

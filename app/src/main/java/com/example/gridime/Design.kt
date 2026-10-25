@@ -51,9 +51,10 @@ object Design {
     const val TYPE_CHIP = 10.5f
 
     // ---- Motion (ms). Fast enough to never make you wait. ------------------
-    const val MOTION_FOCUS = 120L      // highlight glide between keys
-    const val MOTION_FOCUS_MIN = 55L   // while a direction is held and repeating
-    const val MOTION_PRESS = 170L      // key squeeze and release
+    const val MOTION_FOCUS = 70L       // highlight glide between keys (only the last 25 %, see below)
+    const val MOTION_FOCUS_MIN = 35L   // while a direction is held and repeating
+    const val MOTION_FOCUS_JUMP = 0.75f // share of the way the highlight jumps on the very first frame
+    const val MOTION_PRESS = 110L      // key squeeze and release
     const val MOTION_FADE = 140L       // hint chips appearing
     const val MOTION_CONTROL = 200L    // switches, option pickers, tabs
     const val MOTION_PAGE = 200L       // settings page change
