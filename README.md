@@ -155,6 +155,7 @@ Open the project in Android Studio and press **Run**. No extra libraries are nee
 
 * The icon, colours and type are in [docs/brand](docs/brand/BRAND.md), with the rules for using them.
 * Fonts: [Atkinson Hyperlegible Next](https://github.com/googlefonts/atkinson-hyperlegible-next) and [Inter](https://github.com/rsms/inter), both under the SIL Open Font Licence (see `licenses/`).
+* The PlayStation controller drawing is traced from ["Dualshock 4 Layout.svg"](https://commons.wikimedia.org/wiki/File:Dualshock_4_Layout.svg) by Tokyoship, [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/), redrawn in Inlay's line style. The Xbox and Switch Pro drawings are traced from reference pictures, logos left out. Controller names belong to their makers.
 * All sounds were made for this project from scratch. The scripts that made them are in `tools/`.
 * The 1.1 icon refresh followed the testing checklist from [logo-design-skill](https://github.com/kaankiziltug/logo-design-skill).
 
