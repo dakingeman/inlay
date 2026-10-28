@@ -1,0 +1,83 @@
+{
+ "name": "videos-1.2",
+ "title": "Launch videos 1.2.0: teaser, What's new clip, GIF, video pipeline and template",
+ "recorded": "2026-10-27",
+ "base": "0f064cd",
+ "files": [
+  {
+   "path": "README.md",
+   "before": "f1ee1ad7e53a407de7dbc18f7a0fea2d9ce04977",
+   "after": "8d8eb0febb010ed744b64479e90abe3474aca1af"
+  },
+  {
+   "path": "app/src/test/java/com/example/gridime/VisualsVideo.kt",
+   "before": "44c919f72c1bd97024b615c91e5f6f78af29080c",
+   "after": "b2ff7e972e17b662634b68511e4064d2889cb946"
+  },
+  {
+   "path": "docs/UPDATING.md",
+   "before": "a450fe16c4f30a5c9572bb210addf6625470f1aa",
+   "after": "9ea4e56821c89089fafbbaeb4945a41557d3e6bb"
+  },
+  {
+   "path": "docs/images/teaser.gif",
+   "before": "9cd783c47dcf04e798cb373dd11fc1384bdb44e6",
+   "after": "6dd85d6c1b1dfbe29839085991c8ddfb8c3154f4"
+  },
+  {
+   "path": "docs/images/teaser.mp4",
+   "before": "998388938dcd10f73240129ea6182894f3915138",
+   "after": "faaedab423fcffc2e6cb2e7b5e2bafc491662c60"
+  },
+  {
+   "path": "docs/images/whats-new-1.2.0.mp4",
+   "before": "7b14a3f8848736c120eb18fe6332830d372ad09f",
+   "after": "a99aedbbfa3dfd56bc4c262707acf8355fcbcac8"
+  },
+  {
+   "path": "docs/visuals-src/README.md",
+   "before": "e542331d661f0256c2a826e842c3ced1c3a78500",
+   "after": "6581a61149edf992be9ee10ff146499fd42fe676"
+  },
+  {
+   "path": "docs/visuals-src/VISUAL_SYSTEM.md",
+   "before": "efc8f2dfd5624a7c17af86cd712a963f81efa523",
+   "after": "b8a2b02594b0497df519801db6758c32c807f14d"
+  },
+  {
+   "path": "docs/visuals-src/finish-video.py",
+   "before": "c70f9c4a3357d3f3e1b75e1e233cc8064a98e363",
+   "after": "bcfa730d3d46a53ad88c74c8043710618ba978ce"
+  },
+  {
+   "path": "docs/visuals-src/parts.js",
+   "before": "1226b844e7c5fb168cc1424d646d164dcb039650",
+   "after": "071926314f9e2649d9cdcc46a3a5502375aff9cb"
+  },
+  {
+   "path": "docs/visuals-src/pic-boxes.py",
+   "before": null,
+   "after": "356006d651410708db7033eb0cef883ac1adffa7"
+  },
+  {
+   "path": "docs/visuals-src/render-video.js",
+   "before": "114cb1d2d8df146675cd685874bddc076f92aab2",
+   "after": "8d0486668a87657acb479f94bc654da3ae7745fe"
+  },
+  {
+   "path": "docs/visuals-src/teaser.plan.json",
+   "before": "2d65601d3c78eb2195b4d6bf6a76f51e655a7938",
+   "after": "c43090ef43397b587df3d5a2096d5f169591d406"
+  },
+  {
+   "path": "docs/visuals-src/video.html",
+   "before": "3509481fbd656f92c24f8e12620b9dc075345406",
+   "after": "9a82446a155589f36abb3a6107ca20a6dcda8222"
+  },
+  {
+   "path": "docs/visuals-src/whats-new.plan.json",
+   "before": "c8eb977ea66a47a06863bd31a88bfd6ec2574abb",
+   "after": "ce569f0bfdc487c7c9e26428913523875d56c30f"
+  }
+ ]
+}

@@ -1,0 +1,5 @@
+<resources>
+    <!-- Test builds get their own name, so they're easy to tell apart from the real Inlay -->
+    <string name="app_name">Inlay Preview</string>
+    <string name="ime_name">Inlay Preview - Test build</string>
+</resources>

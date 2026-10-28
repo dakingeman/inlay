@@ -1,0 +1,9 @@
+[{"card":"intro","ms":2800},
+ {"scene":"words","from":25,"to":195},
+ {"scene":"accents","from":30,"to":165},
+ {"scene":"devices","from":18,"to":218},
+ {"screen":"packrow","from":1,"to":110},
+ {"screen":"colour","from":15,"to":125},
+ {"scene":"tv","from":100,"to":262},
+ {"screen":"settings","from":15,"to":150},
+ {"card":"outro","ms":4600}]

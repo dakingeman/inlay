@@ -1,0 +1,1293 @@
+{
+ "name": "inlay-1.2-merged",
+ "title": "Inlay 1.2: visual kit, tests 21-31, nine sound packs and release prep, merged",
+ "recorded": "2026-10-27",
+ "base": "a7e543a",
+ "files": [
+  {
+   "path": ".gitignore",
+   "before": "67f8878929308de65bc1bfd0bc946624281e2a33",
+   "after": "7d1b0d1216b94d500457efc43626aa0636993dd4"
+  },
+  {
+   "path": "CHANGELOG.md",
+   "before": "397a93f05e64de64d22f2a686be9d80dda9d4ab6",
+   "after": "9b4e9839357671d542470abe22e79f7e625e4b99"
+  },
+  {
+   "path": "DESIGN_GUIDE.md",
+   "before": "6c1bf28a9d728c6c1dc11ef185d0b6e3fc11e11b",
+   "after": "deabe50d64eee5888e1fd32e8cd7c27f1b3489f4"
+  },
+  {
+   "path": "README.md",
+   "before": "c98dde3d81592490e8a61f600cebb033b84eab7f",
+   "after": "f1ee1ad7e53a407de7dbc18f7a0fea2d9ce04977"
+  },
+  {
+   "path": "app/src/main/assets/devices/controller-ps.svg",
+   "before": "f979deaae3219b6f1eb7007b98b7444921b3ce6d",
+   "after": "32028f00a2f9bd7e18e3486852ac88f5d44ec387"
+  },
+  {
+   "path": "app/src/main/assets/devices/controller-switch.svg",
+   "before": "346a375bbb55f2484dfbb9ce05ffd77a53e34182",
+   "after": "7537369b7d1f2156e62e09f2ea61682af412f962"
+  },
+  {
+   "path": "app/src/main/assets/devices/controller-xbox.svg",
+   "before": "63e41f3cf4f25cc7c7a2f9121892c79098959748",
+   "after": "f7f5c0ffd906bbc9592bddcf18168b5edc53cb9f"
+  },
+  {
+   "path": "app/src/main/assets/devices/remote.svg",
+   "before": "9f31fa85c61d7dc41cf118b4b4cdab2af1e05e5a",
+   "after": "ae3081ed5b820f0694d531751ee3f79176f16e3b"
+  },
+  {
+   "path": "app/src/main/assets/devices/vertical-ps.svg",
+   "before": "a20f77cb237aa6259fa28d2b832c3e5700a67ee8",
+   "after": "ea7e2462c24c94047b88ccd597211cf6b737a5f7"
+  },
+  {
+   "path": "app/src/main/assets/devices/vertical-sticks-ps.svg",
+   "before": "120ae99ac580d02e9be367ecb33668e4fde39665",
+   "after": "7b5d00ca1fcb96fc53339623df811dfd87f7d790"
+  },
+  {
+   "path": "app/src/main/assets/devices/vertical-sticks-switch.svg",
+   "before": "c78a6a173f0cfb5a9691518c83af89c6f06ebefa",
+   "after": "d05825049884bb1d2cad3e1545c57e269e375711"
+  },
+  {
+   "path": "app/src/main/assets/devices/vertical-sticks-xbox.svg",
+   "before": "ec4a01a01e9a7ed14c1b1cb15bf0d36396a2d845",
+   "after": "adfbf1ace6ec81f5a2f22a802f2095326d5a8ea1"
+  },
+  {
+   "path": "app/src/main/assets/devices/vertical-switch.svg",
+   "before": "71d68d3333539c6b043958a208c0f3ac695bb7bf",
+   "after": "bc6e2b76d0af891f81da9f3f780ca6c7bf89d5d3"
+  },
+  {
+   "path": "app/src/main/assets/devices/vertical-xbox.svg",
+   "before": "49bc8952b9d4b00021ff2fe8c9223c98a1b57f1f",
+   "after": "787b229294eaeb1d0c51d5de7aed0b7d966ef426"
+  },
+  {
+   "path": "app/src/main/assets/devices/wide-ps.svg",
+   "before": "2fbea5222d7be5bea48bf5ae4b4f8c369fc404fd",
+   "after": "3228cd8f0d81546992b6473419258ff8594c8df7"
+  },
+  {
+   "path": "app/src/main/assets/devices/wide-switch.svg",
+   "before": "120862027c6cef16980b3695d2ef88ffb21c5a3c",
+   "after": "7f1bffd91259c0c7b7ef4ab9edf2fdcc604203ae"
+  },
+  {
+   "path": "app/src/main/assets/devices/wide-xbox.svg",
+   "before": "c764c3f2a89e974d1abef8178a30f1a8f66aa496",
+   "after": "37a55a91770ad37b2f2a6495d1954ea877f30a70"
+  },
+  {
+   "path": "app/src/main/java/com/example/gridime/Backdrop.kt",
+   "before": null,
+   "after": "d7dbde059b9791df2026e20b294203299355606f"
+  },
+  {
+   "path": "app/src/main/java/com/example/gridime/Design.kt",
+   "before": "6dbaf990859b6b73618ff4fd548a8e5519a6b57e",
+   "after": "2e6f24774bfc9759ad1c65213d52c514b363d827"
+  },
+  {
+   "path": "app/src/main/java/com/example/gridime/DevicePicture.kt",
+   "before": "6b5bdd09072aa7393551f527b15a447cd7ddd393",
+   "after": "313e2e6b916bd10626cf77ff3d0a20fc073d3c0b"
+  },
+  {
+   "path": "app/src/main/java/com/example/gridime/Feedback.kt",
+   "before": "315b68af0789f4d7f0cc16b8a6e236e3a4f0ecb2",
+   "after": "fa34ff55300430eae836d697fb783ac9e6f94367"
+  },
+  {
+   "path": "app/src/main/java/com/example/gridime/GridKeyboardService.kt",
+   "before": "304b690ecc25974bacdc117bf088732e15a8fbd7",
+   "after": "7e7e19f6fca57275b4c36675f9d768d9c109f7d9"
+  },
+  {
+   "path": "app/src/main/java/com/example/gridime/KeyGridView.kt",
+   "before": "02f8147621f02dddd42dedf603ea065ed1e7cfdd",
+   "after": "4dc84c851d6d0b90b97e7d534cd4d2d0f72132e7"
+  },
+  {
+   "path": "app/src/main/java/com/example/gridime/KeyboardSettings.kt",
+   "before": "98b391191f623f4b29a05c5dd6bfd1f666988c3f",
+   "after": "befb059acfa168f0ed23a5230ded03fb05146ee2"
+  },
+  {
+   "path": "app/src/main/java/com/example/gridime/SettingsActivity.kt",
+   "before": "af9a96ee1d9109c49eb0d0f3d3472eea12b89ba3",
+   "after": "104e0b1de4451e55ee0e2ac72f5035822a899f9f"
+  },
+  {
+   "path": "app/src/main/java/com/example/gridime/SettingsChrome.kt",
+   "before": "d1116dfcf00dc2af1c9242dedf57c48bb16f6fa9",
+   "after": "b32c9de2e6541e9814068ab4b3408d7c08efb8e6"
+  },
+  {
+   "path": "app/src/main/java/com/example/gridime/SettingsViews.kt",
+   "before": "8893020b89c7b8d589d9fdf1b5ce6c17b5feefe3",
+   "after": "3e6621c7e6235d853c168642649e23509708bdc7"
+  },
+  {
+   "path": "app/src/main/java/com/example/gridime/TutorialActivity.kt",
+   "before": "f15fe495e384ceab84780a14cff858be436773de",
+   "after": "c2f2bc74725ff36790ac66786227b3481954b187"
+  },
+  {
+   "path": "app/src/main/java/com/example/gridime/WhatsNew.kt",
+   "before": "6010202adcc30f14ba9f6ef5555641779365230d",
+   "after": "2ef6636363eb399cda8e3b0bfc0ba3836bcaa65f"
+  },
+  {
+   "path": "app/src/main/res/raw/chime_back.wav",
+   "before": "cf5700ba59731b0c7dc401f0335e048be7cacd4d",
+   "after": "005af00fca188a65a330ca1783bad515598d26c9"
+  },
+  {
+   "path": "app/src/main/res/raw/chime_confirm.wav",
+   "before": "2eb61b40ebbd994e0db9a18e6026308938221a26",
+   "after": "676ce38168290b5da01e26bca4bbac5b2fe1bac0"
+  },
+  {
+   "path": "app/src/main/res/raw/chime_delete.wav",
+   "before": "9f10409e0bc3c6270c7b54b781429caf3fd87016",
+   "after": "e9e7c777976dcc54979017e3e17cca7b08447051"
+  },
+  {
+   "path": "app/src/main/res/raw/chime_lock.wav",
+   "before": "24eda2369a34624a3acb162d84c9ce2cba676111",
+   "after": "b76308ad384a5eaaccce8d590e60f6ba5f5b4d0c"
+  },
+  {
+   "path": "app/src/main/res/raw/chime_move.wav",
+   "before": "16fe33df4f1793304e9819120be72cb6a46502e9",
+   "after": "c06a416b4d57620e19f878e55d2bf7e9237853e1"
+  },
+  {
+   "path": "app/src/main/res/raw/chime_off.wav",
+   "before": "0a86b1545a34eca0042fc5fbf5fbe9e300add49a",
+   "after": "7aa4ac71853669cf3db7c5e1b34b97806fdb07b9"
+  },
+  {
+   "path": "app/src/main/res/raw/chime_on.wav",
+   "before": "6dddde851ca2be903c4b0c2b5a1ae6124961a1a6",
+   "after": "3ba57b5eb6e775d62a29d539207ef1aca3d810bb"
+  },
+  {
+   "path": "app/src/main/res/raw/chime_select_all.wav",
+   "before": "b811a7956f21457b0368c1edf17e622594a1cffe",
+   "after": "32a243edda8de4c31ef3da3170a095b928846e55"
+  },
+  {
+   "path": "app/src/main/res/raw/chime_space.wav",
+   "before": "cc7a318e9dfc4e7f9aca6095c6cf872b2b060385",
+   "after": "6358fdc153f12e120fa32a6b080d2f18bcc11a4a"
+  },
+  {
+   "path": "app/src/main/res/raw/chime_type.wav",
+   "before": "d9a317a02868c10c707fdbf958b76c54c7813758",
+   "after": "27a676f8717e7812e52f7d9532373963898ff1be"
+  },
+  {
+   "path": "app/src/main/res/raw/chime_type1.wav",
+   "before": null,
+   "after": "7a48f0b006db8b391d55b70cb81893458c3266ab"
+  },
+  {
+   "path": "app/src/main/res/raw/chime_type2.wav",
+   "before": null,
+   "after": "776de55b6b9575e736cfd9c477ed31f4672adfc1"
+  },
+  {
+   "path": "app/src/main/res/raw/chime_type3.wav",
+   "before": null,
+   "after": "65af47308e93ede2c15c4e50cee0ed2b716dee80"
+  },
+  {
+   "path": "app/src/main/res/raw/felt_back.wav",
+   "before": "95a93e3726abf5e20f87615f0e0a559815fe5371",
+   "after": "02439d715b30983a66a097ce7f242f07fa02ee39"
+  },
+  {
+   "path": "app/src/main/res/raw/felt_confirm.wav",
+   "before": "35243b340b089276c8e698b05baee5ec72906ec3",
+   "after": "8363d47cffa86f07843119db0eb9778bdf6b2ae1"
+  },
+  {
+   "path": "app/src/main/res/raw/felt_delete.wav",
+   "before": "164fb785e10869e52d555df3ef5d4fbead9c1274",
+   "after": "aeb88c83d8b017037ea0fa5b57b5d71b557ddff8"
+  },
+  {
+   "path": "app/src/main/res/raw/felt_lock.wav",
+   "before": "2409500333d0eaa03f7843828a5ca92e7403249e",
+   "after": "c06c75b8982f16ed7147ad7794c03f0375e625c8"
+  },
+  {
+   "path": "app/src/main/res/raw/felt_move.wav",
+   "before": "0ea5ffe845ed692cf160ed7204b41db9ca54cb9b",
+   "after": "28f4087bb7147466db6b1a50c2daf53fc3901358"
+  },
+  {
+   "path": "app/src/main/res/raw/felt_off.wav",
+   "before": "53a6b8f0a3bb62f802fca9839a8cd5a6298968c6",
+   "after": "40c09fe03a0870167fcc289ccc6597e45c24def0"
+  },
+  {
+   "path": "app/src/main/res/raw/felt_on.wav",
+   "before": "f1909228913dade3fad012967d3f20875ebbc930",
+   "after": "ac1e4b9badcebdb1ad71223c6acb388e4eeddacb"
+  },
+  {
+   "path": "app/src/main/res/raw/felt_select_all.wav",
+   "before": "0fc7dc2340f26fb2e212b70e86ac13af0b5f3721",
+   "after": "e771ac64ac9d671e9a80830f09d8eaf008845930"
+  },
+  {
+   "path": "app/src/main/res/raw/felt_space.wav",
+   "before": "265ac12c98d5c1531f7884fdd59e48a8415e53f6",
+   "after": "0da5848fc20a43f215f787c7049090527ddda9f0"
+  },
+  {
+   "path": "app/src/main/res/raw/felt_type.wav",
+   "before": "415f69e5332efd9ccd18f789703e12953c07c8aa",
+   "after": "fb2cc0778f92fb1093349b063613f181f26e371b"
+  },
+  {
+   "path": "app/src/main/res/raw/felt_type1.wav",
+   "before": "a894fadbeac7021432e06f26dfb7815aa6643f07",
+   "after": "63a8cc6945e9d8ea74a741777a37cbf936b9b04a"
+  },
+  {
+   "path": "app/src/main/res/raw/felt_type2.wav",
+   "before": "9027ff21a04cbc913976b86da05f3e9b0df2d7cd",
+   "after": "fba06daa99147e614f13f84e087bdbe1ef36d32b"
+  },
+  {
+   "path": "app/src/main/res/raw/felt_type3.wav",
+   "before": "322bc93155a5ae38a0ba36eb95b15f36d0a5d88d",
+   "after": "776b83795b6bb78f0cbfd05041e1d8e3c4d22600"
+  },
+  {
+   "path": "app/src/main/res/raw/glass_back.wav",
+   "before": null,
+   "after": "95f94db112c96c213845f33f008d15786bb3fe59"
+  },
+  {
+   "path": "app/src/main/res/raw/glass_confirm.wav",
+   "before": null,
+   "after": "278b8ec459f14b8f22aa7016ff410b244a60dde5"
+  },
+  {
+   "path": "app/src/main/res/raw/glass_delete.wav",
+   "before": null,
+   "after": "24d653b7f5dda69c441b60cfddd5adcbd8931119"
+  },
+  {
+   "path": "app/src/main/res/raw/glass_lock.wav",
+   "before": null,
+   "after": "b2e997a83673dd9d5ecd281b47c6bacf518153cb"
+  },
+  {
+   "path": "app/src/main/res/raw/glass_move.wav",
+   "before": null,
+   "after": "c06d16345ee7517e3ca363f7ebfadfaec5292a47"
+  },
+  {
+   "path": "app/src/main/res/raw/glass_off.wav",
+   "before": null,
+   "after": "77b57c8bec0fc17d896c0641a0ef2ee5f2dd46c4"
+  },
+  {
+   "path": "app/src/main/res/raw/glass_on.wav",
+   "before": null,
+   "after": "da6a9d2de9c6d8b7d0a89909377de06cd7a0c123"
+  },
+  {
+   "path": "app/src/main/res/raw/glass_select_all.wav",
+   "before": null,
+   "after": "1bcb537c782fde7581056fe0517a1a87e335c8c5"
+  },
+  {
+   "path": "app/src/main/res/raw/glass_space.wav",
+   "before": null,
+   "after": "bbee8484103420f3e16399449db1d7b5f9689feb"
+  },
+  {
+   "path": "app/src/main/res/raw/glass_type.wav",
+   "before": null,
+   "after": "e83e07c7e7bc16e730da774ee6bd9e25e1ff3ef2"
+  },
+  {
+   "path": "app/src/main/res/raw/glass_type1.wav",
+   "before": null,
+   "after": "a01d1f705be1fa0d0773208b61dc1bf35f07f7e4"
+  },
+  {
+   "path": "app/src/main/res/raw/glass_type2.wav",
+   "before": null,
+   "after": "a0508c0408924959b73a04b8824d4f0f3ce773d1"
+  },
+  {
+   "path": "app/src/main/res/raw/glass_type3.wav",
+   "before": null,
+   "after": "6aec984f7e42a1acfe996269006fdc949addad23"
+  },
+  {
+   "path": "app/src/main/res/raw/pop_back.wav",
+   "before": null,
+   "after": "83d08983c94748af693d89c04e1c71149920499e"
+  },
+  {
+   "path": "app/src/main/res/raw/pop_confirm.wav",
+   "before": null,
+   "after": "25ac0a370dc4237c32643c28bfa4b41229c23f5e"
+  },
+  {
+   "path": "app/src/main/res/raw/pop_delete.wav",
+   "before": null,
+   "after": "04cb5d4b2ee72242d8a0a2838d21d8f3d90510f5"
+  },
+  {
+   "path": "app/src/main/res/raw/pop_lock.wav",
+   "before": null,
+   "after": "2489206af574810b8100b8fd4fbfe94c71cf0805"
+  },
+  {
+   "path": "app/src/main/res/raw/pop_move.wav",
+   "before": null,
+   "after": "b8501a39313c11236b216b2172ec854fed89badb"
+  },
+  {
+   "path": "app/src/main/res/raw/pop_off.wav",
+   "before": null,
+   "after": "6e73cf765c01cab722c9b82001e749d9dc534322"
+  },
+  {
+   "path": "app/src/main/res/raw/pop_on.wav",
+   "before": null,
+   "after": "45d8d382f8bacf7b26b8dd4814abc68d079e17ff"
+  },
+  {
+   "path": "app/src/main/res/raw/pop_select_all.wav",
+   "before": null,
+   "after": "2854f9fe0747c0917677873df7c84247aafeb5b4"
+  },
+  {
+   "path": "app/src/main/res/raw/pop_space.wav",
+   "before": null,
+   "after": "81e6f59d91fd9c7b928f66ddb37c78a50764ab90"
+  },
+  {
+   "path": "app/src/main/res/raw/pop_type.wav",
+   "before": null,
+   "after": "f6c0d040aa053ab21358c5ea373abeb249f34f6d"
+  },
+  {
+   "path": "app/src/main/res/raw/pop_type1.wav",
+   "before": null,
+   "after": "b1690775c38fdf118e18b400a7f30e18c417ee27"
+  },
+  {
+   "path": "app/src/main/res/raw/pop_type2.wav",
+   "before": null,
+   "after": "b723c41056d2cb6c0a1a266ebe6878612a88e446"
+  },
+  {
+   "path": "app/src/main/res/raw/pop_type3.wav",
+   "before": null,
+   "after": "9eb7f5848ff1158e57980556d208cc697c3f1764"
+  },
+  {
+   "path": "app/src/main/res/raw/retro_back.wav",
+   "before": "31ed0d8eea1ce43aba3a9f89ae36e1ff8cd3853b",
+   "after": "d5556467d6b19fcac8e9f98f55a9aed1661bb3b7"
+  },
+  {
+   "path": "app/src/main/res/raw/retro_confirm.wav",
+   "before": "3652e717b242ea6b3a7c09df159e9c7e34c0edb7",
+   "after": "bedbf3aeff98145d6ef2463ede8bb780938f4c83"
+  },
+  {
+   "path": "app/src/main/res/raw/retro_delete.wav",
+   "before": "f0475978c227f0e1923221b10097c34f89e30805",
+   "after": "c83a39865e15441cd1a640240c03d496b1b9fe2f"
+  },
+  {
+   "path": "app/src/main/res/raw/retro_lock.wav",
+   "before": "b1a42c9b9233201ad2ecc509ec6607a749add4e4",
+   "after": "0ec3b0aec2ce10b8e9484cde0b9884266a9398e5"
+  },
+  {
+   "path": "app/src/main/res/raw/retro_move.wav",
+   "before": "aff64c63215ceaff253e2bbd6272fc95cb2a39cd",
+   "after": "6d185345dd4b2b4909d144d61db7db84ca330bb7"
+  },
+  {
+   "path": "app/src/main/res/raw/retro_off.wav",
+   "before": "071e3cebb065080c8e695f045a97f9537a9b95c8",
+   "after": "e223654e76cce2ac8327f60476f1634de108e7ea"
+  },
+  {
+   "path": "app/src/main/res/raw/retro_on.wav",
+   "before": "f749f377d2a83d244aee226bebb2a99b5764d616",
+   "after": "964af599db30737c1b29b9723911561fef35d125"
+  },
+  {
+   "path": "app/src/main/res/raw/retro_select_all.wav",
+   "before": "9955c27727b609cb5e9b095d2d555dc7cfff9696",
+   "after": "d4e5613993ff2b0249b447a2d311be3b3f038e19"
+  },
+  {
+   "path": "app/src/main/res/raw/retro_space.wav",
+   "before": "229105dbcbafaa6777c942706be5891e787116dc",
+   "after": "3ca715d4bfb1b3de6b3c6cf854414d3cc307aa26"
+  },
+  {
+   "path": "app/src/main/res/raw/retro_type.wav",
+   "before": "2478da221b062ed5efe726a8b499131f2cc48133",
+   "after": "b658d0e8f28458db04485d621af320df2cc30cd9"
+  },
+  {
+   "path": "app/src/main/res/raw/retro_type1.wav",
+   "before": "8746099e0e7bb84dd99d05526342622c982324f6",
+   "after": "31b61dc7abe63ed924709c0ce8d66fc6eb38505f"
+  },
+  {
+   "path": "app/src/main/res/raw/retro_type2.wav",
+   "before": "ae880eabd32230ac2a400052880bcba11b8cbdcf",
+   "after": "47282e300af8a9638faa74052a9bff3d2997b65a"
+  },
+  {
+   "path": "app/src/main/res/raw/retro_type3.wav",
+   "before": "2ffe254c65919473d42baccb24fe5c5650ae9ea7",
+   "after": "89d86820092cf9354bd374ce1108e51255ee51e2"
+  },
+  {
+   "path": "app/src/main/res/raw/soft_back.wav",
+   "before": "990492b25bbf53a9139fda3bc91078be83e5011a",
+   "after": "961e9a5c28032564c4158f7e0f0c1fb5bc590a89"
+  },
+  {
+   "path": "app/src/main/res/raw/soft_confirm.wav",
+   "before": "fbbced7bbb1c8b1fa44be2741019db044599870a",
+   "after": "0713d910e5e9dcf79063a845a474dc5074b5c688"
+  },
+  {
+   "path": "app/src/main/res/raw/soft_delete.wav",
+   "before": "892d1f8f817d90478887b07d99b1707e214c200b",
+   "after": "5a3577fd8bbcb5506ed2815759c16468f0ca6768"
+  },
+  {
+   "path": "app/src/main/res/raw/soft_lock.wav",
+   "before": "9ebe0d818ac407810d2e3b239be1b9111664fe1b",
+   "after": "8b6e1fdd7aca64d503cdf3cc16812f0baff6a1b2"
+  },
+  {
+   "path": "app/src/main/res/raw/soft_move.wav",
+   "before": "5a432fe16350f5e0630e150ba520829846536929",
+   "after": "86f20ada6c7a8e5759ce9adf428205851e443a0a"
+  },
+  {
+   "path": "app/src/main/res/raw/soft_off.wav",
+   "before": "ef22c469cab3587a5f0a15f9d602b92e2e4d40ac",
+   "after": "5dbbb4eccb6747e816d46cd561f50494c2f28ee5"
+  },
+  {
+   "path": "app/src/main/res/raw/soft_on.wav",
+   "before": "fd55f0f76f43f4651a43e95dcf0c024981fd0143",
+   "after": "0fd180ebcf95275a55cd94ca06ddaf72db7c7237"
+  },
+  {
+   "path": "app/src/main/res/raw/soft_select_all.wav",
+   "before": "abb30c29e1a16730c6484fe3c166629ac67e1158",
+   "after": "d8d039a92305d5580cb63d66261fc8974d4236b1"
+  },
+  {
+   "path": "app/src/main/res/raw/soft_space.wav",
+   "before": "9f1ce76e758e13cc0a101f9eb2e56e8fb474929b",
+   "after": "b6cc9805924682b52d9f6cb1e7030815568f2dba"
+  },
+  {
+   "path": "app/src/main/res/raw/soft_type.wav",
+   "before": "952b7b183fcd9eb8111d43451baa91760b2cfe25",
+   "after": "37a2a2a811d01398f2df98cb74fdff8940ebb42f"
+  },
+  {
+   "path": "app/src/main/res/raw/soft_type1.wav",
+   "before": "5559e6e7f7d8fd3e16c70668e9f3ea160746f039",
+   "after": "2719f33435da65699ec372c0e0d0c22bb2b5732b"
+  },
+  {
+   "path": "app/src/main/res/raw/soft_type2.wav",
+   "before": "d6c301a7809f578c529cf1e1ac104e4b70fbdc18",
+   "after": "77ad411a9a032a1f5c700f81a8f86333c9a92be2"
+  },
+  {
+   "path": "app/src/main/res/raw/soft_type3.wav",
+   "before": "f240db19616a0941368e8fa75042719c60f1169b",
+   "after": "5d1075de02847bd196959e65ce847e9f0b39a4a4"
+  },
+  {
+   "path": "app/src/main/res/raw/softdeep_back.wav",
+   "before": "2a7d5bd92040a38fd1edd50ff810ca97d82607d9",
+   "after": null
+  },
+  {
+   "path": "app/src/main/res/raw/softdeep_confirm.wav",
+   "before": "142661b8ee23a20a8fe2d5a3e58c45d5bf126134",
+   "after": null
+  },
+  {
+   "path": "app/src/main/res/raw/softdeep_delete.wav",
+   "before": "05fabc661ae4b04e3588d959987311cac6032796",
+   "after": null
+  },
+  {
+   "path": "app/src/main/res/raw/softdeep_lock.wav",
+   "before": "16d8569f351e11cc3c325ab1de54104290bd7ef8",
+   "after": null
+  },
+  {
+   "path": "app/src/main/res/raw/softdeep_move.wav",
+   "before": "4dd51a9ac39b4dc4556b31c7373e5f0e6504c8df",
+   "after": null
+  },
+  {
+   "path": "app/src/main/res/raw/softdeep_off.wav",
+   "before": "906d3e699dcfa4a980f9d6145ce609a5f63e8555",
+   "after": null
+  },
+  {
+   "path": "app/src/main/res/raw/softdeep_on.wav",
+   "before": "bd9b77242ce7576e252263cdd005814646f31bf3",
+   "after": null
+  },
+  {
+   "path": "app/src/main/res/raw/softdeep_select_all.wav",
+   "before": "1d486024bef2525a718da4ee5b596849dde277b9",
+   "after": null
+  },
+  {
+   "path": "app/src/main/res/raw/softdeep_space.wav",
+   "before": "c1fffffa02dea44cfb9d6e907e6c582f3249f82a",
+   "after": null
+  },
+  {
+   "path": "app/src/main/res/raw/softdeep_type.wav",
+   "before": "16b28adde4f632f9160c9d6b9b04b12d279ba917",
+   "after": null
+  },
+  {
+   "path": "app/src/main/res/raw/softdeep_type1.wav",
+   "before": "ade0383a7bbd661196379ead5adf8f85c3c48524",
+   "after": null
+  },
+  {
+   "path": "app/src/main/res/raw/softdeep_type2.wav",
+   "before": "d4ffcfa8a48145cf8a919364c6b11b0557397c37",
+   "after": null
+  },
+  {
+   "path": "app/src/main/res/raw/softdeep_type3.wav",
+   "before": "09bea240a87fd2876c5806a0aec0ec34636f1a1e",
+   "after": null
+  },
+  {
+   "path": "app/src/main/res/raw/tactile_back.wav",
+   "before": "557dbefcc3b33391241d5b6425a649c1152098f6",
+   "after": "e1e16e0418d37e713132b157d0867154fff23000"
+  },
+  {
+   "path": "app/src/main/res/raw/tactile_confirm.wav",
+   "before": "e500ace1de6db85cd3d155c475b632ac2431f43b",
+   "after": "d8b23eda95756681407cb4800a241514dc1d0334"
+  },
+  {
+   "path": "app/src/main/res/raw/tactile_delete.wav",
+   "before": "d4e600425406bbfe7a9820bd3173822a3a8605ec",
+   "after": "1455026106527c6e2132fb83427829cb4860dd31"
+  },
+  {
+   "path": "app/src/main/res/raw/tactile_lock.wav",
+   "before": "c677bccb039b432d916aa899a7bb0952408766fb",
+   "after": "ab41aeb9aaa549f0749817e8138141f37e02f7a4"
+  },
+  {
+   "path": "app/src/main/res/raw/tactile_move.wav",
+   "before": "106bd305ff77cf7a03ed8d4b47cb80ff5cd1f7d9",
+   "after": "c46c36ea542dd1b840d077f925ee593a6e2cea01"
+  },
+  {
+   "path": "app/src/main/res/raw/tactile_off.wav",
+   "before": "22644b8db62538e2d7130092bd3ed6f5d777aa30",
+   "after": "76425e806f06e04e284f288394c7282a1f25f2e3"
+  },
+  {
+   "path": "app/src/main/res/raw/tactile_on.wav",
+   "before": "e2192099366f71d0fd3be7ed1df640e1ce6acade",
+   "after": "c3ba7ca4a6592b685ea259ec30cafbe8018c4166"
+  },
+  {
+   "path": "app/src/main/res/raw/tactile_select_all.wav",
+   "before": "484949dd08d70472ff7f68f5e9c162b8e8c5b7f6",
+   "after": "5aba98b83ab5776490af9f5976df4441ebce9d19"
+  },
+  {
+   "path": "app/src/main/res/raw/tactile_space.wav",
+   "before": "96003113460705ad4bfde6bc736c41376b0e910e",
+   "after": "08e354562022e45f3a76b031c0a10317e3020f0d"
+  },
+  {
+   "path": "app/src/main/res/raw/tactile_type.wav",
+   "before": "614b2916a73c72437319b6f9ee3c247d2f7cf59b",
+   "after": "217eefa1fa977d3ea3a4c874deb5800782d2ab2b"
+  },
+  {
+   "path": "app/src/main/res/raw/tactile_type1.wav",
+   "before": null,
+   "after": "81cfd0e9434a98d963950f19550c20e95f24c546"
+  },
+  {
+   "path": "app/src/main/res/raw/tactile_type2.wav",
+   "before": null,
+   "after": "b58653f3c347dd3b9074752f765198aca0f6afa7"
+  },
+  {
+   "path": "app/src/main/res/raw/tactile_type3.wav",
+   "before": null,
+   "after": "79bd0d54e51c6b19ed14eb86733062ce03e4fedf"
+  },
+  {
+   "path": "app/src/main/res/raw/thock_back.wav",
+   "before": null,
+   "after": "e3045d4fc5e8c9fb985a4a4be7233fdf65df0fe4"
+  },
+  {
+   "path": "app/src/main/res/raw/thock_confirm.wav",
+   "before": null,
+   "after": "11559dfea6e50d30725ef2f0a0823ce267bd1341"
+  },
+  {
+   "path": "app/src/main/res/raw/thock_delete.wav",
+   "before": null,
+   "after": "e7e7cb5016223dcb8114c42c0bc21e69b7098b60"
+  },
+  {
+   "path": "app/src/main/res/raw/thock_lock.wav",
+   "before": null,
+   "after": "ed274a9a85d1202d54750c9f2b1292a0570007e4"
+  },
+  {
+   "path": "app/src/main/res/raw/thock_move.wav",
+   "before": null,
+   "after": "b65f75714602cb7e6f50b32db2ba0b1eed26662a"
+  },
+  {
+   "path": "app/src/main/res/raw/thock_off.wav",
+   "before": null,
+   "after": "a71b4a423de81381aa3764460a7a880ec5dd6561"
+  },
+  {
+   "path": "app/src/main/res/raw/thock_on.wav",
+   "before": null,
+   "after": "3e0273bde85827d4bb6e964d1b987ea3e78dddf5"
+  },
+  {
+   "path": "app/src/main/res/raw/thock_select_all.wav",
+   "before": null,
+   "after": "a8fad7739a0e5b297efcd273defc309c373b96c8"
+  },
+  {
+   "path": "app/src/main/res/raw/thock_space.wav",
+   "before": null,
+   "after": "69818691c5e5af55d49ce56b76649079c5822720"
+  },
+  {
+   "path": "app/src/main/res/raw/thock_type.wav",
+   "before": null,
+   "after": "8efa17b50d24da8218b96a6bcf4c28eec77897b1"
+  },
+  {
+   "path": "app/src/main/res/raw/thock_type1.wav",
+   "before": null,
+   "after": "8f7ae2cf6e9b787d9fe2c4642da826f58d84851e"
+  },
+  {
+   "path": "app/src/main/res/raw/thock_type2.wav",
+   "before": null,
+   "after": "ddd3766d8e1023faaa1f6429666d50b8cd20f173"
+  },
+  {
+   "path": "app/src/main/res/raw/thock_type3.wav",
+   "before": null,
+   "after": "3225b48f59aecd6c1d8837678e28e6aa2a407b0f"
+  },
+  {
+   "path": "app/src/main/res/raw/typewriter_back.wav",
+   "before": "7144a7c6037659ef314cdc44c9e503aecbbc06b0",
+   "after": "58c785f2f51f76e5425ff7bb3d2f7b4424f0688c"
+  },
+  {
+   "path": "app/src/main/res/raw/typewriter_confirm.wav",
+   "before": "8eb2e9b78d68eefb5e8f5f56b204b9b2e557d3f6",
+   "after": "bf14db83b84666205c2a067bdf6c117409f7054f"
+  },
+  {
+   "path": "app/src/main/res/raw/typewriter_delete.wav",
+   "before": "4809d74ee0247a2a68b5e35532c6d6b3afdbea63",
+   "after": "532c7d97be86400fc8298ecccd24baaccf42bb55"
+  },
+  {
+   "path": "app/src/main/res/raw/typewriter_lock.wav",
+   "before": "ab7a4833ed36fd2a609aa80031b5838eb065540d",
+   "after": "e93fca28d28bad277efd79b81c59622c0c70e37c"
+  },
+  {
+   "path": "app/src/main/res/raw/typewriter_move.wav",
+   "before": "87efe67371413ad8e6c30626c5b4ed2e4364d0ae",
+   "after": "f6cf534a5c132d2360982e2b8529369d26dce7ae"
+  },
+  {
+   "path": "app/src/main/res/raw/typewriter_off.wav",
+   "before": "3e70a3be5470c647df6e272d894cd091babd45f2",
+   "after": "b2b607720b0328b4f8f0b1b7dce8f851a7de733f"
+  },
+  {
+   "path": "app/src/main/res/raw/typewriter_on.wav",
+   "before": "92f2f07f2db87bc573997f8a07e74cf0659308df",
+   "after": "d1b197ff2ec24bb2479a70ea92b9a005bec87c0c"
+  },
+  {
+   "path": "app/src/main/res/raw/typewriter_select_all.wav",
+   "before": "d38361b4a49d7d1652616ef91d8ee6d770cfdae3",
+   "after": "68613b7dcaedd327489328f6ca1d599520dcc791"
+  },
+  {
+   "path": "app/src/main/res/raw/typewriter_space.wav",
+   "before": "1a53e72cb70c4143bf6c83cef081314aed8743f3",
+   "after": "2115b674940c3035c12256083cc327005894e6ac"
+  },
+  {
+   "path": "app/src/main/res/raw/typewriter_type.wav",
+   "before": "cb42f8ef09ac37800968bf2757e6e76f58ed071e",
+   "after": "4c2cea3a4111b4edc84547e26a7d62f5b569a2ce"
+  },
+  {
+   "path": "app/src/main/res/raw/typewriter_type1.wav",
+   "before": "bbd31091f4e6c1a9a6588f60dab86b0fff3f50b5",
+   "after": "255061b00b69d570e0f3a1d2fbe1fe91f5b1fa32"
+  },
+  {
+   "path": "app/src/main/res/raw/typewriter_type2.wav",
+   "before": "20031e31f5c527a0aec67b02818f4b116bfd497f",
+   "after": "3d650ad5538939b4105e26b8a190943fdf36ba13"
+  },
+  {
+   "path": "app/src/main/res/raw/typewriter_type3.wav",
+   "before": "b59ef57b711cb5cb28d7b91bdcc77f648db006d1",
+   "after": "c47937ca5b4c933a5c6fdfd20941ab108fa84a5f"
+  },
+  {
+   "path": "app/src/preview/res/drawable/ic_launcher_background.xml",
+   "before": null,
+   "after": "99f4afe0c512a6d4d2326fcbfd55a10ecb5ccf04"
+  },
+  {
+   "path": "app/src/preview/res/drawable/ic_launcher_foreground.xml",
+   "before": null,
+   "after": "73370f7eba10249b8a38d74d746cd7795ccee41c"
+  },
+  {
+   "path": "app/src/test/java/com/example/gridime/ConsistencyTest.kt",
+   "before": "c1fc23c7072d1563cb8e9532b4f44bb21f5b8e41",
+   "after": "a7b7e84c57b7b6947c3ad561d5948fd2b293cfa0"
+  },
+  {
+   "path": "app/src/test/java/com/example/gridime/CustomColourTest.kt",
+   "before": null,
+   "after": "69f97dab3d47b6ee2b3f884d1b8a1d39304ffe5b"
+  },
+  {
+   "path": "app/src/test/java/com/example/gridime/DeviceDetectionTest.kt",
+   "before": null,
+   "after": "d559675e35687c947156ca3192167693dc791528"
+  },
+  {
+   "path": "app/src/test/java/com/example/gridime/SilentModeDefaultTest.kt",
+   "before": null,
+   "after": "204bfd04e2d189635520dad1b373c1ab18940557"
+  },
+  {
+   "path": "app/src/test/java/com/example/gridime/SoundPacksTest.kt",
+   "before": null,
+   "after": "898691a939398f42e1e5bad9b824b9366f745974"
+  },
+  {
+   "path": "app/src/test/java/com/example/gridime/VisualsExport.kt",
+   "before": "4244aaa6d5fa90db84f57b062996bf9d591e21e4",
+   "after": "05be43904fccda17f1e35e64a167312e3ed1ee43"
+  },
+  {
+   "path": "docs/UPDATING.md",
+   "before": "8a273a750cbd0dd532a6819143bc143534b33a11",
+   "after": "a450fe16c4f30a5c9572bb210addf6625470f1aa"
+  },
+  {
+   "path": "docs/brand/BRAND.md",
+   "before": "a1a360bb89fc8b30dc39ae12aee0025b693964a9",
+   "after": "63212bffecc59eb313d0db16897b5a20e5804ce9"
+  },
+  {
+   "path": "docs/brand/SOUND.md",
+   "before": null,
+   "after": "8eadb3efedb6799206a934275c8fadad083e44f9"
+  },
+  {
+   "path": "docs/images/hero.gif",
+   "before": null,
+   "after": "cfc3d022a2c22117042e76132763efbf3b46891d"
+  },
+  {
+   "path": "docs/images/pack/accents.png",
+   "before": "cd01145b90841afcd7f660565383a9cac7586f73",
+   "after": "965dcc926bb053ed71928b8aa4cb4c8651cf9686"
+  },
+  {
+   "path": "docs/images/pack/controls.png",
+   "before": "254a198f1495b9b05313001a33992dc0d20445d9",
+   "after": "babb1cc8cab74c365899f78466e9cbbaaceb14b0"
+  },
+  {
+   "path": "docs/images/pack/devices.png",
+   "before": "cd82aa35f8971a7d779cb461a375c273ae23c6fe",
+   "after": "7c5f4c0975aa053149a0bae222a181ebeb1a8d0f"
+  },
+  {
+   "path": "docs/images/pack/editing.png",
+   "before": "676a92ad2af3f979666909abbc383eb21bcb4e0d",
+   "after": "48bdd173bfc5b8806a3fe1653e7596c70b7b7899"
+  },
+  {
+   "path": "docs/images/pack/hero.png",
+   "before": "e20655d9c195d8e7887dc895ec1e7ae0a311bd6f",
+   "after": "7bd5f680efdc2a649c986d015bae425e6afdce8c"
+  },
+  {
+   "path": "docs/images/pack/hold.png",
+   "before": "e62bcbf9bd07fb8ffb041308461351a0e6ba931f",
+   "after": "0d2533e665c43788ff2df32b3489fb4d352bc190"
+  },
+  {
+   "path": "docs/images/pack/icons.png",
+   "before": "a60fc97e28ba4c73493c64f142ab87822bf2ff68",
+   "after": "2687c4f2d27d77cf17c2476ac7c692b4180dc96e"
+  },
+  {
+   "path": "docs/images/pack/languages.png",
+   "before": "3f7ee73beec3aad64528d842c14665b245607ac7",
+   "after": "3d1445303ddf59ecfd044570f80ace8887c535b2"
+  },
+  {
+   "path": "docs/images/pack/looks.png",
+   "before": "5a5cc500065f86750fb0c9d1e60a5703353e1ecd",
+   "after": "84c995cd49f6d8d242b2e85977a2fbb3aabae4d1"
+  },
+  {
+   "path": "docs/images/pack/settings.png",
+   "before": "b3469146d687b41bf740ae8b825fe9aedac6a4a3",
+   "after": "510c9435f20d50f87aa5cf6490783291eb6f3c78"
+  },
+  {
+   "path": "docs/images/pack/sound-packs.png",
+   "before": "ac06ba895bd33075738ac7a57465910465e72bd3",
+   "after": "2627ef66c096b4e7faf4d321f147a6a9dd7955e7"
+  },
+  {
+   "path": "docs/images/pack/tidy.png",
+   "before": "eeaba5dad549e03f7f8fbc9a2f6a674b616d79b2",
+   "after": "5839686722ef8c2888537b120ef5cd9255ca210e"
+  },
+  {
+   "path": "docs/images/pack/tour.png",
+   "before": "1a621294ed2f92217bbd7d9d95a6dfb55dc91ab1",
+   "after": "647bd906d633e7576b7f2d9615378d1bb4b9a7f8"
+  },
+  {
+   "path": "docs/images/pack/tv-mode.png",
+   "before": "cbce3e3756823afba5d3f705ed213870b186f78c",
+   "after": "5391f0e59bd315d010935725fe5f656b274124cb"
+  },
+  {
+   "path": "docs/images/pack/typing.png",
+   "before": "f84b465ad82118955a6892747dfd52be103e09b7",
+   "after": "a7d8cd02058048ac939620bac2adea4608503f48"
+  },
+  {
+   "path": "docs/images/pack/words.png",
+   "before": "ae99f874d84975a06e295e8f10b20ee4060415eb",
+   "after": "eb24753a0f0c1d07d823c06ceaa45c5ca7909442"
+  },
+  {
+   "path": "docs/images/social-preview.png",
+   "before": "b4a7e58cd83644378063b39a079007b3bb7f13a8",
+   "after": "9c6b66fe500cfcabe0e5648ae6b9191cde999060"
+  },
+  {
+   "path": "docs/visuals-src/README.md",
+   "before": "725c07160637b8795656d85b1173ba9b6f88b762",
+   "after": "e542331d661f0256c2a826e842c3ced1c3a78500"
+  },
+  {
+   "path": "docs/visuals-src/VISUAL_SYSTEM.md",
+   "before": null,
+   "after": "efc8f2dfd5624a7c17af86cd712a963f81efa523"
+  },
+  {
+   "path": "docs/visuals-src/backdrop.js",
+   "before": null,
+   "after": "2c80f6170567df0ce3e2d2cafb785b40ff429931"
+  },
+  {
+   "path": "docs/visuals-src/feature.html",
+   "before": "abd9a618a9e71a90e8aa59e1638990d79af347ae",
+   "after": "d5aaf8347655cf14266c3a024912fa0196ec945a"
+  },
+  {
+   "path": "docs/visuals-src/features.js",
+   "before": "aec2075eac23642b22ecdfec6d3aebc8d6021c90",
+   "after": "9a17ba0d2469e51d00d01aa226e1acac2084329f"
+  },
+  {
+   "path": "docs/visuals-src/hero-devices.js",
+   "before": null,
+   "after": "9c662662a78bb1dc8eedde74cecf0cc021cdf43c"
+  },
+  {
+   "path": "docs/visuals-src/hero-loop.py",
+   "before": null,
+   "after": "2be38d3f5f658a51d7482dea144430a6632d2d81"
+  },
+  {
+   "path": "docs/visuals-src/hero-parts/c-controller-xbox-lit-4FA8FF.svg",
+   "before": null,
+   "after": "52b34d5dc00b24fc4c52dfe32486e2d16283e526"
+  },
+  {
+   "path": "docs/visuals-src/hero-parts/c-controller-xbox-lit-7EE6A8.svg",
+   "before": null,
+   "after": "fd75c214abc95cc9bab76deb3bb2abc94edfb7f7"
+  },
+  {
+   "path": "docs/visuals-src/hero-parts/c-controller-xbox-lit-B39DFF.svg",
+   "before": null,
+   "after": "2671db25be231fb4785c52ecb896d41595d23802"
+  },
+  {
+   "path": "docs/visuals-src/hero-parts/c-controller-xbox-lit-F48FB1.svg",
+   "before": null,
+   "after": "4a5bae831749e1ce34ad3e57d1df78224eabf81f"
+  },
+  {
+   "path": "docs/visuals-src/hero-parts/c-controller-xbox-lit-FA82BE.svg",
+   "before": null,
+   "after": "5eb7d3e1cf48a2d1af465b6971648ed70c059ec7"
+  },
+  {
+   "path": "docs/visuals-src/hero-parts/c-controller-xbox-lit-FADC82.svg",
+   "before": null,
+   "after": "ee5fda2de01bed06e7862373167c07d9476625dd"
+  },
+  {
+   "path": "docs/visuals-src/hero-parts/c-controller-xbox-lit-FF8A80.svg",
+   "before": null,
+   "after": "1786260c11751400576fb95f80104c35c5f690ef"
+  },
+  {
+   "path": "docs/visuals-src/hero-parts/c-controller-xbox-lit-FFC857.svg",
+   "before": null,
+   "after": "227f1fb621c77984ef6088346501ef272a40ea0b"
+  },
+  {
+   "path": "docs/visuals-src/hero-parts/c-controller-xbox-lit.svg",
+   "before": null,
+   "after": "36ae3d7696b925eb281325da8f9d590ba7426052"
+  },
+  {
+   "path": "docs/visuals-src/hero-parts/c-remote-lit-4FA8FF.svg",
+   "before": null,
+   "after": "250fd948b64f456f1d34e7e36238e9b2047f5802"
+  },
+  {
+   "path": "docs/visuals-src/hero-parts/c-remote-lit-7EE6A8.svg",
+   "before": null,
+   "after": "a8a6d434946cc69ab677f9c966c20af6ff3451b3"
+  },
+  {
+   "path": "docs/visuals-src/hero-parts/c-remote-lit-B39DFF.svg",
+   "before": null,
+   "after": "547677ffedf7bd9fdf6291d293de999164e3e412"
+  },
+  {
+   "path": "docs/visuals-src/hero-parts/c-remote-lit-F48FB1.svg",
+   "before": null,
+   "after": "b90d1db57a1a7dbcebe7dcfaedab8e4fb336ff58"
+  },
+  {
+   "path": "docs/visuals-src/hero-parts/c-remote-lit-FA82BE.svg",
+   "before": null,
+   "after": "0bfa0b65ec77ae2f81afa8a8ed13e99ed845392f"
+  },
+  {
+   "path": "docs/visuals-src/hero-parts/c-remote-lit-FADC82.svg",
+   "before": null,
+   "after": "6862f1d0e36614c0efe220bb1e54088406961fef"
+  },
+  {
+   "path": "docs/visuals-src/hero-parts/c-remote-lit-FF8A80.svg",
+   "before": null,
+   "after": "5175d1a345bf3ce3d873fb743b8a37419affe967"
+  },
+  {
+   "path": "docs/visuals-src/hero-parts/c-remote-lit-FFC857.svg",
+   "before": null,
+   "after": "26d1b82e099dc556adbf5863470bbfd5aeff4b6d"
+  },
+  {
+   "path": "docs/visuals-src/hero-parts/c-remote-lit.svg",
+   "before": null,
+   "after": "5e0c67ff7d0401cbea0a617e2a59c250efbcf8cc"
+  },
+  {
+   "path": "docs/visuals-src/hero-parts/c-vsplit-xbox-a-4FA8FF.svg",
+   "before": null,
+   "after": "a49a2a97543cdf2af81200869b4becf81da4256a"
+  },
+  {
+   "path": "docs/visuals-src/hero-parts/c-vsplit-xbox-a-7EE6A8.svg",
+   "before": null,
+   "after": "cc651dac82c797650034d67c87ed384593606dbb"
+  },
+  {
+   "path": "docs/visuals-src/hero-parts/c-vsplit-xbox-a-B39DFF.svg",
+   "before": null,
+   "after": "c352a59f3fe84767866cbb867cb815c34180d88b"
+  },
+  {
+   "path": "docs/visuals-src/hero-parts/c-vsplit-xbox-a-F48FB1.svg",
+   "before": null,
+   "after": "c58ea38202a4da0c1e81789453137f8a51f5b363"
+  },
+  {
+   "path": "docs/visuals-src/hero-parts/c-vsplit-xbox-a-FA82BE.svg",
+   "before": null,
+   "after": "fb4dc6fcb6882ff5b52c72226878d407b254dc42"
+  },
+  {
+   "path": "docs/visuals-src/hero-parts/c-vsplit-xbox-a-FADC82.svg",
+   "before": null,
+   "after": "2c66d45d34ffd398a0f0108c66fab7be6852ac2e"
+  },
+  {
+   "path": "docs/visuals-src/hero-parts/c-vsplit-xbox-a-FF8A80.svg",
+   "before": null,
+   "after": "05253fc9881062a8a2ac24f5300ae5a7109012b0"
+  },
+  {
+   "path": "docs/visuals-src/hero-parts/c-vsplit-xbox-a-FFC857.svg",
+   "before": null,
+   "after": "4574dcaff7615198a26684fb0c3a5d225f2747e3"
+  },
+  {
+   "path": "docs/visuals-src/hero-parts/c-vsplit-xbox-a.svg",
+   "before": null,
+   "after": "33fae029b98f0f74b5e3cd039d5e052832a5ff05"
+  },
+  {
+   "path": "docs/visuals-src/hero-parts/c-vsplit-xbox-b-4FA8FF.svg",
+   "before": null,
+   "after": "1f4551cb6872b766eeac39878adda7005b226135"
+  },
+  {
+   "path": "docs/visuals-src/hero-parts/c-vsplit-xbox-b-7EE6A8.svg",
+   "before": null,
+   "after": "753446eda93f611d824c8e050fff3bc8a94a8e23"
+  },
+  {
+   "path": "docs/visuals-src/hero-parts/c-vsplit-xbox-b-B39DFF.svg",
+   "before": null,
+   "after": "32c9b2949888fc269862aca87c2e936191f5ec24"
+  },
+  {
+   "path": "docs/visuals-src/hero-parts/c-vsplit-xbox-b-F48FB1.svg",
+   "before": null,
+   "after": "265c8901de33d75836568dcb04dc21e809177785"
+  },
+  {
+   "path": "docs/visuals-src/hero-parts/c-vsplit-xbox-b-FA82BE.svg",
+   "before": null,
+   "after": "e1d83d99bbdbe8be5b03f5a206d40440ae23c0a7"
+  },
+  {
+   "path": "docs/visuals-src/hero-parts/c-vsplit-xbox-b-FADC82.svg",
+   "before": null,
+   "after": "16ca2c37bb13a6d5a0983a66b7927b5ef8ef8e65"
+  },
+  {
+   "path": "docs/visuals-src/hero-parts/c-vsplit-xbox-b-FF8A80.svg",
+   "before": null,
+   "after": "0b25e58cb861d6f1398de9be202ee62f33f446a8"
+  },
+  {
+   "path": "docs/visuals-src/hero-parts/c-vsplit-xbox-b-FFC857.svg",
+   "before": null,
+   "after": "170f0a02cd829cee5c5b87ef5b4cb500399cb0eb"
+  },
+  {
+   "path": "docs/visuals-src/hero-parts/c-vsplit-xbox-b.svg",
+   "before": null,
+   "after": "4d7135a2a4fab4c780c4c3d973341afb40121f8f"
+  },
+  {
+   "path": "docs/visuals-src/hero-parts/c-wide-xbox-lit-4FA8FF.svg",
+   "before": null,
+   "after": "8b13804b1b1f9ee0dba314ef79aac4d7249ac84f"
+  },
+  {
+   "path": "docs/visuals-src/hero-parts/c-wide-xbox-lit-7EE6A8.svg",
+   "before": null,
+   "after": "65155c88378808fb32b3cb7fb7776b698d314f0c"
+  },
+  {
+   "path": "docs/visuals-src/hero-parts/c-wide-xbox-lit-B39DFF.svg",
+   "before": null,
+   "after": "d620195edd74ed8b9ccfeec54fffca3bd0ea1f3f"
+  },
+  {
+   "path": "docs/visuals-src/hero-parts/c-wide-xbox-lit-F48FB1.svg",
+   "before": null,
+   "after": "4db388f8a7f62e8b62cf746fbcd3f545015045ab"
+  },
+  {
+   "path": "docs/visuals-src/hero-parts/c-wide-xbox-lit-FA82BE.svg",
+   "before": null,
+   "after": "37cf2b7660ca589cfe56d53c4991cedaaf3d5286"
+  },
+  {
+   "path": "docs/visuals-src/hero-parts/c-wide-xbox-lit-FADC82.svg",
+   "before": null,
+   "after": "97b47fe63fc7ad2a6f3a91c0daab3c2463c113b5"
+  },
+  {
+   "path": "docs/visuals-src/hero-parts/c-wide-xbox-lit-FF8A80.svg",
+   "before": null,
+   "after": "b06a9dded2aad5803632ee4e731955c4094edda0"
+  },
+  {
+   "path": "docs/visuals-src/hero-parts/c-wide-xbox-lit-FFC857.svg",
+   "before": null,
+   "after": "a4d1a40ccf0af01839c293553ce0f66eec0012a9"
+  },
+  {
+   "path": "docs/visuals-src/hero-parts/c-wide-xbox-lit.svg",
+   "before": null,
+   "after": "51ac4aa17f08210772c2fd3202b137757265bfc9"
+  },
+  {
+   "path": "docs/visuals-src/hero-parts/lockup-clear.svg",
+   "before": null,
+   "after": "497ccf528bfde90972639b1de0ba052243440745"
+  },
+  {
+   "path": "docs/visuals-src/hero.html",
+   "before": null,
+   "after": "656b62ec020fae5660556b8e7a20cdea8525ac9b"
+  },
+  {
+   "path": "docs/visuals-src/make-kit.sh",
+   "before": null,
+   "after": "413a96339b89c8e24a9922a059360dc0a3d1254a"
+  },
+  {
+   "path": "docs/visuals-src/parts.js",
+   "before": "f39a492e6b6a608ac455bdf101cd82b88fa60511",
+   "after": "1226b844e7c5fb168cc1424d646d164dcb039650"
+  },
+  {
+   "path": "docs/visuals-src/shoot.js",
+   "before": "2e08d1e3de63630b4b9b0baf52ad736ac01aa2f0",
+   "after": "fa11d30770ce293c4c43248f3821efd6e66e6727"
+  },
+  {
+   "path": "docs/visuals-src/tour-mockups.html",
+   "before": null,
+   "after": "bc1711d27419a8e57930e70954c855b01b6e022b"
+  },
+  {
+   "path": "tools/changeset.py",
+   "before": null,
+   "after": "8629567f311262b4e5ffc251c6a4906a3c89ab01"
+  },
+  {
+   "path": "tools/new-packs.py",
+   "before": "1834417aa7e41dc6caa9b96b373507c9aec030a6",
+   "after": null
+  },
+  {
+   "path": "tools/soft-synth.py",
+   "before": "081c44014affd4d7fb3980a5d3230fbf5d232017",
+   "after": null
+  },
+  {
+   "path": "tools/softlib.py",
+   "before": "97be9e02ebc1da66e492088d419d98642a1e4019",
+   "after": null
+  },
+  {
+   "path": "tools/sound-synth.py",
+   "before": "6ec0e5f9196ea55b4e8fc58c0c3584190898064a",
+   "after": null
+  },
+  {
+   "path": "tools/soundboard.py",
+   "before": null,
+   "after": "70c7091e38b50a2f746e43e80ff7a5aab00f2261"
+  },
+  {
+   "path": "tools/soundcheck.py",
+   "before": null,
+   "after": "afb37f56d0657cc3be0974975497cc8afd413e7f"
+  },
+  {
+   "path": "tools/sounds.py",
+   "before": null,
+   "after": "1b350ac90726ac79780e10f99554b1b45c92e265"
+  },
+  {
+   "path": "tools/video/brand-kit/handhelds2.js",
+   "before": "271b4e2f3d936404963074e6ac505d5615770870",
+   "after": "37325b45385fdaed146db0170616d89d51d94b5b"
+  },
+  {
+   "path": "tools/video/brand-kit/premium.js",
+   "before": "007ed2608ff7ed0542c4a31c7dfaecb130080b6c",
+   "after": "9238016f6c82d1a208c3e04e83b27229c8e8bfe0"
+  },
+  {
+   "path": "tools/video/spotlight4.js",
+   "before": "5b37e9c59ee57feabf83b7b42cb7c1321e9be0cc",
+   "after": "c9f2f49d5b16f85398052c8d21bf5b7c8b09fbff"
+  }
+ ]
+}

@@ -1,5 +1,80 @@
 # Changelog
 
+## 1.2.0 — Words, accents, sounds and the device in your hands
+
+The biggest update so far. Inlay now suggests words and learns yours, puts accents one hold away, tidies small slips as you type, and knows what you're holding: a controller, a handheld, a vertical handheld or a TV remote. All nine sound packs were remade, Settings got a clearer layout, and the tour and What's new got a new look in your own colour.
+
+**Typing**
+- **Word suggestions.** While you type, the words you probably mean show in the top row, the most likely first. Press the right stick in to take the first one, or move up and pick another. Word lists for all 11 languages. Settings → Typing.
+- **Learn my words.** Words you use often move up the suggestions, and new ones like names and game titles join once you've used them in three different places. It's careful on purpose: a word only counts once you've moved on to the next one (so typos you fix are never kept), mashed keys and words with numbers are ignored, and words fade if you stop using them. On this device only, never from password, web address or email boxes or from apps that ask keyboards not to learn. Forget my words clears it, with an undo.
+- **Hold A for accents.** Hold A on a letter and its accents rise into the top row. Move to one and let go, or let go first and they stay open until you choose. RT + Y still works too.
+- **Tidies up as you type.** A space typed just before a full stop, comma, ! or ? moves after it ("word ." becomes "word. "), and in English a lone i becomes I. Both have a switch, and so do automatic capitals now.
+- **Number row.** An optional slim row of 1 to 0 above the letters. Settings → Look. Number boxes get a tidier number pad too.
+- **B closes the keyboard, and only the keyboard.** The app underneath never sees that press, so a browser no longer goes back or closes when you just wanted the keyboard gone. Press B again and the app gets it as usual.
+
+**Made for what you hold**
+- **A picture of your device** in the Button guide, the tour and What's new, lighting up the buttons as they're used. Held buttons fill a ring that follows the button's shape, sticks slide the way they're pushed, and a clicked stick sinks in.
+- **New Device tab** in Settings: what you're holding (Automatic says why it chose it), your button icons, and Try your buttons, which lights up every press on the picture. Hold B to stop.
+- **Automatic knows gaming handhelds by name**: AYN (Odin), Retroid, Anbernic, AYANEO, GPD and others. Many of them report their own controls as a plugged-in controller, so an Odin used to show up as a controller. The Retroid Pocket Classic is recognised as a vertical handheld without sticks, the Anbernic RG405V and RG406V as vertical with sticks. Anything else still goes by its controls and screen shape.
+- **TV remotes.** OK types, Back closes, and the ring moves. The tour, What's new and Settings all work with just a remote, with their own pages, and controller hints are hidden.
+- **Vertical handhelds**, with or without sticks. Without sticks, stick tips and features are hidden everywhere. Small 4:3 and square screens get layouts that fit.
+- The Button guide shows held buttons in a HOLD capsule, so "hold RT, press A" is clear at a glance.
+
+**Sound**
+- **Nine sound packs, all remade.** Soft (still the default), Thock, Tactile, Typewriter and Felt sound like real keys. Chime, Glass, Pop and Retro play notes from one musical scale, so nothing ever clashes. Thock replaces Soft Deep (if you used Soft Deep, you now get Thock), and Glass and Pop are new.
+- **Every sound was checked** against the same rules: it starts the instant you press, plays once and gets out of the way, never sounds sharp or piercing, and keeps its place on headphones, a handheld speaker and a phone speaker. Caps lock no longer gets quieter than a letter on small speakers.
+- **Four sounds for every letter in every pack**, so fast typing never sounds like a machine gun. Tactile and Chime had only one.
+- **A more even volume slider.** Every step is the same change in loudness, and the default leaves room to go louder.
+- **Sounds play in silent mode on handhelds and TVs.** They're often on silent with no phone to ring, so the keyboard seemed broken. Phones still respect silent mode, and if silent mode is muting the sounds, Settings says so. If you'd already chosen, your choice stays.
+
+**Look**
+- **A custom colour you can really shape:** Colour, Strength (soft to vivid) and Brightness sliders, shown once you pick Custom. Every combination stays readable on every screen, and a custom colour from 1.1 looks the same after the update.
+- **The tour and What's new have a new look:** a dark graphite background with a soft glow made from your highlight colour, any colour, presets and custom alike. The tour says Welcome tour; What's new wears a New in 1.2.0 tag and its light comes from the other side, so the two are easy to tell apart.
+- **New device pictures:** flat, with one clear outline, the same in the app and on GitHub.
+
+**Settings**
+- **Six tabs**, each about one thing: Device, Look, Typing, Sound & haptics, Button guide and About. Clipboard is now part of Typing.
+- **Settings opens without the keyboard.** Press Y to slide it up, and the row you're on stays above it, whole.
+- **With the keyboard up, the tabs fold into a slim line of bars** that still shows which section you're in. LB and RB move along it.
+- The tabs move as one when you switch quickly, and tabs that don't fit slide and fade at the edges.
+- With a remote, the tabs take the focus and there's a keyboard key at the end, since a remote has no Y.
+
+**Tour and What's new**
+- **What's new has a page for the sound packs:** each pack types its own name in its own sounds while its name pops up.
+- The welcome page shows every kind of device Inlay knows, yours first.
+- The demo keyboard sits in its own window and keeps the same key shape on every page; the words above give way first when a page is full.
+- A loop bar under every looping demo shows when it starts again.
+- Remotes get OK and Back in the bottom bar.
+
+**Faster and lighter**
+- Demos stop the moment they're out of sight, instead of running on in the background.
+- Device pictures are drawn once and reused, and the tour's background is painted once instead of on every frame.
+- Calmer redrawing on fast screens: slow animations no longer redraw 120 times a second on a 120 Hz screen. Same look, less battery.
+- Leftover code and two unused libraries removed, so the app is smaller.
+
+**Privacy**
+- Your clipboard history and learned words are never included in Android's cloud backups.
+
+**Small adjustments**
+- The text cursor stays put at the start and end of the text, instead of moving the app's focus away (which closed the keyboard).
+- Slimmer bumpers on the vertical handheld picture; Start and Select sit on top of the wide handheld.
+- The two vertical handhelds change into each other in place on the welcome page.
+- The tour copies before it opens the clipboard, and the demo cursor sits where the real one would.
+- The tour's demo steps light one button at a time.
+
+**Fixes**
+- Pressing a stick in no longer acts as A in Settings and the tour.
+- Scrolling back to the top of a Settings page shows the first row whole again.
+- Settings rows are never cut off at the edge of the screen; a hidden row glides into view.
+- The keyboard preview in Settings slides in as a panel, with no ghost image behind it.
+- Your highlight colour never leaks into a page that should show another.
+
+**Behind the scenes** (for anyone reading the code)
+- Every picture and video on the GitHub page is drawn by the app's own code, so they always match the real app. The rules are in `docs/visuals-src/VISUAL_SYSTEM.md`.
+- The sounds are made by `tools/sounds.py` and checked by `tools/soundcheck.py`; the rules are in `docs/brand/SOUND.md`.
+- More automatic checks: every tour and What's new page on every device, the keyboard sliding in and out under button mashing, every custom colour for readability, and the sound packs against their files.
+- `tools/changeset.py` keeps work done in parallel from overwriting each other.
+
 ## 1.1.1 — Faster, and the right stick joins in
 
 A speed update. Moving around and typing should now feel instant, even when you type fast, and the right stick finally has a job. It's also the first update to say hello: a short What's new screen shows the highlights.

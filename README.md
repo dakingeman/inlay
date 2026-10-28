@@ -1,4 +1,4 @@
-<p align="center"><img src="docs/images/pack/hero.png" alt="Inlay: a gamepad keyboard for Android handhelds"></p>
+<p align="center"><img src="docs/images/hero.gif" alt="Inlay: type with your controller. The keyboard suggests words, shows hold-RT tips, selects text and works in TV mode, on a controller, a handheld, a vertical handheld and a TV remote"></p>
 
 <p align="center">
   <a href="../../releases/latest"><img src="https://img.shields.io/github/v/release/dakingeman/inlay?style=flat-square&color=72D6E8&labelColor=16171D&label=release" alt="Latest release"></a>
@@ -23,44 +23,46 @@ Inlay is a keyboard you drive with the controller, not your thumbs on the glass.
 
 Free and open source. No ads, no tracking, no internet permission.
 
-<p align="center"><img src="docs/images/teaser.gif" alt="Inlay in 20 seconds" width="100%"></p>
+<p align="center"><img src="docs/images/teaser.gif" alt="Inlay in 38 seconds" width="100%"></p>
 
 <p align="center"><a href="https://youtu.be/9xe894Hsr6M"><b>▶ Watch the full video (1:22)</b></a> · <a href="docs/images/demo.gif">A real screen recording from my Odin 2 Portal</a></p>
-<p align="center"><sub>The animation above is drawn from the app's real layouts, colours and sizes.</sub></p>
+<p align="center"><sub>The keyboard and the devices in these pictures are drawn by the app's own code.</sub></p>
 
 <br>
 
 ## What it looks like
 
-<p align="center"><img src="docs/images/pack/typing.png" alt="Move with the D-pad, type with A" width="100%"></p>
+<p align="center"><img src="docs/images/pack/typing.png" alt="Move with the D-pad, press A" width="100%"></p>
 
-<p align="center"><img src="docs/images/pack/editing.png" alt="Edit text properly" width="100%"></p>
+<p align="center"><img src="docs/images/pack/words.png" alt="Words show up as you type" width="100%"></p>
 
-<p align="center"><img src="docs/images/pack/looks.png" alt="Make it look how you want" width="100%"></p>
+<p align="center"><img src="docs/images/pack/accents.png" alt="Hold A for accents" width="100%"></p>
 
-<p align="center"><img src="docs/images/pack/tv-mode.png" alt="TV mode" width="100%"></p>
+<p align="center"><img src="docs/images/pack/devices.png" alt="Made for what you hold" width="100%"></p>
 
 <details>
-<summary><b>See all 13 screens</b></summary>
+<summary><b>See all 14 screens</b></summary>
 <br>
-
-<p align="center"><img src="docs/images/pack/right-stick.png" alt="The right stick moves the cursor" width="100%"></p>
 
 <p align="center"><img src="docs/images/pack/hold.png" alt="Hold RT for more" width="100%"></p>
 
-<p align="center"><img src="docs/images/pack/clipboard.png" alt="Clipboard history" width="100%"></p>
+<p align="center"><img src="docs/images/pack/editing.png" alt="Select, copy and paste" width="100%"></p>
+
+<p align="center"><img src="docs/images/pack/tidy.png" alt="Tidies up as you type" width="100%"></p>
+
+<p align="center"><img src="docs/images/pack/looks.png" alt="Make it look how you want" width="100%"></p>
 
 <p align="center"><img src="docs/images/pack/icons.png" alt="Icons for your controller" width="100%"></p>
 
+<p align="center"><img src="docs/images/pack/tv-mode.png" alt="TV mode" width="100%"></p>
+
 <p align="center"><img src="docs/images/pack/languages.png" alt="Eleven languages" width="100%"></p>
 
-<p align="center"><img src="docs/images/pack/smart-keys.png" alt="Smart keys" width="100%"></p>
-
-<p align="center"><img src="docs/images/pack/sound-packs.png" alt="Seven sound packs" width="100%"></p>
+<p align="center"><img src="docs/images/pack/sound-packs.png" alt="Nine sound packs" width="100%"></p>
 
 <p align="center"><img src="docs/images/pack/tour.png" alt="A one-minute tour" width="100%"></p>
 
-<p align="center"><img src="docs/images/pack/settings.png" alt="Settings, in your colour" width="100%"></p>
+<p align="center"><img src="docs/images/pack/settings.png" alt="Settings, made for the controller" width="100%"></p>
 
 </details>
 
@@ -85,16 +87,20 @@ A one-minute tour opens the first time, and you can replay it any time from **Ab
 |-|-|
 | **Made for controllers** | D-pad or left stick moves the highlight the instant you press, with smart repeat when you hold a direction. A light stick push moves gently, a full push fast. |
 | **Every button has a job** | A types, X deletes (hold to speed up), Y is space, Start is enter. LB and RB move the cursor, RT is shift, LT is symbols, and the right stick moves the cursor too. See [Controls](#controls). |
+| **Word suggestions that learn** | Words you probably mean show in the top row as you type. Press the right stick in for the first, or move up and pick one. It learns the names and titles you use, and only keeps a word once you've really typed it. |
+| **Hold A for accents** | Hold A on a letter and its accents rise into the top row: move to one and let go. |
 | **Hold RT for more** | Small tips appear on the keys: a capital letter, word jumps, accents and undo. Nothing to memorise. |
+| **Tidies up as you type** | A capital starts each sentence, a lone i becomes I, and a space typed before a full stop or comma moves after it. Each has its own switch. |
 | **Edit text properly** | Select, cut, copy, paste and undo from the controller. Press Select twice to select everything. The right stick moves the cursor or grows a selection, faster the further you push (turn it off in Settings → Typing). |
 | **Clipboard history** | Your last six copies, one button away. Anything marked as sensitive (passwords) is never kept. |
-| **11 languages** | English, German, French (AZERTY), Spanish, Portuguese, Norwegian, Danish, Swedish/Finnish, Turkish, Russian and Ukrainian. Pick up to three and switch with RT + LT. RT + Y adds accents (é, ñ, ł and more), so Italian, Dutch, Polish and others work too. |
+| **11 languages** | English, German, French (AZERTY), Spanish, Portuguese, Norwegian, Danish, Swedish/Finnish, Turkish, Russian and Ukrainian. Pick up to three and switch with RT + LT. Hold A (or press RT + Y) for accents (é, ñ, ł and more), so Italian, Dutch, Polish and others work too. |
 | **Smart keys** | / and .com in web addresses, @ in email boxes, a big number pad for numbers. |
 | **TV mode** | A compact floating keyboard with a big line showing what you type, readable from the sofa. Turns on by itself when you dock. |
-| **Make it yours** | 12 themes (including a see-through one), 16 highlight colours plus any custom colour, four highlight styles, three key shapes, two layouts, three sizes, and Xbox, PlayStation or Switch button icons. |
-| **Seven sound packs** | Soft, Soft Deep, Tactile, Chime, Retro, Typewriter and Felt, with vibration tuned so even small motors are felt. |
+| **Made for what you hold** | A controller, a handheld, a vertical handheld (with or without sticks) or a TV remote. Automatic recognises handhelds like the AYN Odin and Retroid Pocket, or pick one yourself. The pictures, tips and tour show your own buttons, and Settings → Device lets you try them. |
+| **Make it yours** | 12 themes (including a see-through one), 16 highlight colours plus a custom colour you shape with Colour, Strength and Brightness (always readable), four highlight styles, three key shapes, two layouts, three sizes, a number row, and Xbox, PlayStation or Switch button icons. |
+| **Nine sound packs** | Soft, Thock, Tactile, Typewriter and Felt for real-key sounds; Chime, Glass, Pop and Retro for little notes in one scale. Vibration is tuned so even small motors are felt. |
 | **Fits every screen** | Wide, 4:3, portrait or split screen. The keyboard never covers more than 60 % of the screen. |
-| **A Settings app for the controller** | A live keyboard preview (press Y), the tour, a short What's new after each update, and your highlight colour all through it. |
+| **A Settings app for the controller** | Six tabs, each about one thing. A live keyboard preview (press Y), the tour, a short What's new after each update, and your highlight colour all through it. |
 | **Types straight into the app** | No full-screen typing box covering your game or launcher. |
 
 ## Controls
@@ -108,14 +114,15 @@ A one-minute tour opens the first time, and you can replay it any time from **Ab
 | Button | What it does |
 |-|-|
 | D-pad or left stick | Move the highlight |
-| A | Type the highlighted key |
+| A | Type the highlighted key · hold for accents |
 | X | Delete · hold to speed up, then whole words |
 | Y | Space |
 | RT | Shift · tap twice for caps lock |
 | LT | Symbols and numbers (in number boxes: letters too) |
 | Start | Enter · Search · Go |
-| B | Close the keyboard · leave select mode or the clipboard |
+| B | Close the keyboard (the app underneath never sees it) · leave the accents, select mode or the clipboard |
 | Press the left stick | Keyboard size: Normal, Large, Largest |
+| Press the right stick | Take the first suggested word |
 | LB / RB | Move the text cursor |
 | Right stick | Move the text cursor, faster the further you push · up and down: a line, or the start or end |
 | Select (View · Create · Minus) | Select text · press twice for everything |
@@ -156,7 +163,7 @@ Open the project in Android Studio and press **Run**. No extra libraries are nee
 * The icon, colours and type are in [docs/brand](docs/brand/BRAND.md), with the rules for using them.
 * Fonts: [Atkinson Hyperlegible Next](https://github.com/googlefonts/atkinson-hyperlegible-next) and [Inter](https://github.com/rsms/inter), both under the SIL Open Font Licence (see `licenses/`).
 * The PlayStation controller drawing is traced from ["Dualshock 4 Layout.svg"](https://commons.wikimedia.org/wiki/File:Dualshock_4_Layout.svg) by Tokyoship, [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/), redrawn in Inlay's line style. The Xbox and Switch Pro drawings are traced from reference pictures, logos left out. Controller names belong to their makers.
-* All sounds were made for this project from scratch. The scripts that made them are in `tools/`.
+* All sounds were made for this project from scratch. `tools/sounds.py` makes them and `tools/soundcheck.py` checks them (rules in `docs/brand/SOUND.md`).
 * The 1.1 icon refresh followed the testing checklist from [logo-design-skill](https://github.com/kaankiziltug/logo-design-skill).
 
 ## Licence

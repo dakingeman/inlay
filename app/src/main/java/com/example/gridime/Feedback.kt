@@ -14,18 +14,13 @@ import kotlin.random.Random
 /**
  * Sound and vibration for every keyboard action, in one place.
  *
- * Seven sound packs share the same ten cues and the same meanings (see SoundPack):
- *  - Soft (default) and Soft Deep: a short low thud for weight plus a crisp click for
- *    texture, together, gone within ~15 ms. Letters rotate between four takes.
- *  - Tactile: dry mechanical clicks with no notes. Chime: soft mallet notes.
- *  - Retro: band-limited 8-bit blips. Typewriter: a metal strike, a bell on Enter.
- *    Felt: thud only, a little quieter, for night.
- * Pitched packs use C major pentatonic in pure ratios, so sounds never clash.
- * Loudness is mastered into the files (tools/ scripts), one felt-loudness order for all packs.
+ * Nine sound packs share the same ten cues and the same meanings (see SoundPack):
+ * physical ones (Soft, Thock, Tactile, Typewriter, Felt) and tonal ones (Chime, Glass,
+ * Pop, Retro). Every pack has four letter sounds, rotated so the same one never plays
+ * twice in a row. Tonal packs use C major pentatonic in pure ratios, so sounds never clash.
+ * The files are made and checked by tools/sounds.py and tools/soundcheck.py, with the
+ * rules in docs/brand/SOUND.md: one loudness order for all packs, held on any speaker.
  * The rule in every pack: ONE action = ONE hit, and one vibration pulse.
- * Actions differ by weight, pitch and length, never by counting hits:
- * keys are short, switches (on / off, triggers) are a heavier "latch" that bends up
- * for on and down for off, lock is the heaviest with a short ring, confirm / back ring softly.
  *
  * Vibration and sound always fire together, and every pulse starts with a short
  * full-power kick so small vibration motors spin up and the pulse is actually felt.
@@ -81,47 +76,6 @@ class Feedback(context: Context) {
     /** Extra "takes" for letters: real keys never sound identical twice. */
     private val keyTakes = mutableListOf<Int>()
     private var lastTake = -1
-
-    /** The ten cues of a pack, in [Cue] order, by file prefix (e.g. "soft" -> soft_move ...). */
-    private fun resourcesFor(pack: SoundPack): IntArray = when (pack) {
-        SoundPack.SOFT -> intArrayOf(
-            R.raw.soft_move, R.raw.soft_type, R.raw.soft_space, R.raw.soft_delete, R.raw.soft_on,
-            R.raw.soft_off, R.raw.soft_lock, R.raw.soft_select_all, R.raw.soft_confirm, R.raw.soft_back
-        )
-        SoundPack.SOFT_DEEP -> intArrayOf(
-            R.raw.softdeep_move, R.raw.softdeep_type, R.raw.softdeep_space, R.raw.softdeep_delete, R.raw.softdeep_on,
-            R.raw.softdeep_off, R.raw.softdeep_lock, R.raw.softdeep_select_all, R.raw.softdeep_confirm, R.raw.softdeep_back
-        )
-        SoundPack.TACTILE -> intArrayOf(
-            R.raw.tactile_move, R.raw.tactile_type, R.raw.tactile_space, R.raw.tactile_delete, R.raw.tactile_on,
-            R.raw.tactile_off, R.raw.tactile_lock, R.raw.tactile_select_all, R.raw.tactile_confirm, R.raw.tactile_back
-        )
-        SoundPack.CHIME -> intArrayOf(
-            R.raw.chime_move, R.raw.chime_type, R.raw.chime_space, R.raw.chime_delete, R.raw.chime_on,
-            R.raw.chime_off, R.raw.chime_lock, R.raw.chime_select_all, R.raw.chime_confirm, R.raw.chime_back
-        )
-        SoundPack.RETRO -> intArrayOf(
-            R.raw.retro_move, R.raw.retro_type, R.raw.retro_space, R.raw.retro_delete, R.raw.retro_on,
-            R.raw.retro_off, R.raw.retro_lock, R.raw.retro_select_all, R.raw.retro_confirm, R.raw.retro_back
-        )
-        SoundPack.TYPEWRITER -> intArrayOf(
-            R.raw.typewriter_move, R.raw.typewriter_type, R.raw.typewriter_space, R.raw.typewriter_delete, R.raw.typewriter_on,
-            R.raw.typewriter_off, R.raw.typewriter_lock, R.raw.typewriter_select_all, R.raw.typewriter_confirm, R.raw.typewriter_back
-        )
-        SoundPack.FELT -> intArrayOf(
-            R.raw.felt_move, R.raw.felt_type, R.raw.felt_space, R.raw.felt_delete, R.raw.felt_on,
-            R.raw.felt_off, R.raw.felt_lock, R.raw.felt_select_all, R.raw.felt_confirm, R.raw.felt_back
-        )
-    }
-
-    private fun takesFor(pack: SoundPack): IntArray = when (pack) {
-        SoundPack.SOFT -> intArrayOf(R.raw.soft_type1, R.raw.soft_type2, R.raw.soft_type3)
-        SoundPack.SOFT_DEEP -> intArrayOf(R.raw.softdeep_type1, R.raw.softdeep_type2, R.raw.softdeep_type3)
-        SoundPack.RETRO -> intArrayOf(R.raw.retro_type1, R.raw.retro_type2, R.raw.retro_type3)
-        SoundPack.TYPEWRITER -> intArrayOf(R.raw.typewriter_type1, R.raw.typewriter_type2, R.raw.typewriter_type3)
-        SoundPack.FELT -> intArrayOf(R.raw.felt_type1, R.raw.felt_type2, R.raw.felt_type3)
-        else -> intArrayOf()
-    }
 
     /** Loads the pack's sounds, releasing the old ones. Only one pack is in memory at a time. */
     private fun loadPack(pack: SoundPack) {
@@ -183,6 +137,12 @@ class Feedback(context: Context) {
             }, at)
         }
     }
+
+    // ---- The What's new sound showcase: any pack, sound only (no vibration), never saved ----
+    /** Loads [pack] for the showcase. Call [update] with the real settings afterwards to go back to yours. */
+    fun showcasePack(pack: SoundPack) = loadPack(pack)
+    fun showcaseKey() = playId(nextKeyTake(), Design.SOUND_KEY)
+    fun showcaseConfirm() = play(Cue.CONFIRM, Design.SOUND_KEY)
 
     // =====================================================================
     // EVENTS
@@ -326,14 +286,80 @@ class Feedback(context: Context) {
     // =====================================================================
     private fun play(cue: Cue, gain: Float) = playId(ids[cue.ordinal], gain)
 
+    companion object {
+        /** The ten cues of a pack, in [Cue] order. */
+        internal fun resourcesFor(pack: SoundPack): IntArray = when (pack) {
+            SoundPack.SOFT -> intArrayOf(
+                R.raw.soft_move, R.raw.soft_type, R.raw.soft_space, R.raw.soft_delete, R.raw.soft_on,
+                R.raw.soft_off, R.raw.soft_lock, R.raw.soft_select_all, R.raw.soft_confirm, R.raw.soft_back
+            )
+            SoundPack.THOCK -> intArrayOf(
+                R.raw.thock_move, R.raw.thock_type, R.raw.thock_space, R.raw.thock_delete, R.raw.thock_on,
+                R.raw.thock_off, R.raw.thock_lock, R.raw.thock_select_all, R.raw.thock_confirm, R.raw.thock_back
+            )
+            SoundPack.TACTILE -> intArrayOf(
+                R.raw.tactile_move, R.raw.tactile_type, R.raw.tactile_space, R.raw.tactile_delete, R.raw.tactile_on,
+                R.raw.tactile_off, R.raw.tactile_lock, R.raw.tactile_select_all, R.raw.tactile_confirm, R.raw.tactile_back
+            )
+            SoundPack.TYPEWRITER -> intArrayOf(
+                R.raw.typewriter_move, R.raw.typewriter_type, R.raw.typewriter_space, R.raw.typewriter_delete, R.raw.typewriter_on,
+                R.raw.typewriter_off, R.raw.typewriter_lock, R.raw.typewriter_select_all, R.raw.typewriter_confirm, R.raw.typewriter_back
+            )
+            SoundPack.FELT -> intArrayOf(
+                R.raw.felt_move, R.raw.felt_type, R.raw.felt_space, R.raw.felt_delete, R.raw.felt_on,
+                R.raw.felt_off, R.raw.felt_lock, R.raw.felt_select_all, R.raw.felt_confirm, R.raw.felt_back
+            )
+            SoundPack.CHIME -> intArrayOf(
+                R.raw.chime_move, R.raw.chime_type, R.raw.chime_space, R.raw.chime_delete, R.raw.chime_on,
+                R.raw.chime_off, R.raw.chime_lock, R.raw.chime_select_all, R.raw.chime_confirm, R.raw.chime_back
+            )
+            SoundPack.GLASS -> intArrayOf(
+                R.raw.glass_move, R.raw.glass_type, R.raw.glass_space, R.raw.glass_delete, R.raw.glass_on,
+                R.raw.glass_off, R.raw.glass_lock, R.raw.glass_select_all, R.raw.glass_confirm, R.raw.glass_back
+            )
+            SoundPack.POP -> intArrayOf(
+                R.raw.pop_move, R.raw.pop_type, R.raw.pop_space, R.raw.pop_delete, R.raw.pop_on,
+                R.raw.pop_off, R.raw.pop_lock, R.raw.pop_select_all, R.raw.pop_confirm, R.raw.pop_back
+            )
+            SoundPack.RETRO -> intArrayOf(
+                R.raw.retro_move, R.raw.retro_type, R.raw.retro_space, R.raw.retro_delete, R.raw.retro_on,
+                R.raw.retro_off, R.raw.retro_lock, R.raw.retro_select_all, R.raw.retro_confirm, R.raw.retro_back
+            )
+        }
+
+        /** The three extra letter sounds of a pack (with the main one, four in all). */
+        internal fun takesFor(pack: SoundPack): IntArray = when (pack) {
+            SoundPack.SOFT -> intArrayOf(R.raw.soft_type1, R.raw.soft_type2, R.raw.soft_type3)
+            SoundPack.THOCK -> intArrayOf(R.raw.thock_type1, R.raw.thock_type2, R.raw.thock_type3)
+            SoundPack.TACTILE -> intArrayOf(R.raw.tactile_type1, R.raw.tactile_type2, R.raw.tactile_type3)
+            SoundPack.TYPEWRITER -> intArrayOf(R.raw.typewriter_type1, R.raw.typewriter_type2, R.raw.typewriter_type3)
+            SoundPack.FELT -> intArrayOf(R.raw.felt_type1, R.raw.felt_type2, R.raw.felt_type3)
+            SoundPack.CHIME -> intArrayOf(R.raw.chime_type1, R.raw.chime_type2, R.raw.chime_type3)
+            SoundPack.GLASS -> intArrayOf(R.raw.glass_type1, R.raw.glass_type2, R.raw.glass_type3)
+            SoundPack.POP -> intArrayOf(R.raw.pop_type1, R.raw.pop_type2, R.raw.pop_type3)
+            SoundPack.RETRO -> intArrayOf(R.raw.retro_type1, R.raw.retro_type2, R.raw.retro_type3)
+        }
+
+        /**
+         * Volume slider 1..10 as a gain: every step is the same 2 dB, so each one sounds like
+         * the same change. 10 = the files as mastered, the default 7 sits 6 dB below that
+         * (room to go louder), and 1 is 18 dB below. 0 is off.
+         */
+        /** True when the device is on silent or vibrate (sounds then play only with "Play in silent mode" on). */
+        fun silentNow(context: Context): Boolean =
+            (context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager)?.ringerMode.let { it != null && it != AudioManager.RINGER_MODE_NORMAL }
+
+        fun volumeGain(step: Int): Float =
+            if (step <= 0) 0f else Math.pow(10.0, (Design.SOUND_STEP_DB * (step.coerceAtMost(10) - 10)) / 20.0).toFloat()
+    }
+
     private fun playId(soundId: Int, gain: Float) {
         if (settings.soundVolume <= 0) return
-        // Gentle curve: every slider step sounds like an even change in loudness
-        val level = settings.soundVolume / 10f
+        val level = volumeGain(settings.soundVolume)
         // A tiny loudness change keeps repeats from sounding robotic. Pitch never
         // changes: every sound is tuned to the same scale and must stay in tune.
         val jitter = 1f + (Random.nextFloat() * 2f - 1f) * Design.SOUND_GAIN_JITTER
-        val volume = ((level * level * 0.35f + level * 0.65f) * gain * jitter).coerceIn(0f, 1f)
+        val volume = (level * gain * jitter).coerceIn(0f, 1f)
         if (soundId !in ready) {
             waiting[soundId] = volume                // plays as soon as it has loaded
             return

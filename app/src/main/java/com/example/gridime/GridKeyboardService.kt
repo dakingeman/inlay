@@ -89,6 +89,8 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
 
     // Cursor / selection position, kept up to date by Android
     private var selStart = 0
+    /** B was pressed with nothing open in the keyboard: close the keyboard when it's let go. */
+    private var closeOnBUp = false
     private var selEnd = 0
 
     // Select mode: L1 / R1 grow or shrink the selection
@@ -107,7 +109,7 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
     // D-pad (hat) and left stick
     private val stick = StickDirection()
 
-    // Right stick: moves the text cursor (Settings → Typing → Right stick)
+    // Right stick: moves the text cursor (Settings → Device → Controls)
     private val rightStick = StickDirection()
     private var rightAxes: IntArray? = null           // which two axes this controller uses for it
     private var rightAxesDevice = -1
@@ -129,6 +131,49 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
     private var lastSpaceTime = 0L
     private var lastField: FieldKind? = null
     private var bConsumed = false
+
+    // Word suggestions: one word list, for the language in use (loads in the background)
+    private var suggester: WordSuggester? = null
+    private val userWords by lazy { UserWords(this) }
+
+    /** May this box teach Inlay words? Not for passwords, web addresses, email, numbers, or apps that ask not to. */
+    private fun mayLearn(): Boolean {
+        val info = currentInputEditorInfo ?: return false
+        if (!settings.learnWords || isPassword() || fieldKind(info) != FieldKind.TEXT) return false
+        if ((info.inputType and InputType.TYPE_MASK_CLASS) != InputType.TYPE_CLASS_TEXT) return false
+        return (info.imeOptions and EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING) == 0
+    }
+
+    /** Your words for the word being typed, when learning is on. */
+    private fun myWords(typed: String): List<String> {
+        if (!settings.learnWords) return emptyList()
+        val list = suggesterFor(settings.language)
+        return userWords.matching(settings.language, typed.replace('’', '\'').lowercase(settings.language.locale)) { list?.knows(it) == true }
+    }
+
+    /** Which text box we're in (a new number each time one opens), and the last word typed there, not yet counted. */
+    private var box = 0L
+    private var pendingWord: String? = null
+
+    /**
+     * A word only counts once the next one ends and it's still there, so words you delete or
+     * correct straight away are never learned.
+     */
+    private fun confirmPending(currentWord: String) {
+        val pending = pendingWord ?: return
+        pendingWord = null
+        if (!mayLearn()) return
+        val before = currentInputConnection?.getTextBeforeCursor(WORD_LOOKBACK * 2, 0)?.toString() ?: return
+        val rest = before.dropLast(currentWord.length).trimEnd(' ', '.', ',', '!', '?', ':', ';', '\n')
+        if (rest.endsWith(pending) && (rest.length == pending.length || !rest[rest.length - pending.length - 1].isLetter()))
+            userWords.learn(settings.language, pending, box)
+    }
+
+    private fun suggesterFor(language: Language): WordSuggester? {
+        if (!settings.wordSuggestions) return null
+        suggester?.takeIf { it.language == language }?.let { return it }
+        return WordSuggester(this, language) { scheduleAppSync(previewOnly = true) }.also { suggester = it }
+    }
 
     // =====================================================================
     // LIFECYCLE
@@ -159,7 +204,7 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
         return KeyGridView(this).also { view ->
             view.listener = this
             view.feedback = feedback
-            view.applySettings(settings)
+            view.applySettings(settings.forControls(Controls.of(this@GridKeyboardService, settings)))
             view.setClips(history.all)
             gridView = view
             updateClipPreview()
@@ -202,8 +247,10 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
         settings = KeyboardSettings.load(this)
         feedback.update(settings)
         history.reload()
+        userWords.save(); userWords.reload()
+        if (!restarting) { box++; pendingWord = null }
         gridView?.apply {
-            applySettings(settings)
+            applySettings(settings.forControls(Controls.of(this@GridKeyboardService, settings)))
             setClips(history.all)
             closeClips(focusOnHistoryButton = false)
             // A restart of the same box (chat apps after Send) keeps the layer and highlight
@@ -211,6 +258,8 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
             if (!restarting || kind != lastField) setField(kind)
             lastField = kind
             setTvMode(tvModeActive())
+            placeholder = if (DevicePicture.resolve(this@GridKeyboardService, settings.picture) == DeviceKind.REMOTE)
+                "Type with your remote" else "Type with your controller"
         }
         selStart = info?.initialSelStart?.coerceAtLeast(0) ?: 0
         selEnd = info?.initialSelEnd?.coerceAtLeast(0) ?: 0
@@ -240,6 +289,7 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
 
     override fun onFinishInputView(finishingInput: Boolean) {
         super.onFinishInputView(finishingInput)
+        userWords.save()
         resetHeldInputs()
         exitSelectMode(collapse = false)
     }
@@ -250,6 +300,7 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
     }
 
     private fun resetHeldInputs() {
+        gridView?.resetAccents()
         stopNav()
         deleteRepeater.stop()
         cursorRepeater.stop()
@@ -291,7 +342,45 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
     private val appSync = Runnable {
         if (syncAutoShift) refreshAutoShift()
         syncAutoShift = false
+        refreshSuggestions()
         if (gridView?.isTvMode() == true) updatePreview()
+    }
+
+    /** The word right before the cursor (letters and apostrophes). */
+    private fun wordBeforeCursor(): String {
+        val before = currentInputConnection?.getTextBeforeCursor(WORD_LOOKBACK, 0)?.toString().orEmpty()
+        return WORD_END.find(before)?.value?.trimStart('\'', '’').orEmpty()
+    }
+
+    /**
+     * Suggestions for the word being typed. Uses the same "once typing pauses" moment
+     * as capitals, so typing never waits for it. None in password, web address, email or number boxes,
+     * while text is selected, or in the middle of a word.
+     */
+    private fun refreshSuggestions() {
+        val grid = gridView ?: return
+        val info = currentInputEditorInfo
+        val textBox = info != null && (info.inputType and InputType.TYPE_MASK_CLASS) == InputType.TYPE_CLASS_TEXT
+        if (!settings.wordSuggestions || !textBox || fieldKind(info) != FieldKind.TEXT || isPassword() || selStart != selEnd) {
+            grid.setSuggestions(emptyList(), "")
+            return
+        }
+        val ic = currentInputConnection ?: return grid.setSuggestions(emptyList(), "")
+        val typed = wordBeforeCursor()
+        val nextChar = ic.getTextAfterCursor(1, 0)?.firstOrNull()
+        if (typed.isEmpty() || (nextChar != null && nextChar.isLetter())) {
+            grid.setSuggestions(emptyList(), "")
+            return
+        }
+        val words = suggesterFor(settings.language)?.suggest(typed, 3, myWords(typed)).orEmpty()
+        grid.setSuggestions(words, typed)
+    }
+
+    /** R3 (press the right stick in): take the first suggested word. */
+    private fun takeBestWord() {
+        val word = gridView?.bestWord() ?: return feedback.off()
+        feedback.space()
+        onWord(word)
     }
 
     private fun scheduleAppSync(previewOnly: Boolean = false) {
@@ -306,8 +395,40 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
     override fun onText(text: String) {
         if (text == " " && tryDoubleSpacePeriod()) return
         if (selecting) exitSelectMode(collapse = false)
+        // A word just ended: learn it, and turn a lone "i" into "I"
+        if ((text == " " || text in TIDY_MARKS) && selStart == selEnd) wordEnded()
+        if (text in TIDY_MARKS && tryTidyPunctuation(text)) return
         currentInputConnection?.commitText(text, 1)
         scheduleAppSync()
+    }
+
+    private fun wordEnded() {
+        val word = wordBeforeCursor()
+        if (word.isEmpty()) return
+        confirmPending(word)
+        if (mayLearn()) pendingWord = word
+        if (settings.autoCaps && settings.language == Language.ENGLISH && fieldKind(currentInputEditorInfo) == FieldKind.TEXT && !isPassword()) {
+            // "i", "i'm", "i'll", "i'd", "i've" on their own: the capital I English always uses
+            if (LONE_I.matches(word)) onReplaceLast(word, "I" + word.drop(1))
+        }
+    }
+
+    /**
+     * "word ." becomes "word. ": a space typed just before . , ! or ? moves after it. Only right
+     * after a word (never in web addresses, email or numbers), so "..." and smileys are left alone.
+     */
+    private fun tryTidyPunctuation(mark: String): Boolean {
+        if (!settings.tidyPunctuation || fieldKind(currentInputEditorInfo) != FieldKind.TEXT || isPassword()) return false
+        val ic = currentInputConnection ?: return false
+        val before = ic.getTextBeforeCursor(2, 0) ?: return false
+        if (before.length < 2 || before[1] != ' ' || !before[0].isLetterOrDigit()) return false
+        ic.beginBatchEdit()
+        ic.deleteSurroundingText(1, 0)
+        ic.commitText("$mark ", 1)
+        ic.endBatchEdit()
+        lastSpaceTime = 0L
+        scheduleAppSync()
+        return true
     }
 
     override fun onDelete() {
@@ -348,11 +469,35 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
                 scheduleAppSync()
             }
             Tool.HISTORY -> gridView?.toggleClips()
+            Tool.WORD -> Unit                    // words come in through onWord
             Tool.SETTINGS -> {
                 feedback.confirm()
                 openSettings()
             }
         }
+    }
+
+    override fun onWord(word: String) {
+        val ic = currentInputConnection ?: return
+        if (mayLearn()) userWords.learn(settings.language, word, box)     // picked on purpose: counts straight away
+        val typed = wordBeforeCursor()
+        ic.beginBatchEdit()
+        if (typed.isNotEmpty()) ic.deleteSurroundingText(typed.length, 0)
+        ic.commitText("$word ", 1)
+        ic.endBatchEdit()
+        gridView?.setSuggestions(emptyList(), "")
+        scheduleAppSync()
+    }
+
+    override fun onReplaceLast(expected: String, replacement: String): Boolean {
+        val ic = currentInputConnection ?: return false
+        if (ic.getTextBeforeCursor(expected.length, 0)?.toString() != expected) return false
+        ic.beginBatchEdit()
+        ic.deleteSurroundingText(expected.length, 0)
+        ic.commitText(replacement, 1)
+        ic.endBatchEdit()
+        scheduleAppSync()
+        return true
     }
 
     override fun onClip(index: Int) {
@@ -467,6 +612,7 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
         val grid = gridView ?: return
         val ic = currentInputConnection ?: return
         val inputType = currentInputEditorInfo?.inputType ?: 0
+        if (!settings.autoCaps) { grid.setAutoShift(false); return }
         val caps = if (inputType != 0) ic.getCursorCapsMode(inputType) else 0
         grid.setAutoShift(caps != 0 || sentenceEnded(ic, inputType))
     }
@@ -519,14 +665,31 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
         gridView?.setSelecting(false, 0)
     }
 
-    private fun moveCursor(dir: Int) {
-        val ic = currentInputConnection ?: return
+    /** Moves the text cursor one step. Returns false at the start or end of the text, where it stays put. */
+    private fun moveCursor(dir: Int): Boolean {
+        val ic = currentInputConnection ?: return false
         if (selecting) {
             movingEnd = (movingEnd + dir).coerceIn(0, TextOps.textLength(ic, selStart, selEnd))
             ic.setSelection(min(anchor, movingEnd), max(anchor, movingEnd))
         } else {
+            // At either end, one more step would make the app move its focus out of the text box
+            // (and the keyboard would close). The cursor just stays there; B is what closes.
+            if (atTextEdge(dir)) return false
             sendDownUpKeyEvents(if (dir < 0) KeyEvent.KEYCODE_DPAD_LEFT else KeyEvent.KEYCODE_DPAD_RIGHT)
         }
+        return true
+    }
+
+    /**
+     * True when the cursor (with nothing selected) is at the very start ([dir] < 0) or end ([dir] > 0)
+     * of the text. Asks the app directly, so it's right even while a held button repeats quickly.
+     * Apps that won't say count as "not at the edge", so moving still works there.
+     */
+    private fun atTextEdge(dir: Int): Boolean {
+        val ic = currentInputConnection ?: return false
+        if (!ic.getSelectedText(0).isNullOrEmpty()) return false
+        val next = if (dir < 0) ic.getTextBeforeCursor(1, 0) else ic.getTextAfterCursor(1, 0)
+        return next != null && next.isEmpty()
     }
 
     /** R2 + L1 / R1: jump (or select) a whole word. */
@@ -552,13 +715,10 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
             firstDelay = CURSOR_DELAY_MS,
             intervalFor = { n -> max(CURSOR_FASTEST_MS, CURSOR_START_MS - n * 8L) }
         ) {
-            feedback.move()
             if (r2Held) {
                 r2UsedAsModifier = true
-                jumpWord(dir)
-            } else {
-                moveCursor(dir)
-            }
+                if (!atTextEdge(dir)) { feedback.move(); jumpWord(dir) }
+            } else if (moveCursor(dir)) feedback.move()
         }
     }
 
@@ -607,16 +767,21 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
         // Held buttons repeat on our own timers, so Android's repeats are ignored
         val first = event.repeatCount == 0
 
+        // Accents open: any button except the D-pad, A and B types what's showing, then does its usual job
+        if (first && grid.isAccentsOpen() && keyCode !in ACCENT_KEYS) grid.commitAccents()
+
         when (keyCode) {
             KeyEvent.KEYCODE_DPAD_UP -> if (first) startNav(0, -1, fromStick = false)
             KeyEvent.KEYCODE_DPAD_DOWN -> if (first) startNav(0, 1, fromStick = false)
             KeyEvent.KEYCODE_DPAD_LEFT -> if (first) startNav(-1, 0, fromStick = false)
             KeyEvent.KEYCODE_DPAD_RIGHT -> if (first) startNav(1, 0, fromStick = false)
 
-            KeyEvent.KEYCODE_BUTTON_A -> if (first) {
+            // A, or OK on a TV remote: types, and starts the hold for accents
+            KeyEvent.KEYCODE_BUTTON_A, KeyEvent.KEYCODE_DPAD_CENTER -> if (first) {
                 if (r2Held) r2UsedAsModifier = true
-                grid.pressSelected()
+                grid.pressA()                                    // types, and starts the hold for accents
             }
+            KeyEvent.KEYCODE_BUTTON_THUMBR -> if (first) takeBestWord()
             KeyEvent.KEYCODE_BUTTON_X -> if (first) onXButton(grid)
             KeyEvent.KEYCODE_BUTTON_Y -> if (first) {
                 if (r2Held) {
@@ -638,17 +803,23 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
                 onEnter()
             }
 
-            // B closes select mode or the clipboard first; otherwise it's Android's Back
-            KeyEvent.KEYCODE_BUTTON_B -> {
+            // B (or a remote's Back) closes the accents, select mode or the clipboard first; otherwise it's Android's Back
+            KeyEvent.KEYCODE_BUTTON_B, KeyEvent.KEYCODE_BACK -> {
                 if (!first && bConsumed) return true
-                if (selecting || grid.isClipsOpen()) {
+                if (grid.isAccentsOpen()) {
+                    grid.cancelAccents()                         // back to the plain letter
+                    bConsumed = true
+                } else if (selecting || grid.isClipsOpen()) {
                     if (grid.isClipsOpen()) grid.closeClips(focusOnHistoryButton = true)
                     else exitSelectMode(collapse = true)
                     feedback.back()
                     bConsumed = true
                 } else {
-                    bConsumed = false
-                    return super.onKeyDown(keyCode, event)
+                    // Nothing open in the keyboard: B closes the keyboard, and the app underneath never
+                    // sees the press (Chrome, for one, would otherwise go back or close). Closing happens
+                    // when B is let go, so the app doesn't get a stray "B up" either.
+                    bConsumed = true
+                    closeOnBUp = true
                 }
             }
 
@@ -662,12 +833,18 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
         when (keyCode) {
             KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_DPAD_DOWN,
             KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_DPAD_RIGHT -> stopNav()
+            KeyEvent.KEYCODE_BUTTON_A, KeyEvent.KEYCODE_DPAD_CENTER -> gridView?.releaseA()
             KeyEvent.KEYCODE_BUTTON_X -> deleteRepeater.stop()
             KeyEvent.KEYCODE_BUTTON_L1, KeyEvent.KEYCODE_BUTTON_R1 -> cursorRepeater.stop()
             KeyEvent.KEYCODE_BUTTON_R2 -> r2Up()
-            KeyEvent.KEYCODE_BUTTON_B -> {
+            KeyEvent.KEYCODE_BUTTON_B, KeyEvent.KEYCODE_BACK -> {
                 val consumed = bConsumed
                 bConsumed = false
+                if (closeOnBUp) {
+                    closeOnBUp = false
+                    requestHideSelf(0)                       // the same quiet close as before
+                    return true
+                }
                 return if (consumed) true else super.onKeyUp(keyCode, event)
             }
             else -> if (keyCode !in HANDLED_KEYS) return super.onKeyUp(keyCode, event)
@@ -694,6 +871,7 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
         val now = SystemClock.uptimeMillis()
         if (now - lastL2Time < TRIGGER_DEDUPE_MS) return
         lastL2Time = now
+        gridView?.commitAccents()
         // Hold RT + LT: next language (when more than one is picked in Settings)
         if (r2Held && settings.languages.size > 1) {
             r2UsedAsModifier = true
@@ -708,7 +886,7 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
         settings = KeyboardSettings.load(this).nextLanguage()
         settings.save(this)
         gridView?.apply {
-            applySettings(settings)
+            applySettings(settings.forControls(Controls.of(this@GridKeyboardService, settings)))
             flashLanguage()
         }
         feedback.on()
@@ -718,6 +896,7 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
     private fun r2Down() {
         if (r2Held) return
         if (SystemClock.uptimeMillis() - r2LastRelease < TRIGGER_DEDUPE_MS) return
+        gridView?.commitAccents()
         r2Held = true
         r2UsedAsModifier = false
         gridView?.setHeldShift(true)
@@ -736,7 +915,7 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
     private fun cycleSize() {
         settings = KeyboardSettings.load(this).let { it.copy(sizeLevel = (it.sizeLevel + 1) % SIZE_COUNT) }
         settings.save(this)
-        gridView?.applySettings(settings)
+        gridView?.applySettings(settings.forControls(Controls.of(this@GridKeyboardService, settings)))
         feedback.on()
     }
 
@@ -851,6 +1030,7 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
     }
 
     private fun startRightStick(dx: Int, dy: Int) {
+        gridView?.commitAccents()
         stopRightStick()
         rightDx = dx
         rightDy = dy
@@ -867,6 +1047,9 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
 
     private fun rightStep() {
         val ic = currentInputConnection ?: return
+        // Up and down in a multi-line box: at the very start or end, the app would move its focus away
+        if (rightDx == 0 && !selecting && multiLine() && atTextEdge(rightDy)) return
+        if (rightDx != 0 && !selecting && atTextEdge(rightDx)) return
         feedback.move()
         when {
             rightDx != 0 -> if (r2Held) {
@@ -962,7 +1145,21 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
         val HANDLED_KEYS = setOf(
             KeyEvent.KEYCODE_BUTTON_A, KeyEvent.KEYCODE_BUTTON_Y,
             KeyEvent.KEYCODE_BUTTON_L2, KeyEvent.KEYCODE_BUTTON_SELECT,
-            KeyEvent.KEYCODE_BUTTON_THUMBL, KeyEvent.KEYCODE_BUTTON_START
+            KeyEvent.KEYCODE_BUTTON_THUMBL, KeyEvent.KEYCODE_BUTTON_START,
+            KeyEvent.KEYCODE_BUTTON_THUMBR, KeyEvent.KEYCODE_DPAD_CENTER
         )
+
+        /** The buttons that work the accents while they're open. Everything else types what's showing first. */
+        val ACCENT_KEYS = setOf(
+            KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_DPAD_DOWN, KeyEvent.KEYCODE_DPAD_LEFT,
+            KeyEvent.KEYCODE_DPAD_RIGHT, KeyEvent.KEYCODE_BUTTON_A, KeyEvent.KEYCODE_BUTTON_B,
+            KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_BACK
+        )
+
+        /** Word suggestions: how far back to look for the word being typed. */
+        const val WORD_LOOKBACK = 40
+        val WORD_END = Regex("""[\p{L}'’]+$""")
+        val LONE_I = Regex("""i(['’](m|ll|d|ve))?""")
+        val TIDY_MARKS = setOf(".", ",", "!", "?")
     }
 }

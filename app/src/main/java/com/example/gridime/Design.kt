@@ -42,7 +42,6 @@ object Design {
 
     // ---- Type (sp in Settings, dp on the keyboard) ---------------------------
     const val TYPE_DISPLAY = 28f    // one big line per screen (the tour)
-    const val TYPE_TITLE = 22f
     const val TYPE_ROW = 16f
     const val TYPE_CAPTION = 13f
     const val TYPE_SECTION = 12f
@@ -56,12 +55,16 @@ object Design {
     const val MOTION_FOCUS_JUMP = 0.75f // share of the way the highlight jumps on the very first frame
     const val MOTION_PRESS = 110L      // key squeeze and release
     const val MOTION_FADE = 140L       // hint chips appearing
+    /** Landscape screens at least this wide put things side by side (small 4:3 handhelds are about 480). */
+    const val WIDE_MIN_DP = 440
     const val MOTION_CONTROL = 200L    // switches, option pickers, tabs
     const val MOTION_PAGE = 200L       // settings page change
     const val MOTION_PANEL = 260L      // keyboard preview sliding in and out
 
     /** Emphasized decelerate: a quick start that settles softly (Material 3). */
     val EASE_OUT: Interpolator get() = PathInterpolator(0.05f, 0.7f, 0.1f, 1f)
+    /** Emphasized accelerate: for things leaving the screen (Material 3). */
+    val EASE_IN: Interpolator get() = PathInterpolator(0.3f, 0f, 0.8f, 0.15f)
     /** Standard: for things that move on screen and stay (panels, pages). */
     val EASE_STANDARD: Interpolator get() = PathInterpolator(0.2f, 0f, 0f, 1f)
 
@@ -75,6 +78,7 @@ object Design {
     const val SOUND_MODIFIER = 1f
     const val SOUND_CONFIRM = 1f
     const val SOUND_GAIN_JITTER = 0.05f   // ±5 % loudness per play; pitch never moves
+    const val SOUND_STEP_DB = 2.0         // each volume step; the default 7 is 6 dB under the top
 
     // ---- Haptics -------------------------------------------------------------
     // Small vibration motors need a short full-power "kick" to spin up, or a

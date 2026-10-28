@@ -1,0 +1,160 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="inlay.css">
+<script src="parts.js"></script>
+<style>.abs{position:absolute}.hl{font-family:A;font-weight:700;line-height:1.08;color:#F2F3F5}.bd{font-family:I;line-height:1.45}
+.dev{position:absolute;filter:drop-shadow(0 22px 34px rgba(0,0,0,.45));transition:none}
+.panel{position:absolute;background:#000;border-radius:22px;overflow:hidden;box-shadow:0 0 0 2px #2F323A,0 2px 4px rgba(0,0,0,.3),0 24px 60px rgba(0,0,0,.45)}
+.kbimg{position:absolute;left:0;bottom:0;filter:contrast(1.06) brightness(1.07)}
+.lab{position:absolute;text-align:center;font-family:I;font-size:16px;color:#A7AAB2;width:300px}
+.lab b{display:block;font-weight:500}.lab small{display:block;font-size:14px;color:#80838B;margin-top:2px}
+.lab.on b{color:#F2F3F5}
+</style></head><body><div id="c" class="canvas" style="width:1600px;height:900px"></div>
+<script>
+const Q=new URLSearchParams(location.search), DIR=Q.get('dir')||'ocean', FX=(Q.get('fx')||'tiles').split(',');
+const DIRS={
+ midnight:{bg:'radial-gradient(1000px 640px at 50% 40%, rgba(114,214,232,.12), rgba(114,214,232,0) 70%), linear-gradient(180deg,#10131D 0%,#0C0E15 100%)',glow:'0 0 0 1px rgba(255,255,255,.14),0 30px 90px rgba(0,0,0,.65)',covers:[['#FFB547','#9A4316'],['#7C95FF','#2A2F8A']]},
+ slate:{bg:'radial-gradient(1300px 600px at 50% -14%, rgba(150,170,210,.26), rgba(0,0,0,0) 70%), radial-gradient(1000px 520px at 50% 118%, rgba(114,214,232,.22), rgba(114,214,232,0) 70%), linear-gradient(180deg,#1C202C 0%,#11131A 100%)',glow:'0 0 0 1px rgba(255,255,255,.14),0 30px 90px rgba(0,0,0,.65)',covers:[['#FFB547','#9A4316'],['#7C95FF','#2A2F8A']]},
+ aurora:{bg:'radial-gradient(800px 560px at 85% 12%, rgba(114,214,232,.32), rgba(114,214,232,0) 70%), radial-gradient(860px 620px at 12% 98%, rgba(150,110,255,.30), rgba(150,110,255,0) 70%), #0E0E14',glow:'0 0 0 1px rgba(255,255,255,.14),0 30px 90px rgba(0,0,0,.65)',covers:[['#FFB547','#9A4316'],['#7C95FF','#2A2F8A']]},
+ ocean2:{bg:'radial-gradient(950px 640px at 86% 4%, rgba(114,214,232,.27), rgba(114,214,232,0) 72%), radial-gradient(1050px 720px at 4% 104%, rgba(60,108,236,.32), rgba(60,108,236,0) 72%), linear-gradient(180deg,#161C2B 0%,#10141E 100%)',glow:'',covers:[]},
+ ocean:{bg:'radial-gradient(900px 620px at 86% 6%, rgba(114,214,232,.24), rgba(114,214,232,0) 72%), radial-gradient(1000px 700px at 6% 104%, rgba(52,98,230,.28), rgba(52,98,230,0) 72%), linear-gradient(180deg,#0E111A 0%,#0B0D14 100%)',glow:'0 0 0 1px rgba(255,255,255,.14),0 30px 90px rgba(0,0,0,.65)',covers:[['#FFB547','#9A4316'],['#7C95FF','#2A2F8A']]},
+ lagoon:{bg:'radial-gradient(900px 600px at 15% 10%, rgba(64,200,160,.24), rgba(64,200,160,0) 70%), radial-gradient(900px 640px at 90% 100%, rgba(114,214,232,.28), rgba(114,214,232,0) 70%), #0B1013',glow:'0 0 0 1px rgba(255,255,255,.14),0 30px 90px rgba(0,0,0,.65)',covers:[['#FFB547','#9A4316'],['#7C95FF','#2A2F8A']]},
+ sunset:{bg:'radial-gradient(820px 560px at 86% 10%, rgba(114,214,232,.26), rgba(114,214,232,0) 70%), radial-gradient(900px 600px at 10% 105%, rgba(240,150,70,.22), rgba(240,150,70,0) 70%), #100F13',glow:'0 0 0 1px rgba(255,255,255,.14),0 30px 90px rgba(0,0,0,.65)',covers:[['#FFB547','#9A4316'],['#7C95FF','#2A2F8A']]},
+ spotlight:{bg:'radial-gradient(820px 600px at 50% 30%, rgba(114,214,232,.17), rgba(114,214,232,0) 72%), radial-gradient(1500px 1000px at 50% 45%, #161A24 0%, #0C0D12 85%)',glow:'0 0 0 1px rgba(255,255,255,.14),0 30px 90px rgba(0,0,0,.65)',covers:[['#FFB547','#9A4316'],['#7C95FF','#2A2F8A']]},
+ grid:{bg:'radial-gradient(900px 600px at 50% 40%, rgba(114,214,232,.18), rgba(114,214,232,0) 70%), radial-gradient(800px 600px at 10% 100%, rgba(150,110,255,.20), rgba(150,110,255,0) 70%), #0D0E13',glow:'0 0 0 1px rgba(255,255,255,.14),0 30px 90px rgba(0,0,0,.65)',covers:[['#FFB547','#9A4316'],['#7C95FF','#2A2F8A']],
+   over:'<div class="abs" style="inset:0;background-image:radial-gradient(rgba(170,220,235,.22) 1.8px, transparent 2.2px);background-size:32px 32px;-webkit-mask-image:radial-gradient(1100px 700px at 50% 50%, rgba(0,0,0,.25) 30%, #000 60%, rgba(0,0,0,.4) 100%)"></div>'},
+ mesh:{bg:'radial-gradient(700px 520px at 82% 6%, rgba(114,214,232,.30), rgba(114,214,232,0) 70%), radial-gradient(760px 560px at 6% 30%, rgba(150,110,255,.22), rgba(150,110,255,0) 70%), radial-gradient(900px 560px at 70% 110%, rgba(52,98,230,.28), rgba(52,98,230,0) 70%), #0C0D14',glow:'0 0 0 1px rgba(255,255,255,.14),0 30px 90px rgba(0,0,0,.65)',covers:[['#FFB547','#9A4316'],['#7C95FF','#2A2F8A']]},
+ horizon:{bg:'radial-gradient(1500px 340px at 50% 88%, rgba(114,214,232,.30), rgba(114,214,232,0) 70%), linear-gradient(180deg,#0B0D16 0%,#121A2C 70%,#0C1620 100%)',glow:'0 0 0 1px rgba(255,255,255,.14),0 30px 90px rgba(0,0,0,.65)',covers:[['#FFB547','#9A4316'],['#7C95FF','#2A2F8A']],
+   over:'<div class="abs" style="left:0;right:0;top:806px;height:1px;background:linear-gradient(90deg,transparent,rgba(114,214,232,.55),transparent)"></div>'}
+};
+const ACC=(Q.get('acc')||'72D6E8').toUpperCase(), AR=[0,2,4].map(i=>parseInt(ACC.substr(i,2),16));
+function hsl(r,g,b){r/=255;g/=255;b/=255;const M=Math.max(r,g,b),m=Math.min(r,g,b),l=(M+m)/2;let h=0,s=0;if(M!==m){const d=M-m;s=l>.5?d/(2-M-m):d/(M+m);h=M===r?(g-b)/d+(g<b?6:0):M===g?(b-r)/d+2:(r-g)/d+4;h*=60;}return[h,s,l];}
+function rgb(h,s,l){const k=n=>(n+h/30)%12,a=s*Math.min(l,1-l),f=n=>l-a*Math.max(-1,Math.min(k(n)-3,9-k(n),1));return[f(0),f(8),f(4)].map(v=>Math.round(v*255));}
+const [AH,AS,AL]=hsl(...AR), A2=rgb((AH+320)%360,AS*.9,AL*.8);
+DIRS.sys={bg:`radial-gradient(1000px 660px at 84% 0%, rgba(${AR},.13), rgba(${AR},0) 72%), radial-gradient(1100px 720px at 6% 104%, rgba(${A2},.11), rgba(${A2},0) 72%), linear-gradient(180deg,#121520 0%,#0D0F15 100%)`,covers:[]};
+const H0=Math.round(AH);
+DIRS.mono={bg:`radial-gradient(1300px 820px at 82% -8%, hsla(${H0},38%,22%,.55), hsla(${H0},38%,22%,0) 70%), radial-gradient(900px 600px at 50% 46%, rgba(255,255,255,.035), rgba(255,255,255,0) 70%), linear-gradient(160deg, hsl(${H0},17%,11%) 0%, hsl(${H0},15%,8%) 55%, hsl(${H0},13%,6%) 100%)`,covers:[]};
+DIRS.monoflat={bg:`linear-gradient(170deg, hsl(${H0},22%,12%) 0%, hsl(${H0},20%,8%) 60%, hsl(${H0},18%,6.5%) 100%)`,covers:[]};
+DIRS.flat={bg:`radial-gradient(1200px 700px at 50% -10%, rgba(${AR},.10), rgba(${AR},0) 70%), #0F1218`,covers:[]};
+// Backdrops built in OKLCH (a colour space where equal steps look equal to the eye), from the highlight colour:
+// its own hue for the brightest light, then analogous neighbours turning cooler (+30°, +55°) for depth. Never through green.
+function okl(hex){const L=[0,2,4].map(i=>{let c=parseInt(hex.substr(i,2),16)/255;return c<=0.04045?c/12.92:((c+0.055)/1.055)**2.4});const[r,g,b]=L;
+ let l=.4122214708*r+.5363325363*g+.0514459929*b,m=.2119034982*r+.6806995451*g+.1073969566*b,q=.0883024619*r+.2817188376*g+.6299787005*b;[l,m,q]=[l,m,q].map(Math.cbrt);
+ const a=1.9779984951*l-2.4285922050*m+.4505937099*q,bb=.0259040371*l+.7827717662*m-.8086757660*q;return[.2104542553*l+.7936177850*m-.0040720468*q,Math.hypot(a,bb),(Math.atan2(bb,a)*180/Math.PI+360)%360];}
+const [OL,OC,OH]=okl(ACC), C=Math.max(.09,Math.min(.15,OC));
+// every step turns towards blue-violet (265°), the coolest, calmest direction, so no colour ever drifts into green
+let toBlue=((265-OH+540)%360)-180; const dirn=Math.abs(toBlue)<30?1:Math.sign(toBlue);
+const h1=(OH+dirn*14+360)%360, h2=(OH+dirn*38+360)%360, h3=(OH+dirn*62+360)%360;
+const ok=(l,c,h,a=1)=>`oklch(${l} ${c.toFixed(3)} ${h.toFixed(1)} / ${a})`;
+const BASE=`linear-gradient(165deg, ${ok(.19,.035,h2)} 0%, ${ok(.15,.03,h2)} 50%, ${ok(.12,.025,h3)} 100%)`;
+const blob=(x,y,w,hh,col,blur,op)=>`<div class="abs" style="left:${x-w/2}px;top:${y-hh/2}px;width:${w}px;height:${hh}px;border-radius:50%;background:${col};filter:blur(${blur}px);opacity:${op}"></div>`;
+DIRS.diffuse={bg:BASE,covers:[],over:blob(1350,40,860,580,ok(.64,C,h1),150,.46)+blob(120,860,900,620,ok(.5,C*1.1,h2),160,.40)+blob(820,1000,700,360,ok(.45,C,h3),140,.30)};
+DIRS.band={bg:`linear-gradient(158deg, ${ok(.36,C*.85,h1)} 0%, ${ok(.26,C*.75,h2)} 28%, ${ok(.17,.04,h3)} 62%, ${ok(.13,.03,h3)} 100%)`,covers:[]};
+DIRS.stage={bg:`radial-gradient(1500px 620px at 50% -18%, ${ok(.42,C*.85,h1,.85)}, ${ok(.42,C*.85,h1,0)} 72%), radial-gradient(1600px 420px at 50% 122%, ${ok(.36,C,h3,.75)}, ${ok(.36,C,h3,0)} 70%), ${BASE}`,covers:[]};
+DIRS.duo={bg:`radial-gradient(1000px 680px at 90% -4%, ${ok(.46,C*.9,h1,.75)}, ${ok(.46,C*.9,h1,0)} 72%), radial-gradient(1100px 760px at 2% 106%, ${ok(.40,C*1.05,h3,.70)}, ${ok(.40,C*1.05,h3,0)} 72%), ${BASE}`,covers:[]};
+DIRS.g1={bg:`radial-gradient(1400px 700px at 50% -20%, rgba(255,255,255,.06), rgba(255,255,255,0) 70%), linear-gradient(180deg,#17181D 0%,#111216 45%,#0B0B0E 100%)`,covers:[]};
+DIRS.g2={bg:`radial-gradient(1100px 650px at 88% -10%, ${ok(.30,.045,h1,.8)}, ${ok(.30,.045,h1,0)} 70%), radial-gradient(1400px 700px at 50% -20%, rgba(255,255,255,.04), rgba(255,255,255,0) 70%), linear-gradient(180deg,#16171C 0%,#101115 50%,#0B0B0E 100%)`,covers:[]};
+DIRS.g3={bg:`linear-gradient(180deg, rgba(0,0,0,0) 0, rgba(0,0,0,0) 222px, rgba(255,255,255,.028) 222px, rgba(255,255,255,.028) 676px, rgba(0,0,0,0) 676px), linear-gradient(180deg,#141519 0%,#0E0F12 100%)`,covers:[]};
+const D=DIRS[DIR];
+const SLIDES={
+ s1:{kb:'hero-solid',f:{before:'metal gear sol',count:'3 games'},on:'ctrl',lit:['-3,1','23,6']},
+ s2:{kb:'hero-holdrt',f:{before:'donkey kong',after:' country returns',count:'1 game'},on:'wide',lit:['-5,6','24,2']},
+ s3:{kb:'hero-select',f:{sel:'conker live and reloaded',count:'1 game'},on:'vs',lit:['-2,3','22,5']},
+ s4:{kb:'hero-tv',tv:1,on:'remote',lit:['-4,7','25,1']}};
+const S=SLIDES[Q.get('s')||'s1'], DIM=Q.get('dim')!=='0';
+const LOGO=h=>`<img src="hero-parts/lockup-clear.svg" style="height:${h}px;display:block">`;
+// The social preview (link cards on GitHub, Reddit and chats) is seen small in a feed, so its logo is much bigger
+const SOC=!!Q.get('social'), LT=SOC?40:26, LH=SOC?112:68, HT=SOC?170:106, BT=SOC?248:186;
+let H=COVER_DEFS;
+H+=`<div class="abs" style="left:0;right:0;top:${LT}px;height:${LH}px;display:flex;justify-content:center">${LOGO(LH)}</div>
+ <div class="abs hl" style="left:0;right:0;top:${HT}px;font-size:66px;letter-spacing:-.02em;text-align:center">Type with your <span style="color:#72D6E8">controller</span></div>
+ <div class="abs bd" style="left:0;right:0;top:${BT}px;font-size:23px;color:#C9CCD3;text-align:center">A free keyboard for Android handhelds, controllers and TV.</div>`;
+const P=46,G=8,NC=21,NR=9,kw=P*NC-G,ph=P*NR-G,x=(1600-kw)/2,y=SOC?314:246,ox=x-G/2,oy=y-G/2;
+
+// Where the two lit tiles go on each slide. Rules, so it looks hand placed and never mirrored:
+//  1. One lit tile on each side of the keyboard (balance), never in the empty column next to it or out in the faded edge:
+//     depth 1-3 tiles away from the keyboard.
+//  2. One sits in the upper third (rows 2-3), the other in the lower third (rows 5-6). Which side is high alternates slide by slide.
+//  3. The two never sit at the same depth, so the pair reads as a diagonal, not a reflection.
+//  4. From one slide to the next, each tile moves at least 2 tiles (a visible change) and at most 4 (it drifts, it doesn't jump),
+//     and that holds from the last slide back to the first too, so the loop is seamless.
+//  5. Among the placements that pass, a fixed seed picks one, so the same banner always comes out the same.
+function litPlan(n,seed){let s=seed;const rnd=()=>(s=(s*1103515245+12345)%2147483648)/2147483648;
+ const HI=[1,2,3],LO=[5,6,7],D=[1,2,3,4];
+ for(let tries=0;tries<500;tries++){const out=[];let ok=true;
+  for(let i=0;i<n&&ok;i++){const leftHigh=i%2===0;const cand=[];
+   for(const dl of D)for(const dr of D){if(dl===dr)continue;
+    // variety: a side never keeps the same distance from the keyboard two slides running
+    if(i>0&&(dl===-1-+out[i-1][0][0]||dr===+out[i-1][1][0]-NC))continue;for(const rl of (leftHigh?HI:LO))for(const rr of (leftHigh?LO:HI)){
+    const L=[-1-dl,rl],R=[NC+dr,rr];
+    const step=(a,b)=>Math.max(Math.abs(a[0]-b[0]),Math.abs(a[1]-b[1]));
+    if(i>0){const p=out[i-1];const sl=step(L,p[0]),sr=step(R,p[1]);if(sl<2||sl>4||sr<2||sr>4)continue;}
+    if(i===n-1&&n>1){const f=out[0];const sl=step(L,f[0]),sr=step(R,f[1]);if(sl<2||sl>4||sr<2||sr>4)continue;}
+    cand.push([L,R]);}}
+   if(!cand.length){ok=false;break;} out.push(cand[Math.floor(rnd()*cand.length)]);}
+  // over the loop each side uses at least three different distances, and the near column (1 away) at most once per side
+  if(ok){const dL=out.map(p=>-1-p[0][0]),dR=out.map(p=>p[1][0]-NC);
+   if(new Set(dL).size<3||new Set(dR).size<3||dL.filter(d=>d===1).length>1||dR.filter(d=>d===1).length>1)ok=false;}
+  if(ok)return out.map(([L,R])=>[L.join(','),R.join(',')]);}
+ return null;}
+const PLAN=litPlan(4,+(Q.get('seed')||7)), SI=+((Q.get('s')||'s1').slice(1))-1; const LIT=new Set(PLAN?PLAN[SI]:S.lit);
+if(FX.includes('tiles')){let t='',clip='';const SPILL=FX.includes('spill');
+ for(let c=-10;c<=NC+9;c++)for(let r=0;r<NR;r++){if(c>=-1&&c<=NC)continue;const tx=x+c*P+.5,ty=y+r*P+.5;if(tx>1600||tx+P<0)continue;
+  const L=LIT.has(`${c},${r}`), R=`x="${tx}" y="${ty}" width="${P-G-1}" height="${P-G-1}" rx="9"`;
+  if(!L){t+=`<rect ${R} fill="rgba(255,255,255,.045)" stroke="rgba(255,255,255,.13)" stroke-width="1"/>`;clip+=`<rect ${R}/>`;}}
+ let spill='',lit='';
+ [...LIT].forEach((k,i)=>{const PAIR=Q.get('pair')==='1';const[c,r]=k.split(',').map(Number),cx=x+c*P+(P-G)/2,cy=y+r*P+(P-G)/2;
+  spill+=`<circle cx="${cx}" cy="${cy}" r="130" fill="url(#sg)"/>`;
+  {const X=x+c*P+.5,Y=y+r*P+.5,W=P-G-1,ST=PAIR?(i===0?'glow':'echo'):(Q.get('lit')||'glow');
+   if(ST==='glow') lit+=`<rect x="${X-4}" y="${Y-4}" width="${W+8}" height="${W+8}" rx="13" fill="none" stroke="rgba(114,214,232,.45)" stroke-width="2.5"/><rect x="${X}" y="${Y}" width="${W}" height="${W}" rx="9" fill="#72D6E8"/>`;
+   else if(ST==='lift') lit+=`<rect x="${X}" y="${Y}" width="${W}" height="${W}" rx="9" fill="rgba(114,214,232,.32)" stroke="rgba(114,214,232,.55)" stroke-width="1"/><rect x="${X+W*.36}" y="${Y+W-8}" width="${W*.28}" height="2.5" rx="1.25" fill="#72D6E8"/>`;
+   else if(ST==='echo') lit+=`<rect x="${X}" y="${Y}" width="${W}" height="${W}" rx="9" fill="rgba(114,214,232,.38)"/>`;
+   else lit+=`<rect x="${X}" y="${Y}" width="${W}" height="${W}" rx="9" fill="#72D6E8"/>`;}});
+ // the band fades out towards the sides and softly at its top and bottom edge
+ const mask=`-webkit-mask-image:linear-gradient(90deg,rgba(0,0,0,0) 0px,rgba(0,0,0,.25) ${x-6.5*P}px,rgba(0,0,0,.75) ${x-4*P}px,#000 ${x-2*P}px,#000 ${x+NC*P+2*P}px,rgba(0,0,0,.75) ${x+NC*P+4*P}px,rgba(0,0,0,.25) ${x+NC*P+6.5*P}px,rgba(0,0,0,0) 1600px)`;
+ H+=`<svg class="abs" style="left:0;top:0;${mask}" width="1600" height="900"><defs><radialGradient id="sg"><stop offset="0" stop-color="#72D6E8" stop-opacity="${.20*(+(Q.get('sk')||1))}"/><stop offset=".45" stop-color="#72D6E8" stop-opacity="${.07*(+(Q.get('sk')||1))}"/><stop offset="1" stop-color="#72D6E8" stop-opacity="0"/></radialGradient><clipPath id="tc">${clip}</clipPath></defs>${t}${SPILL?`<g clip-path="url(#tc)">${spill}</g>`:''}</svg>`;
+ H+=`<svg class="abs" style="left:0;top:0;opacity:${Q.get('litop')||1}" width="1600" height="900">${lit}</svg>`;}
+if(FX.includes('grid')){let t='';const c0=-Math.ceil(x/P)-1,c1=NC+Math.ceil(x/P)+1,r0=-Math.ceil(y/P)-1,r1=Math.ceil((900-y)/P)+1;
+ for(let c=c0;c<=c1;c++)for(let r=r0;r<=r1;r++){const cx=x+c*P+(P-G)/2,cy=y+r*P+(P-G)/2;if(cx<0||cx>1600||cy<0||cy>900)continue;
+  if(c>=-1&&c<=NC&&r>=-1&&r<=NR)continue;                       // one clear cell all round the panel
+  const L=LIT.has(`${c},${r}`);
+  if(L){t+=`<rect x="${x+c*P}" y="${y+r*P}" width="${P-G}" height="${P-G}" rx="9" fill="rgba(114,214,232,.85)" stroke="#72D6E8" stroke-width="1.2"/>`;continue;}
+  const dx=Math.abs(cx-800)/800, a=.10+.10*Math.min(1,dx*1.4);
+  t+=`<circle cx="${cx}" cy="${cy}" r="1.9" fill="rgba(180,215,230,${a})"/>`;}
+ H+=`<svg class="abs" style="left:0;top:0" width="1600" height="900">${t}</svg>`;}
+const KBA=S.tv?1560/732:1680/534;
+if(S.tv){const TA=1464/660, kw2=kw*0.6, kh2=kw2/TA, tones=[['#3E5BA8','#1A2550'],['#B4573A','#4A1E16'],['#2E8A6A','#103A2C'],['#7A4FB8','#2A1A48'],['#C08A2E','#4A3010'],['#2B8CA0','#0E3A44'],['#A8455E','#401624']];
+  let rows='';for(let r=0;r<2;r++){rows+=`<div style="display:flex;gap:16px;margin-top:${r?18:0}px">`;for(let i=0;i<6;i++){rows+=`<div style="width:138px;height:78px;border-radius:12px;overflow:hidden;flex:none;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08)">${thumbArt(i+r*3)}</div>`;}rows+='</div>';}
+  H+=`<div class="panel" style="left:${x}px;top:${y}px;width:${kw}px;height:${ph}px;background:#07080B">
+   <div style="position:absolute;left:34px;top:26px;font-family:A;font-weight:700;font-size:22px;color:#F2F3F5">Search</div>
+   <div style="position:absolute;left:34px;top:70px;opacity:.86">${rows}</div>
+   <img src="renders/${S.kb}.png" style="position:absolute;left:${(kw-kw2)/2}px;bottom:24px;width:${kw2}px;height:${kh2}px;filter:drop-shadow(0 24px 40px rgba(0,0,0,.7))">
+   <div style="position:absolute;right:26px;top:24px;font-family:I;font-weight:600;font-size:14px;letter-spacing:.14em;color:#72D6E8;border:1px solid rgba(114,214,232,.5);border-radius:14px;padding:5px 12px">TV MODE</div></div>`;}
+else{const kh=kw/KBA,fh=58,top=(ph-kh-fh)/2-2;
+ H+=`<div class="panel" style="left:${x}px;top:${y}px;width:${kw}px;height:${ph}px"><div style="padding:${top}px 22px 0">${field(S.f,{h:fh,fs:24,pad:22})}</div><img class="kbimg" src="renders/${S.kb}.png" style="width:${kw}px;height:${kh}px"></div>`;}
+// the device row: one of each kind (Xbox icons), equal gaps between the drawings, bottoms on one line
+const A={ctrl:523.02/352.58,wide:589/243.2,vs:320.8/475.4,remote:148/558};
+const NOLAB=Q.get('lab')==='0', K=NOLAB?1.0:.86;
+const WB=+(Q.get('wb')||1); const items=[['ctrl',120*K,'Controller'],['wide',90*K*WB,'Handheld'],['vs',134*K,'Vertical handheld'],['remote',134*K,'TV remote']];
+const ALN=Q.get('al')||'bottom', ws=items.map(([k,h])=>h*A[k]);
+const LW={Controller:98,Handheld:86,'Vertical handheld':156,'TV remote':92}, BWM=Q.get('bw')||'mix', BW=items.map(([k,h,lab],i)=>{const lb=NOLAB?ws[i]:Math.max(ws[i],LW[lab]+8);return BWM==='label'?lb:BWM==='dev'?ws[i]:(ws[i]+lb)/2;});
+const SPAN=Q.get('sp')||'span', HM=Math.max(...items.map(t=>t[1]));
+const GAPS=SPAN==='span'?Array(3).fill((kw-BW.reduce((a,b)=>a+b,0))/3):[104,104,104];
+let xx=SPAN==='span'?x:(1600-(BW.reduce((a,b)=>a+b,0)+312))/2;
+const blockH=HM+(NOLAB?0:38), top0=y+ph, base=Math.round(top0+(900-top0-blockH)*0.53+HM);
+const boxX=[];BW.forEach((bw,i)=>{boxX.push(xx);xx+=bw+(GAPS[i]||0);});
+if(!Q.get('social'))H+=`<div class="abs" style="left:${800-560}px;top:${base-40}px;width:1120px;height:80px;background:radial-gradient(closest-side,rgba(0,0,0,.30),rgba(0,0,0,0))"></div>`;
+if(!Q.get('social'))items.forEach(([k,h,lab],i)=>{const w=ws[i],on=S.on===k,op=on?1:.42; xx=boxX[i]+(BW[i]-w)/2; const HMAX=HM; const lift=ALN==='center'?(HMAX-h)/2:ALN==='optical'?(k==='wide'?(HMAX-h)*.42:k==='ctrl'?(HMAX-h)*.22:0):0;
+ const srcs={ctrl:'hero-parts/c-controller-xbox-lit.svg',wide:'hero-parts/c-wide-xbox-lit.svg',remote:'hero-parts/c-remote-lit.svg'};
+ if(k==='vs'){H+=`<div class="abs" style="left:${xx}px;top:${base-h-lift}px;width:${w}px;height:${h}px;opacity:${op}">
+   <img class="dev" src="hero-parts/c-vsplit-xbox-a.svg" style="left:-4px;top:0;width:${w}px;clip-path:inset(-40px calc(50% + 1px) -40px -40px)">
+   <img class="dev" src="hero-parts/c-vsplit-xbox-b.svg" style="left:4px;top:0;width:${w}px;clip-path:inset(-40px -40px -40px calc(50% + 1px))">
+   <div class="abs" style="left:${w/2-1}px;top:-8px;width:2px;height:${h+16}px;background:linear-gradient(180deg,rgba(114,214,232,0),rgba(114,214,232,.75) 15%,rgba(114,214,232,.75) 85%,rgba(114,214,232,0))"></div></div>`;}
+ else H+=`<img class="dev" src="${srcs[k]}" style="left:${xx}px;top:${base-h-lift}px;width:${w}px;opacity:${op}">`;
+ if(!NOLAB)H+=`<div class="abs" style="left:${xx+w/2-150}px;width:300px;text-align:center;top:${base+16}px;font-family:I;font-weight:${on?600:500};font-size:19px;color:${on?'#F2F3F5':'#9EA1A9'}">${lab}</div>`;});
+let FIN=`<div class="abs" style="inset:0;pointer-events:none;background:radial-gradient(1500px 950px at 50% 46%, rgba(0,0,0,0) 58%, rgba(0,0,0,.24) 100%)"></div><svg class="abs" style="inset:0;opacity:.06;mix-blend-mode:overlay;pointer-events:none" width="1600" height="900"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="2" stitchTiles="stitch"/></filter><rect width="1600" height="900" filter="url(#n)"/></svg>`;
+if(ACC!=='72D6E8'){H=H.split('114,214,232').join(AR.join(',')).split('#72D6E8').join('#'+ACC).replace(/(hero-parts\/c-[a-z-]+?)(\.svg)/g,'$1-'+ACC+'$2'); if(S.kb==='hero-holdrt'&&Q.get('kbacc')) H=H.replace('renders/hero-holdrt.png','renders/hero-holdrt-'+Q.get('kbacc')+'.png');}
+if(Q.get('nograin'))FIN=FIN.replace(/<svg[\s\S]*<\/svg>$/,'');
+if(Q.get('social')){H=`<div style="position:absolute;left:0;top:0;width:1600px;height:900px;transform:translateY(0px)">${H}</div>`;document.getElementById('c').style.height='800px';}
+const c=document.getElementById('c');c.style.background=D.bg;c.innerHTML=(D.over||'')+H+FIN;
+if(Q.get('hide'))document.querySelectorAll('.panel > *').forEach(e=>e.style.visibility='hidden');
+document.fonts.ready.then(()=>Promise.all([...document.images].map(i=>i.decode().catch(()=>{})))).then(()=>{document.title='done'});
+</script></body></html>

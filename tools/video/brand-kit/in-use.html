@@ -1,0 +1,100 @@
+<html><head><meta charset="utf-8"><style>
+@font-face{font-family:R;src:url(../roboto-latin-400-normal.woff2);font-weight:400}
+@font-face{font-family:R;src:url(../roboto-latin-500-normal.woff2);font-weight:500}
+@font-face{font-family:R;src:url(../roboto-latin-700-normal.woff2);font-weight:700}
+@font-face{font-family:I;src:url(fonts/inter.ttf)}@font-face{font-family:A;src:url(fonts/atkinson_next.ttf)}
+body{margin:0;background:#000;color:#F2F3F5}
+.card{width:1600px;height:900px;position:relative;overflow:hidden;margin-bottom:24px;background:#000;font-family:R}
+.k{position:absolute}
+.tabs{position:absolute;top:22px;left:0;right:0;display:flex;justify-content:center;gap:14px}
+.tab{height:64px;padding:0 30px;border-radius:32px;background:#151518;color:#C9CCD3;font-size:26px;display:flex;align-items:center}
+.tab.on{background:#fff;color:#0B0B0E;font-weight:500}
+.sect{font-size:21px;letter-spacing:3px;color:#9A9DA5;font-weight:500}
+.cardset{background:#121214;border:1px solid #ffffff10;border-radius:30px;padding:22px 32px}
+.bar{position:absolute;left:0;right:0;bottom:0;height:96px;border-top:1px solid #1C1C21;display:flex;justify-content:center;align-items:center;gap:52px;font-size:26px;color:#C9CCD3;background:#000}
+.bar span{display:flex;align-items:center;gap:14px}
+.grow{display:flex;align-items:center;min-height:66px;font-size:26px;color:#E6E8EC;border-radius:16px;padding:0 14px;margin:0 -14px}
+.grow.focus{background:#1b2023;box-shadow:0 0 0 3px #72D6E8}
+.gb{flex:none;display:flex;gap:10px;align-items:center}
+.hold{font-size:20px;color:#C9CCD3;margin-right:2px}
+.note{font-size:20px;color:#7C7F88;line-height:1.4}
+.chip{height:48px;padding:0 22px;border-radius:24px;border:1px solid #ffffff22;display:flex;align-items:center;font-size:21px;color:#C9CCD3}
+.chip.on{background:#72D6E8;color:#0B0F17;border-color:#72D6E8;font-weight:500}
+.eyebrow{font-size:22px;font-weight:500;letter-spacing:3px;color:#72D6E8;text-transform:uppercase}
+.title{font-size:52px;font-weight:500;line-height:1.25;margin-top:14px}
+.body{font-size:28px;line-height:1.5;color:#9A9DA5;margin-top:20px}
+.label{font-family:I;position:absolute;left:0;top:-46px;font-size:18px;letter-spacing:2px;color:#5E616A;text-transform:uppercase}
+.cap{font-size:15px;letter-spacing:.14em;text-transform:uppercase;color:#5E616A;text-align:center;margin-top:16px;font-weight:500}
+</style>
+<script src="../kb2.js"></script><script src="controller.prem.js"></script><script src="../spotlight4.js"></script><script src="devices2.js"></script><script src="handhelds2.js"></script><script src="premium.js"></script><script src="kit.js"></script></head><body>
+<div id="o"></div>
+<script>
+Promise.all(['500 36px I','700 36px I','700 36px A','400 36px R','500 36px R','700 36px R'].map(f=>document.fonts.load(f))).then(()=>{
+const ACC='#72D6E8';
+const tabs=(on,st)=>`<div class="tabs"><div style="position:absolute;left:28px;top:10px">${bigBadge('LB',44,st)}</div>${['Look','Typing','Sound & haptics','Button guide','About'].map(t=>`<div class="tab ${t===on?'on':''}">${t}</div>`).join('')}<div style="position:absolute;right:28px;top:10px">${bigBadge('RB',44,st)}</div></div>`;
+const bar=items=>`<div class="bar">${items.map(([b,t])=>`<span>${b} ${t}</span>`).join('')}</div>`;
+const G=(b,t,f)=>`<div class="grow ${f?'focus':''}"><div class="gb">${b}</div><div>${t}</div></div>`;
+const plus='<span style="color:#9A9DA5;margin:0 2px">+</span>';
+const picChips=sel=>`<div style="display:flex;gap:10px;margin-top:14px">${['Automatic','Controller','Handheld','Vertical','Remote'].map(c=>`<div class="chip ${c===sel?'on':''}">${c}</div>`).join('')}</div>`;
+const S=[];
+
+// 1. Button guide on a wide handheld, PlayStation icons; the row you're on lights the picture
+{const st='ps',B=(b,s)=>bigBadge(b,s||44,st);
+S.push(['1 · Settings → Button guide · wide handheld · PlayStation icons', tabs('Button guide',st)+`<div class="k" style="left:90px;top:130px;width:720px">
+  <div class="sect">TYPING</div><div class="cardset" style="margin-top:14px">
+   ${G(B('A'),'Type the highlighted key')}${G(B('X'),'Delete · hold to speed up')}${G(B('Y'),'Space')}
+   ${G(B('RT'),'Shift · tap twice for caps lock',1)}${G(B('LT'),'Symbols and numbers')}${G(B('LB')+B('RB'),'Move the cursor')}</div></div>
+  <div class="k" style="left:860px;top:150px;width:660px;display:flex;flex-direction:column;align-items:center">${kitHandheld('wide',st,{RT:1},600)}
+   <div class="note" style="margin-top:14px">The picture lights up the row you're on</div></div>
+  <div class="k" style="left:880px;top:610px;width:640px"><div style="font-size:24px;color:#E6E8EC">Picture</div><div class="note">Normally automatic. Pick one if it guessed wrong.</div>${picChips('Automatic')}</div>`
+  +bar([[B('LB',40)+B('RB',40),'Sections'],[B('B',40),'Close']])]);}
+
+// 2. Button guide on an Xbox controller: a two-button combo lights both
+{const st='xbox',B=(b,s)=>bigBadge(b,s||44,st);
+S.push(['2 · Settings → Button guide · Xbox controller · a combo', tabs('Button guide',st)+`<div class="k" style="left:90px;top:130px;width:720px">
+  <div class="sect">MOVING AROUND</div><div class="cardset" style="margin-top:14px">
+   ${G(B('DPAD'),'Move the highlight')}${G(B('LS'),'Move faster with the stick')}${G(B('RS'),'Move the text cursor')}
+   ${G(B('RT')+plus+B('RS'),'Jump whole words',1)}${G(B('LB')+B('RB'),'Move the cursor one step')}${G(B('START'),'Close the keyboard')}</div></div>
+  <div class="k" style="left:900px;top:120px;width:600px;display:flex;flex-direction:column;align-items:center">${kitController(st,{RT:1,RS:1,RSdir:'sideways'},520)}
+   <div class="note" style="margin-top:14px">Both buttons of a combo light up together</div></div>`
+  +bar([[B('LB',40)+B('RB',40),'Sections'],[B('B',40),'Close']])]);}
+
+// 3. The tour on a vertical handheld with Switch icons
+{const st='switch',B=(b,s)=>bigBadge(b,s||52,st);
+S.push(['3 · Tour · vertical handheld · Switch icons', `<div class="k" style="left:0;right:0;top:34px;display:flex;justify-content:center;gap:12px">${[0,1,2,3,4].map(i=>i===2?`<div style="width:42px;height:12px;border-radius:6px;background:${ACC}"></div>`:`<div style="width:12px;height:12px;border-radius:6px;background:#2E2E35"></div>`).join('')}</div>
+  <div class="k" style="left:90px;top:110px;width:720px"><div class="eyebrow">Tour · 3 of 5</div><div class="title">Fix a typo without starting over</div>
+   <div class="body">Your shoulder buttons move the cursor through what you've typed, one letter at a time.</div>
+   <div style="margin-top:40px">${G(B('LB')+B('RB'),'Move the cursor')}${G('<span class="hold">Hold</span>'+B('LB')+B('RB'),'Keep moving')}</div></div>
+  <div class="k" style="left:960px;top:100px;width:520px;display:flex;flex-direction:column;align-items:center">${kitHandheld('vertical',st,{LB:1,RB:1},330)}</div>`
+  +bar([[bigBadge('A',40,st),'Next'],[bigBadge('B',40,st),'Back'],[bigBadge('START',40,st),'Skip']])]);}
+
+// 4. What's new on a PlayStation controller
+{const st='ps',B=(b,s)=>bigBadge(b,s||52,st);
+S.push(["4 · What's new · PlayStation controller", `<div class="k" style="left:0;right:0;top:34px;display:flex;justify-content:center;gap:12px">${[0,1,2].map(i=>i===0?`<div style="width:42px;height:12px;border-radius:6px;background:${ACC}"></div>`:`<div style="width:12px;height:12px;border-radius:6px;background:#2E2E35"></div>`).join('')}</div>
+  <div class="k" style="left:90px;top:110px;width:720px"><div class="eyebrow">New in 1.2 · 1 of 3</div><div class="title">Quick symbols, one hold away</div>
+   <div class="body">Hold the left trigger and the symbols appear. Let go and you're back to letters.</div>
+   <div style="margin-top:40px">${G('<span class="hold">Hold</span>'+B('LT'),'Show symbols')}${G(B('LT')+plus+B('A'),'Type one symbol')}</div></div>
+  <div class="k" style="left:900px;top:130px;width:600px;display:flex;flex-direction:column;align-items:center">${kitController(st,{LT:1,A:1},540)}</div>`
+  +bar([[bigBadge('A',40,st),'Next'],[bigBadge('B',40,st),'Back'],[bigBadge('START',40,st),'Close']])]);}
+
+// 5. Button guide for a TV remote
+{const R=(k,s)=>remoteBadge(k,s||44);
+S.push(['5 · Settings → Button guide · TV remote', tabs('Button guide','xbox').replace(/<div style="position:absolute;(left|right):28px[^]*?<\/svg><\/div>/g,'')+`<div class="k" style="left:90px;top:130px;width:900px">
+  <div class="sect">TV REMOTE</div><div class="cardset" style="margin-top:14px">
+   ${G(R('DPAD'),'Move the highlight')}${G(R('OK'),'Type the highlighted key',1)}
+   ${G('<span class="hold">Hold</span>'+R('OK'),'On a letter: its accents (é, è, ê…)')}${G('<span class="hold">Hold</span>'+R('OK'),'On ⌫ or a cursor key: keep going')}${G(R('BACK'),'Close the keyboard')}
+   <div class="note" style="margin-top:12px">Space, ⇧ Shift, ?123 and ⌫ are keys on the keyboard itself, so it works with any remote.</div></div></div>
+  <div class="k" style="left:1170px;top:130px">${kitRemote({OK:1},160)}</div>`
+  +bar([[R('DPAD',40),'Sections'],[R('BACK',40),'Close']])]);}
+
+// 6. One row, every device: what "Shift" looks like wherever you are
+{const rows=[['Xbox controller',kitController('xbox',{RT:1},270),'xbox'],['PlayStation',kitController('ps',{RT:1},270),'ps'],['Switch Pro',kitController('switch',{RT:1},270),'switch'],
+   ['Wide handheld',kitHandheld('wide','xbox',{RT:1},300),'xbox'],['Vertical handheld',kitHandheld('vertical','switch',{RT:1},150),'switch']];
+S.push(['6 · The same row ("Shift") on every device', `<div class="k" style="left:90px;top:60px"><div class="eyebrow">Button guide · one row, every device</div><div class="title" style="font-size:40px">Shift · tap twice for caps lock</div></div>
+  <div class="k" style="left:40px;right:40px;top:200px;height:520px;display:flex;justify-content:space-between;align-items:flex-end">${rows.map(([t,s,st])=>`<div style="display:flex;flex-direction:column;align-items:center">${s}<div style="margin-top:22px">${bigBadge('RT',40,st)}</div><div class="cap">${t}</div></div>`).join('')}</div>`]);}
+
+document.getElementById('o').innerHTML=PREMIUM_DEFS+S.map(([t,h],i)=>`<div class="card" id="u${i+1}">${h}</div>`).join('');
+document.querySelectorAll('.card').forEach(c=>{const bs=[...c.querySelectorAll('.gb')]; if(!bs.length) return; const w=Math.max(...bs.map(b=>b.scrollWidth))+24; bs.forEach(b=>b.style.width=w+'px');});
+document.title='done';
+});
+</script></body></html>

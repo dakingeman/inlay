@@ -11,3 +11,9 @@
 *.jks
 *.keystore
 /app/release
+
+# Python caches from tools/
+__pycache__/
+
+# Kotlin build cache
+.kotlin/

@@ -10,8 +10,10 @@ import android.graphics.Typeface
 /** A piece of a hint line: a controller badge or a few words. */
 sealed class HintPart {
     /** [presses] > 1 draws a small "×2" inside the badge: press it that many times quickly. */
-    data class Badge(val button: ControllerButton, val presses: Int = 1) : HintPart()
+    data class Badge(val button: ControllerButton, val presses: Int = 1, val held: Boolean = false) : HintPart()
     data class Text(val text: String) : HintPart()
+    /** A remote's key held down ("hold OK"): the same HOLD capsule, with the key's name. */
+    data class HeldWord(val word: String) : HintPart()
 }
 
 /**
@@ -47,8 +49,10 @@ class BadgePainter(private val dp: Float) {
     val radius: Float get() = 6.5f * dp * scale
     val height: Float get() = radius * 2
 
-    private fun baseWidth(button: ControllerButton): Float =
-        shoulderText(button)?.let { shoulderPaint().measureText(it) + 8f * dp * scale } ?: height
+    private fun baseWidth(button: ControllerButton): Float = when {
+        button.isStick -> height + shoulderPaint().measureText(stickText(button)) + 6f * dp * scale
+        else -> shoulderText(button)?.let { shoulderPaint().measureText(it) + 8f * dp * scale } ?: height
+    }
 
     private fun countText(presses: Int) = "×$presses"
     private fun countPaint() = label.apply { textSize = 7.5f * dp * scale }
@@ -58,6 +62,62 @@ class BadgePainter(private val dp: Float) {
         if (presses > 1) countPaint().measureText(countText(presses)) + 5f * dp * scale else 0f
 
     fun width(button: ControllerButton, presses: Int = 1): Float = baseWidth(button) + tailWidth(presses)
+
+    // ---- Held: the button sits in a HOLD capsule with a double outline ---------------------
+    private fun holdPaint() = label.apply { textSize = 6.5f * dp * scale; letterSpacing = 0.14f }
+    private val holdPad get() = 2.5f * dp * scale
+
+    /** Room for the softer second outline around the capsule, so it's never clipped. */
+    private val holdHalo get() = 3.2f * dp * scale
+    /** How tall a line needs to be: taller when it holds a HOLD capsule. */
+    fun lineHeight(parts: List<HintPart>): Float =
+        if (parts.any { (it is HintPart.Badge && it.held) || it is HintPart.HeldWord }) height + 2 * holdPad + 2 * holdHalo else height
+
+    private fun holdLabelWidth() = 2 * holdHalo + holdPad + 5f * dp * scale + holdPaint().measureText("HOLD").also { label.letterSpacing = 0f } + 4f * dp * scale
+
+    /** A held button's width: the word HOLD, then the badge, in one capsule. */
+    fun heldWidth(button: ControllerButton): Float = holdLabelWidth() + width(button) + holdPad
+
+    private fun wordPaint() = label.apply { textSize = 9f * dp * scale; letterSpacing = 0f }
+    fun heldWordWidth(word: String): Float = holdLabelWidth() + wordPaint().measureText(word) + 6f * dp * scale
+
+    /** Draws a remote key held down: HOLD, then its name, in the same capsule. */
+    fun drawHeldWord(canvas: Canvas, word: String, left: Float, centerY: Float): Float {
+        val w = heldWordWidth(word)
+        val right = holdCapsule(canvas, left, w, centerY)
+        val p = wordPaint().apply { color = Color.WHITE; textAlign = Paint.Align.RIGHT }
+        canvas.drawText(word, right - holdPad - 3f * dp * scale, centerY - (p.descent() + p.ascent()) / 2f, p)
+        p.textAlign = Paint.Align.CENTER
+        return left + w
+    }
+
+    /** Draws a held button (the HOLD capsule). Returns the right edge. */
+    fun drawHeld(canvas: Canvas, button: ControllerButton, left: Float, centerY: Float): Float {
+        val w = heldWidth(button)
+        val right = holdCapsule(canvas, left, w, centerY)
+        draw(canvas, button, right - holdPad - width(button), centerY)
+        return left + w
+    }
+
+    /** The capsule itself: dark plate, accent outline, a softer second outline, and HOLD. */
+    private fun holdCapsule(canvas: Canvas, left: Float, w: Float, centerY: Float): Float {
+        val h = height + 2 * holdPad
+        val box = RectF(left + holdHalo, centerY - h / 2, left + w - holdHalo, centerY + h / 2)
+        val accent = SettingsStyle.accent
+        fill.color = plate
+        canvas.drawRoundRect(box, h / 2, h / 2, fill)
+        ring.strokeWidth = 1.2f * dp * scale
+        ring.color = accent
+        canvas.drawRoundRect(box, h / 2, h / 2, ring)
+        val g = 2.2f * dp * scale                    // the second, softer outline: "held down"
+        ring.color = Contrast.withAlpha(accent, 110)
+        canvas.drawRoundRect(box.left - g, box.top - g, box.right + g, box.bottom + g, h / 2 + g, h / 2 + g, ring)
+        val p = holdPaint().apply { color = accent; textAlign = Paint.Align.LEFT }
+        canvas.drawText("HOLD", box.left + holdPad + 5f * dp * scale, centerY - (p.descent() + p.ascent()) / 2f, p)
+        p.textAlign = Paint.Align.CENTER
+        p.letterSpacing = 0f
+        return box.right
+    }
 
     /** Draws with the left edge at [left], vertically centred on [centerY]. Returns the right edge. */
     fun draw(canvas: Canvas, button: ControllerButton, left: Float, centerY: Float, presses: Int = 1): Float {
@@ -77,6 +137,19 @@ class BadgePainter(private val dp: Float) {
         }
 
         val cx = left + baseWidth(button) / 2f
+        if (button.isStick) {
+            // A thumbstick seen from above: the ring it sits in and its cap, then which one (L or R)
+            val sx = left + r
+            glyph.color = Color.WHITE
+            glyph.strokeWidth = 1.1f * dp * scale
+            canvas.drawCircle(sx, centerY, r * 0.62f, glyph)
+            fill.color = Color.WHITE
+            canvas.drawCircle(sx, centerY, r * 0.3f, fill)
+            val p = shoulderPaint().apply { color = Color.WHITE; textAlign = Paint.Align.LEFT }
+            canvas.drawText(stickText(button), sx + r * 0.62f + 2.5f * dp * scale, centerY - (p.descent() + p.ascent()) / 2f, p)
+            p.textAlign = Paint.Align.CENTER
+            return box.right
+        }
         shoulderText(button)?.let {
             val p = shoulderPaint().apply { color = Color.WHITE }
             canvas.drawText(it, cx, centerY - (p.descent() + p.ascent()) / 2f, p)
@@ -116,8 +189,9 @@ class BadgePainter(private val dp: Float) {
         var w = 0f
         parts.forEachIndexed { i, part ->
             w += when (part) {
-                is HintPart.Badge -> width(part.button, part.presses)
+                is HintPart.Badge -> if (part.held) heldWidth(part.button) else width(part.button, part.presses)
                 is HintPart.Text -> text.measureText(part.text)
+                is HintPart.HeldWord -> heldWordWidth(part.word)
             }
             if (i < parts.lastIndex) w += spacingAfter(part, parts[i + 1])
         }
@@ -130,11 +204,12 @@ class BadgePainter(private val dp: Float) {
         val baseline = centerY - (text.descent() + text.ascent()) / 2f
         parts.forEachIndexed { i, part ->
             x = when (part) {
-                is HintPart.Badge -> draw(canvas, part.button, x, centerY, part.presses)
+                is HintPart.Badge -> if (part.held) drawHeld(canvas, part.button, x, centerY) else draw(canvas, part.button, x, centerY, part.presses)
                 is HintPart.Text -> {
                     canvas.drawText(part.text, x, baseline, text)
                     x + text.measureText(part.text)
                 }
+                is HintPart.HeldWord -> drawHeldWord(canvas, part.word, x, centerY)
             }
             if (i < parts.lastIndex) x += spacingAfter(part, parts[i + 1])
         }
@@ -200,11 +275,14 @@ class BadgePainter(private val dp: Float) {
             ControllerButton.R1 -> if (sony) "R1" else if (nintendo) "R" else "RB"
             ControllerButton.L2 -> if (sony) "L2" else if (nintendo) "ZL" else "LT"
             ControllerButton.R2 -> if (sony) "R2" else if (nintendo) "ZR" else "RT"
-            ControllerButton.L3 -> if (sony) "L3" else "LS"
-            ControllerButton.R3 -> if (sony) "R3" else "RS"
             else -> null
         }
     }
+
+    /** Next to the stick drawing: L or R (PlayStation says L3 and R3). */
+    private fun stickText(button: ControllerButton) =
+        if (style == ButtonStyle.PLAYSTATION) (if (button == ControllerButton.L3) "L3" else "R3")
+        else (if (button == ControllerButton.L3) "L" else "R")
 
     private fun drawFace(canvas: Canvas, button: ControllerButton, cx: Float, cy: Float, g: Float) {
         when (style) {

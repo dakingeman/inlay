@@ -1,0 +1,40 @@
+<html><head><meta charset="utf-8"><style>
+@font-face{font-family:R;src:url(../roboto-latin-400-normal.woff2);font-weight:400}
+@font-face{font-family:R;src:url(../roboto-latin-500-normal.woff2);font-weight:500}@font-face{font-family:R;src:url(../roboto-latin-700-normal.woff2);font-weight:700}
+@font-face{font-family:I;src:url(fonts/inter.ttf)}@font-face{font-family:A;src:url(fonts/atkinson_next.ttf)}
+body{margin:0;background:#000;color:#F2F3F5;font-family:R}
+.card{width:1600px;position:relative;margin-bottom:24px;background:radial-gradient(ellipse at 50% 55%,#15161b 0%,#0A0A0D 70%);padding:44px 56px 40px;box-sizing:border-box}
+.h{font-family:A;font-weight:700;font-size:40px}.p{font-size:22px;color:#9A9DA5;margin:8px 0 30px}
+.row{display:flex;justify-content:space-between;align-items:flex-end}
+.cap{font-size:15px;letter-spacing:.14em;text-transform:uppercase;color:#5E616A;text-align:center;margin-top:18px;font-weight:500}
+</style><script src="controller.prem.js"></script><script src="handhelds2.js"></script><script src="devices2.js"></script><script src="premium.js"></script></head><body><div id="o"></div>
+<script>
+window.KIT_FLOATING=true;
+const strip=s=>s.replace(/^<svg[^>]*>/,'').replace(/<\/svg>\s*$/,'');
+const ANCH={xbox:{left:236,right:478,top:84,lift:24},ps:{left:171,right:486,top:52,lift:20},switch:{left:180,right:477,top:50,lift:20}};
+function ctrlCell(on,style){
+  const W=440, pad=130, k=W/657, a=Object.assign({kind:'ctrl'},ANCH[style]);
+  const on2=Object.assign({},on,{LB:0,RB:0,LT:0,RT:0});
+  let svg;
+  if(style==='xbox'){ const keep={lt:CTRL.lt,rt:CTRL.rt}; CTRL.lt=CTRL.rt='M0,0'; svg=controller(W,on2,style); Object.assign(CTRL,keep);
+    svg=svg.replace(/<text[^>]*>(LT|RT|LB|RB)<\/text>/g,''); [CTRL.lb,CTRL.rb].forEach(d=>{svg=svg.replace(`d="${d}" fill="#0f1014"`,`d="${d}" fill="#101116"`);}); }
+  else svg=controller(W,on2,style);
+  let inner=floorShadow(328,423,520)+polish(strip(svg)+shoulderKeysA(a,style,on,1.25),657/W);
+  return `<svg width="${W}" height="${(423+pad+20)*k}" viewBox="0 ${-pad} 657 ${423+pad+20}" style="overflow:visible">${inner}</svg>`;
+}
+function hhCell(kind,on,style,W){
+  const H=handheld2(kind,W,{on,style}); const pad=kind==='vertical'?160:120, k=W/H.VW, sc=kind==='vertical'?1.2:1;
+  const bb=kind==='vertical'?[H.VW/2,H.VH-(H.VH-547*0.85)/2,313]:[H.VW/2,H.VH-(H.VH-237)/2,582];
+  const inner=floorShadow(...bb)+polish(H.svg+shoulderKeysA(H.anchors,style,on,sc),H.VW/W);
+  return `<svg width="${W}" height="${(H.VH+pad+20)*k}" viewBox="0 ${-pad} ${H.VW} ${H.VH+pad+20}" style="overflow:visible">${inner}</svg>`;
+}
+function remoteCell(on,w){ let s=remote2Svg(w,{on}); s=s.replace(/(<svg[^>]*>)([\s\S]*)<\/svg>/,(m,a,b)=>a+floorShadow(75,555,150)+polish(b,150/w)+'</svg>'); return s; }
+const on={LT:1,RB:1,A:1,LS:1,Dright:1};
+const cell=(svg,cap)=>`<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end">${svg}<div class="cap">${cap}</div></div>`;
+document.getElementById('o').innerHTML=PREMIUM_DEFS+
+ `<div class="card" id="after"><div class="h">Inlay device kit</div><div class="p">Same rules on every device. Shown: left trigger, right bumper, A, left stick and D-pad right pressed.</div>
+ <div class="row" style="margin-bottom:46px">${cell(ctrlCell(on,'xbox'),'Xbox')}${cell(ctrlCell(on,'ps'),'PlayStation')}${cell(ctrlCell(on,'switch'),'Switch')}</div>
+ <div class="row">${cell(hhCell('wide',on,'ps',540),'Wide handheld')}${cell(hhCell('vertical',on,'switch',250),'Vertical handheld')}${cell(remoteCell({Dright:1},100),'TV remote')}</div></div>`;
+Promise.all([document.fonts.load('700 14px R'),document.fonts.load('700 14px I')]).then(()=>document.title='done');
+console.log('wide',JSON.stringify(spacingCheck('wide')),'vertical',JSON.stringify(spacingCheck('vertical')));
+</script></body></html>

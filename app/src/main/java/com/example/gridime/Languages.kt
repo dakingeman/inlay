@@ -71,6 +71,23 @@ object Accents {
         "её", "гґ", "иіїй", "ьъ", "уў"
     )
 
+    /**
+     * Hold A: the letter just typed first, then its accents, this language's own ones first.
+     * Null when the letter has no accented forms.
+     */
+    fun variants(c: Char, language: Language): List<String>? {
+        val upper = c.isUpperCase()
+        val lower = c.lowercaseChar()
+        val group = groups.firstOrNull { lower in it } ?: return null
+        val base = group[0]
+        val preferred = language.accentFirst.filter { it in group && it != base }
+        var cycle = (base.toString() + preferred + group.drop(1).filterNot { it in preferred }).toList()
+        if (upper) cycle = cycle.filter { language.upper(it.toString()).length == 1 && it != 'ß' && it != 'ı' }
+        val list = listOf(lower) + cycle.filter { it != lower }
+        if (list.size < 2) return null
+        return list.map { if (upper) language.upper(it.toString()) else it.toString() }
+    }
+
     /** What [c] becomes on the next press, or null when it has no accented forms. */
     fun next(c: Char, language: Language): String? {
         val upper = c.isUpperCase()

@@ -1,8 +1,9 @@
 package com.example.gridime
 
-enum class KeyType { CHAR, SHIFT, LAYER, SPACE, ENTER, DELETE, TOOL, CLIP, EMPTY }
+/** DIGIT = a key on the optional number row. GAP = an empty word slot in the tool strip (never focused). */
+enum class KeyType { CHAR, SHIFT, LAYER, SPACE, ENTER, DELETE, TOOL, CLIP, EMPTY, DIGIT, GAP }
 enum class ShiftState { OFF, ONCE, LOCK }
-enum class Tool { SELECT, SELECT_ALL, CUT, COPY, PASTE, HISTORY, SETTINGS }
+enum class Tool { SELECT, SELECT_ALL, CUT, COPY, PASTE, HISTORY, SETTINGS, WORD }
 enum class Layer { LETTERS, SYMBOLS, CLIPS, NUMPAD }
 
 /**
@@ -17,6 +18,7 @@ enum class FieldKind { TEXT, URL, EMAIL, NUMBER, PHONE }
  * weight = width in units (a full row is 10 units)
  * hint   = the controller badge shown in the key's corner
  * index  = which clipboard item a clip card holds
+ * best   = the first word suggestion (drawn as a key, taken with R3)
  */
 data class Key(
     val type: KeyType,
@@ -24,7 +26,8 @@ data class Key(
     val weight: Float = 1f,
     val tool: Tool? = null,
     val hint: ControllerButton? = null,
-    val index: Int = -1
+    val index: Int = -1,
+    val best: Boolean = false
 )
 
 /**
@@ -40,12 +43,25 @@ object Layouts {
 
     private fun chars(s: String, weight: Float = 1f) = s.map { Key(KeyType.CHAR, it.toString(), weight) }
 
-    fun toolRow(selectAllButton: Boolean): List<Key> {
+    /**
+     * The tool strip. While a word is being typed, [words] (most likely first) take the place
+     * of Cut / Copy / Paste. Always three slots, so one or two words keep their normal size.
+     */
+    fun toolRow(selectAllButton: Boolean, words: List<String> = emptyList()): List<Key> {
         val select = Key(KeyType.TOOL, "Select", if (selectAllButton) 1.7f else 1.9f, Tool.SELECT, ControllerButton.SELECT)
         val tail = listOf(
             Key(KeyType.TOOL, "", 0.9f, Tool.HISTORY),
             Key(KeyType.TOOL, "", 0.9f, Tool.SETTINGS)
         )
+        if (words.isNotEmpty()) {
+            val slot = (UNITS - select.weight - 1.8f) / 3f
+            val slots = (0 until 3).map { i ->
+                words.getOrNull(i)?.let {
+                    Key(KeyType.TOOL, it, slot, Tool.WORD, if (i == 0) ControllerButton.R3 else null, best = i == 0)
+                } ?: Key(KeyType.GAP, weight = slot)
+            }
+            return listOf(select) + slots + tail
+        }
         return if (selectAllButton) {
             listOf(
                 select,
@@ -94,11 +110,15 @@ object Layouts {
         )
     }
 
-    fun symbolRows(layout: KeyLayout, language: Language = Language.ENGLISH): List<List<Key>> {
+    /** The optional number row: a slim bar of 1 to 0 above the letters (and the symbols). */
+    fun numberRow(): List<Key> = "1234567890".map { Key(KeyType.DIGIT, it.toString()) }
+
+    /** With the number row on, the numbers are already on top, so the symbols page brings extra symbols instead. */
+    fun symbolRows(layout: KeyLayout, language: Language = Language.ENGLISH, numberRow: Boolean = false): List<List<Key>> {
         val space = if (layout == KeyLayout.GRID) 4f else 5f
         val side = if (layout == KeyLayout.GRID) 2f else 1.5f
         return listOf(
-            chars("1234567890"),
+            if (numberRow) chars("~`|\\{}[]<>") else chars("1234567890"),
             chars("@#\$%&-+()/"),
             chars("*\"':;!?=" + language.currency) + delete(1f),
             bottomRow(language.lettersKey, space, side)
@@ -121,7 +141,7 @@ object Layouts {
         )
     }
 
-    private const val NUMPAD_KEY = 2f       // 4 columns of 2 units, centred in the 10-unit width
+    private const val NUMPAD_KEY = 1.6f     // 4 columns of 1.6 units: a compact block in the middle, not stretched
 
     fun clipRows(clips: List<String>): List<List<Key>> {
         if (clips.isEmpty()) {

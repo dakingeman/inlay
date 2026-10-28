@@ -1,0 +1,173 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="inlay.css">
+<script src="parts.js"></script><script src="backdrop.js"></script>
+<style>
+/* The launch videos (teaser and What's new): the README's look, in motion. Rules: VISUAL_SYSTEM.md §10 */
+.abs{position:absolute}
+.cap{position:absolute}
+.cap .h1{font-size:76px}
+.cap .body{font-size:32px;margin-top:20px;color:#C9CCD3}
+.screen{box-shadow:0 0 0 2px #2F323A,0 2px 4px rgba(0,0,0,.3),0 24px 60px rgba(0,0,0,.45)!important}
+.shot{position:absolute;border-radius:22px;box-shadow:0 0 0 2px #2F323A,0 2px 4px rgba(0,0,0,.3),0 24px 60px rgba(0,0,0,.45);overflow:hidden;background:#000}
+.shot img{display:block;width:100%;height:100%}
+.devname{position:absolute;font-family:I;font-size:28px;color:var(--paper);text-align:center}
+.card{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.tag{font-family:I;font-weight:600;letter-spacing:.14em;font-size:24px;color:var(--teal);padding:10px 22px;border-radius:999px;box-shadow:inset 0 0 0 2px rgba(114,214,232,.75)}
+</style></head><body>
+<div id="c" class="canvas" style="width:1920px;height:1080px">
+  <div id="bg" class="abs" style="inset:0"></div>
+  <div id="scene"></div>
+  <div id="fin" class="abs" style="inset:0;pointer-events:none"></div>
+</div>
+<script>
+const W=1920,H=1080, Q=new URLSearchParams(location.search), GRAIN=Q.get('grain')!=='0';
+// Captions: one idea each, a real person's words, at most about seven words
+const CAPS={
+  words:['Word suggestions that learn','Games and names you use come first.'],
+  accents:['Hold A for accents','Move to the one you want and let go.'],
+  devices:['Made for what you hold',''],   // no subline: the device names say it, and the tall devices get the room
+  auto:['Knows your handheld by name','Automatic recognises the AYN Odin and more.'],
+  sounds:['Nine sound packs, all remade','Each one types its own name.'],
+  packrow:['Nine sound packs, all remade','Step through them in Settings \u2192 Sound & haptics.'],
+  colour:['Your own highlight colour','Colour, Strength and Brightness.'],
+  tourlook:['The tour follows your colour','So does What’s new.'],
+  tv:['TV mode','A big line you can read from the sofa.'],
+  settings:['Settings made for the controller','LB and RB switch tabs. Y shows the keyboard.'],
+};
+const DEVNAME={controller:'Controller',wide:'Handheld',vertical:'Vertical handheld','vertical-sticks':'Vertical, with sticks',remote:'TV remote'};
+const TVLIST=[{name:'Stranger Things',plat:'SERIES'},{name:'Station Eleven',plat:'SERIES'},{name:'Star Wars',plat:'FILM'},{name:'Severance',plat:'SERIES'},{name:'Spirited Away',plat:'FILM'}]
+  .map((g,i)=>Object.assign(g,{tone:COVER_TONES[(i+3)%9],i:i+3}));
+const ease=t=>t<0?0:t>1?1:1-Math.pow(1-t,3);
+const esc=s=>s.replace(/&/g,'&amp;').replace(/</g,'&lt;');
+const LOGO=h=>`<img class="m" src="hero-parts/lockup-clear.svg" style="display:block;height:${h}px">`;
+let bgKey='';
+// The backdrop: README rules, one variation per part of the video (index = its place), never the motif. Finish on top.
+function backdrop(id,index){
+  const k=id+index; if(k===bgKey) return; bgKey=k;
+  document.getElementById('bg').style.background=inlayBackground(id,index,W,H);
+  document.getElementById('fin').innerHTML=`<div class="abs" style="inset:0;background:radial-gradient(${Math.round(W*.94)}px ${Math.round(H*1.05)}px at 50% 46%, rgba(0,0,0,0) 58%, rgba(0,0,0,.24) 100%)"></div>`+
+    (GRAIN?`<svg width="${W}" height="${H}" style="position:absolute;inset:0;opacity:.06;mix-blend-mode:overlay"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="2" stitchTiles="stitch"/></filter><rect width="${W}" height="${H}" filter="url(#n)"/></svg>`:'');
+}
+// A part's words: its own title / sub from the plan, or the defaults in CAPS for its scene
+const words=(k,o)=>o&&o.title?[o.title,o.sub||'']:CAPS[k];
+function capHtml(k,x,y,w,o){const c=words(k,o); return c?`<div class="cap" style="left:${x}px;top:${y}px;width:${w}px"><div class="h1 m">${c[0]}</div>${c[1]?`<div class="body m">${c[1]}</div>`:''}</div>`:'';}
+const settle=async()=>{await Promise.all([...document.images].map(i=>i.complete?0:i.decode().catch(()=>{})));};
+
+// A keyboard scene: words and the device on the left, the screen with the app's keyboard on the right (as in the README)
+window.Stage=async function(o){
+  backdrop(o.part,o.index);
+  const f=o.frame, tv=o.scene==='tv';
+  const scr=tv?libScreen({x:860,y:0,w:940,kb:o.kb,kbAspect:1920/f.kbh,title:'Search',noField:true,field:{},
+      results:TVLIST.filter(t=>t.name.toLowerCase().startsWith(f.before.toLowerCase())).slice(0,4),count:''})
+    :libScreen({x:860,y:0,w:940,kb:o.kb,kbAspect:1920/f.kbh,field:{before:f.before,sel:f.sel,after:f.after}});
+  const top=Math.round((H-scr.h)/2), bottom=top+scr.h;
+  let h=COVER_DEFS+scr.html.replace('top:0px',`top:${top}px`)+capHtml(f.cap,120,top,640,o);
+  // The device stands on the screen's bottom line, as big as the room under the words allows (up to the 640 px column),
+  // without its floating shoulder keys (o.box, from pic-boxes.py: the body's box in the frame). Its name sits under it
+  // when the device changes.
+  const devs=o.scene==='devices';
+  if(devs) h+=`<div class="devname m" style="left:120px;width:640px;top:${bottom-34}px;opacity:${o.picAlpha}">${DEVNAME[f.dev]||''}</div>`;
+  h+=`<img id="dev" class="abs" src="${o.pic}" style="visibility:hidden">`;
+  document.getElementById('scene').innerHTML=h; await settle();
+  const img=document.getElementById('dev'), capB=document.querySelector('.cap').getBoundingClientRect().bottom;
+  const [l,t,r,b]=o.box, bw=r-l, bh=b-t, y0=capB+48, y1=devs?bottom-60:bottom;
+  const k=Math.min(640/bw,(y1-y0)/bh);
+  Object.assign(img.style,{visibility:'visible',width:img.naturalWidth*k+'px',left:(440-(l+bw/2)*k)+'px',top:(y1-b*k)+'px',
+    clipPath:`inset(${t*k}px -400px -400px -400px)`,opacity:o.picAlpha,transform:`scale(${o.picScale})`,transformOrigin:`${(l+bw/2)*k}px ${b*k}px`});
+  img.className='abs m'; return true;
+};
+// A whole app screen (Settings, the tour, What's new), recorded at the Odin 2 Portal's size
+window.Screen=async function(o){
+  backdrop(o.part,o.index);
+  const c=words(o.cap,o)||['',''];
+  if(o.cap==='sounds'){
+    // The sound showcase: the page's demo (device and keyboard) without its own header, and the pack's name popping up
+    // big, the moment the app shows its name tag (o.tag, o.tagAge in frames since it changed)
+    const cy0=290, cy1=736, sw=1600, sh=Math.round(sw*(cy1-cy0)/1654), x=(W-sw)/2, k=sw/1654, top=Math.round((H-(170+64+sh))/2), y=top+170+64;
+    const t=ease(Math.min(1,(o.tagAge||0)/5)), pop=o.tag?`<div class="m" style="position:absolute;right:${x}px;top:${top-6}px;font-family:A;font-weight:700;font-size:64px;line-height:1;
+      color:var(--paper);padding:18px 36px;border-radius:999px;box-shadow:inset 0 0 0 3px var(--teal);background:rgba(114,214,232,.10);opacity:${t};transform:scale(${.9+.1*t});transform-origin:100% 50%">${esc(o.tag)}</div>`:'';
+    document.getElementById('scene').innerHTML=`<div class="cap" style="left:${x}px;top:${top}px;width:1100px"><div class="h1 m" style="font-size:72px">${c[0]}</div>
+      <div class="body m" style="margin-top:14px">${c[1]}</div></div>${pop}
+      <div class="shot m" style="left:${x}px;top:${y}px;width:${sw}px;height:${sh}px"><img src="${o.scr}" style="width:${sw}px;height:${Math.round(824*k)}px;margin-top:${-Math.round(cy0*k)}px"></div>`;
+    await settle(); return true;
+  }
+  const sw=1440, sh=Math.round(sw*824/1654), x=(W-sw)/2, y=H-96-sh;
+  document.getElementById('scene').innerHTML=`<div class="cap" style="left:${x}px;top:72px;width:${sw}px"><div class="h1 m" style="font-size:72px">${c[0]}</div>
+    <div class="body m" style="margin-top:14px">${c[1]}</div></div><div class="shot m" style="left:${x}px;top:${y}px;width:${sw}px;height:${sh}px"><img src="${o.scr}"></div>`;
+  await settle(); return true;
+};
+// The nine sound packs, as a designed sequence (names and descriptions are the app's own, from SoundPack).
+// One pack at a time gets the highlight; each landing is where its sound sample plays (see the cue sheet).
+const PACKS=[['Soft','A gentle thud with a crisp click. The default'],['Thock','A deep, rounded mechanical key'],['Tactile','Dry, crisp switch clicks, no notes'],
+  ['Typewriter','A metal strike, with a small bell on Enter'],['Felt','Very soft taps for playing at night'],['Chime','Wooden mallet notes'],
+  ['Glass','Tiny tuned taps on glass'],['Pop','Round little drops, each on its own note'],['Retro','Short 8-bit blips, like a handheld’s menus']];
+const PACK_LEAD=.5;                       // seconds before the first pack lights
+const easeInOut=t=>t<0?0:t>1?1:t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;
+// where the highlight is at time s (seconds): a float pack index that glides 0.28 s between packs
+function packAt(s,step){ if(s<PACK_LEAD) return {k:0,f:0,lit:ease(s/PACK_LEAD)}; const u=(s-PACK_LEAD)/step, k=Math.min(8,Math.floor(u)), r=(u-k)*step;
+  return {k, f:k>=8?8:k+easeInOut((r-(step-.28))/.28)*((r>step-.28)?1:0), lit:1}; }
+window.Packs=async function(o){
+  backdrop(o.part,o.index);
+  const s=o.sec, step=o.step||.9, P=packAt(s,step), cur=Math.round(P.f);
+  let h='';
+  if(o.style==='list'){
+    // A: all nine on one Settings-style card, two groups; the highlight walks down the list
+    const x=860, w=900, rowH=72, headH=60, top0=Math.round((H-(9*rowH+2*headH+48))/2);
+    const yOf=k=>top0+24+headH+(k>=5?headH:0)+k*rowH;
+    h+=`<div class="cap" style="left:120px;top:${top0+24}px;width:640px"><div class="h1 m">Nine sound packs, all remade</div><div class="body m">Pick yours in Settings → Sound & haptics.</div></div>`;
+    h+=`<div class="abs m" style="left:${x}px;top:${top0}px;width:${w}px;height:${9*rowH+2*headH+48}px;background:#111114;border-radius:22px;box-shadow:0 0 0 2px #2F323A,0 24px 60px rgba(0,0,0,.45)"></div>`;
+    h+=`<div class="abs label" style="left:${x+32}px;top:${top0+24+18}px;font-size:18px">Like real keys</div><div class="abs label" style="left:${x+32}px;top:${yOf(5)-headH+18}px;font-size:18px">Notes from one scale</div>`;
+    const fy=P.f<5?yOf(0)+P.f*rowH:yOf(5)+(P.f-5)*rowH;            // glide (the gap between groups is crossed within one step)
+    const hy=P.f>4&&P.f<5?yOf(4)+(P.f-4)*(yOf(5)-yOf(4)):fy;
+    h+=`<div class="abs" style="left:${x+12}px;top:${hy+4}px;width:${w-24}px;height:${rowH-8}px;border-radius:18px;background:#1C1C21;box-shadow:inset 0 0 0 3px rgba(114,214,232,${.95*P.lit})"></div>`;
+    PACKS.forEach(([n,d],k)=>{ const on=k===cur&&P.lit>.5;
+      h+=`<div class="abs" style="left:${x+40}px;top:${yOf(k)}px;width:${w-80}px;height:${rowH}px;display:flex;align-items:center;gap:24px">
+        <div style="font-family:I;font-weight:600;font-size:30px;width:200px;color:${on?'var(--paper)':'#C9CCD3'}">${n}</div>
+        <div style="font-family:I;font-size:21px;color:${on?'#C9CCD3':'#6B6E76'}">${d}</div></div>`; });
+  } else {
+    // B: one big card per pack, sliding along; neighbours wait dimmed at the sides
+    const cw=820, ch=400, gap=60, cx=(W-cw)/2, cy=430;
+    h+=`<div class="cap" style="left:0;width:${W}px;top:150px;text-align:center"><div class="h1 m">Nine sound packs, all remade</div><div class="body m">Pick yours in Settings → Sound & haptics.</div></div>`;
+    PACKS.forEach(([n,d],k)=>{ const off=k-P.f, x=cx+off*(cw+gap); if(x<-cw||x>W) return;
+      const near=Math.max(0,1-Math.abs(off)), sc=.86+.14*near, op=.35+.65*near;
+      h+=`<div class="abs" style="left:${x}px;top:${cy}px;width:${cw}px;height:${ch}px;transform:scale(${sc});opacity:${op};border-radius:28px;background:#111114;
+        box-shadow:0 0 0 2px #2F323A${near>.5?`,inset 0 0 0 3px rgba(114,214,232,${(near*P.lit).toFixed(2)})`:''},0 24px 60px rgba(0,0,0,.45);display:flex;flex-direction:column;justify-content:center;padding:0 64px">
+        <div class="label" style="font-size:18px">${k<5?'Like real keys':'Notes from one scale'} · ${k+1} of 9</div>
+        <div class="h1" style="font-size:96px;margin-top:18px">${n}</div><div class="body" style="font-size:30px;margin-top:16px;color:#C9CCD3">${d}</div></div>`; });
+  }
+  document.getElementById('scene').innerHTML=h; await settle(); return true;
+};
+// Title and end cards. sec = seconds since the card started.
+// The end card builds in three steps (logo, line, link): each fades in while rising 16 px, 0.5 s, ease-out, 0.25 s apart.
+window.Card=async function(kind,sec,index,o={}){
+  backdrop(kind,index);
+  const a=ease(sec/.4), st=k=>{ const t=ease((sec-k*.25)/.5); return `opacity:${t};transform:translateY(${(1-t)*16}px)`; };
+  const head=s=>`<div class="h1 m" style="font-size:84px;margin-top:56px;opacity:${a}">${s}</div>`;
+  const sub=(s,mt=28,col='#C9CCD3')=>`<div class="body m" style="font-size:34px;margin-top:${mt}px;color:${col};opacity:${a}">${s}</div>`;
+  const L=160, logo=`<div style="height:${L}px;opacity:${a}">${LOGO(L)}</div>`;
+  const html=kind==='intro'
+    ? `${logo}${head('Type with your <span style="color:var(--teal)">controller</span>')}${sub('A free keyboard for Android handhelds, controllers and TV.')}`
+    : kind==='new'
+    ? `${logo}<div class="tag m" style="margin-top:56px;opacity:${a}">NEW IN ${esc(o.version||'')}</div>${head(esc(o.title||''))}`
+    : endCard(sec, L);
+  document.getElementById('scene').innerHTML=`<div class="card" style="text-align:center;padding:0 160px">${html}</div>`;
+  await settle(); return true;
+};
+// The end card (chosen 27 Oct: 3, side by side): the logo, the divider, then "Free and open source.", "No ads.",
+// "No tracking." one by one, the link last, one beat each (0.65 s apart, Emre: "beat for beat", not rushed). Each piece
+// fades in while rising 16 px (0.5 s, ease-out); everything is in by 3.1 s and the card holds 1.5 s more (4.6 s in all).
+window.END=+(Q.get('end')||3);
+function endCard(sec,L){
+  const at=d=>{ const t=ease((sec-d)/.5); return `opacity:${t};transform:translateY(${(1-t)*16}px)`; };
+  const P=['Free and open source.','No ads.','No tracking.'], D=[.6,1.25,1.9], link=2.6;
+  const lnk=(mt,fs=32)=>`<div class="body m" style="font-size:${fs}px;margin-top:${mt}px;color:#C9CCD3;${at(link)}">github.com/dakingeman/inlay</div>`;
+  if(END===1) // stacked: three big lines under the logo
+    return `<div style="height:${L}px;${at(0)}">${LOGO(L)}</div><div style="margin-top:64px">${P.map((p,k)=>`<div class="h1 m" style="font-size:60px;line-height:1.25;${at(D[k])}">${p}</div>`).join('')}</div>${lnk(48)}`;
+  if(END===2) // one line, the phrases joining it one by one, "open source" in teal (the one teal word, as in the hero)
+    return `<div style="height:${L}px;${at(0)}">${LOGO(L)}</div><div class="h1 m" style="font-size:60px;margin-top:72px;white-space:nowrap">${
+      [`Free and <span style="color:var(--teal)">open source.</span>`,'No ads.','No tracking.'].map((p,k)=>`<span style="display:inline-block;${at(D[k])}">${p}</span>`).join('&nbsp; ')}</div>${lnk(40)}`;
+  // 3: split. Logo on the left, the three lines on the right of a thin divider, link under them
+  return `<div style="display:flex;align-items:center;gap:72px;text-align:left"><div style="height:${L}px;${at(0)}">${LOGO(L)}</div>
+    <div style="width:2px;height:300px;background:#2F323A;${at(.25)}"></div><div>${P.map((p,k)=>`<div class="h1 m" style="font-size:56px;line-height:1.3;${at(D[k])}">${k===0?'Free and <span style="color:var(--teal)">open source.</span>':p}</div>`).join('')}${lnk(28,30)}</div></div>`;
+}
+document.fonts.ready.then(()=>document.title='done');
+</script></body></html>

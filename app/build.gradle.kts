@@ -12,8 +12,8 @@ android {
         applicationId = "io.github.dakingeman.inlay"
         minSdk = 29
         targetSdk = 37
-        versionCode = 3
-        versionName = "1.1.1"
+        versionCode = 4
+        versionName = "1.2.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -24,6 +24,17 @@ android {
                 enable = false
             }
         }
+        // Test builds: "Inlay Preview" installs next to the real Inlay as a separate app,
+        // with its own settings. The release build and its app ID are untouched.
+        create("preview") {
+            initWith(getByName("debug"))
+            applicationIdSuffix = ".preview"
+            versionNameSuffix = "-preview"
+            matchingFallbacks += listOf("debug")
+        }
+    }
+    testOptions {
+        unitTests.isIncludeAndroidResources = true
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
@@ -32,10 +43,12 @@ android {
 }
 
 dependencies {
-    implementation(libs.androidx.appcompat)
     implementation(libs.androidx.core.ktx)
-    implementation(libs.material)
+    // Draws the device pictures (SVG) in the tour, What's new and the Button guide. Apache 2.0
+    implementation(libs.androidsvg)
     testImplementation(libs.junit)
+    // Test-only: runs Android's real drawing code on a computer, for screenshots of the new screens
+    testImplementation("org.robolectric:robolectric:4.17")
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(libs.androidx.junit)
 }

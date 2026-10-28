@@ -19,7 +19,7 @@ const CAP = {
   edit: ['Edit text properly', 'Select, delete, undo and copy, all from the controller.'],
   looks: ['Make it look how you want', 'Themes, highlight colours, key shapes and layouts.'],
   icons: ['Icons for your controller', 'Xbox, PlayStation or Switch.'],
-  sound: ['Seven sound packs', 'Soft clicks, 8-bit blips, a typewriter.'],
+  sound: ['Nine sound packs', 'Soft clicks, a deep thock, glass taps, 8-bit blips.'],
   lang: ['Eleven languages', 'Switch with RT + LT while you type.'],
   tv: ['Docked to a TV?', 'The keyboard floats and shows what you type, big.'],
 };

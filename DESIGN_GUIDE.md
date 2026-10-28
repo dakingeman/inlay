@@ -91,33 +91,41 @@ When adding anything new, check it against these rules first.
 - **Wrapping** from one edge to the other snaps, with a small pulse, instead of sweeping across the whole keyboard.
 - **Panels push, never cover.** When the preview keyboard appears, the page shrinks with it and scrolls in step, so the focused row stays in view.
 
+### Battery: motion that costs nothing when it isn't seen
+Inlay is a keyboard: it should never show up in a battery list. Every change keeps to these rules (checked in 1.2, test 31):
+- **Nothing runs while hidden.** When the keyboard or a screen goes away, every repeat, timer, stick reader and demo stops (`onWindowHidden`, `onFinishInputView`, `onStop`). An idle keyboard draws nothing.
+- **Animations end.** Every animation has a finish; only the tour's and What's new's looping demos run on, and only while they're on screen.
+- **Redraw only as often as the eye needs.** Slow things (the loop bar filling over seconds) redraw about 30 times a second; moving pictures (swaying sticks, filling rings) at most 60, even on a 120 Hz screen. Short moves (the highlight, a page sliding) use the screen's full rate.
+- **Paint expensive things once.** Big gradients and drawings are painted into an image once and reused (the tour backdrop, the device pictures), never rebuilt every frame.
+- **No offscreen layers every frame.** Round corners clip with the view's outline, not a saved layer; layers only for one-off fades.
+
 ## 9. Sound
 
-Seven **sound packs** share the same ten cues and the same meanings, so switching packs never changes what a sound tells you.
+The full sound kit (every pack, cue, target and check) is in [docs/brand/SOUND.md](docs/brand/SOUND.md). The short version:
+
+Nine **sound packs** share the same ten cues and the same meanings, so switching packs never changes what a sound tells you.
 
 | Pack | Character |
 |---|---|
 | **Soft** (default) | A short, low thud for weight plus a crisp click for texture, played together |
-| **Soft Deep** | The same recipe, with a darker click and more weight |
-| **Tactile** | Dry mechanical clicks, no notes |
-| **Chime** | Soft mallet notes in C major pentatonic |
-| **Retro** (1.1) | Band-limited 8-bit blips: odd harmonics only (all exact multiples), pentatonic pitches, on = up a fifth, off = down a fifth, lock = up an octave |
-| **Typewriter** (1.1) | The Soft recipe with a harder, brighter metal strike; Enter is the carriage-return bell (root, octave and double octave only) |
-| **Felt** (1.1) | Thud only, almost no click, mastered 3 dB lower: the night pack |
+| **Thock** (1.2) | A deep, rounded mechanical key. Replaces Soft Deep |
+| **Tactile** | Dry, crisp switch clicks, no notes |
+| **Typewriter** | A metal strike; Enter is the carriage-return bell |
+| **Felt** | Thud only, almost no click, 3 dB lower: the night pack |
+| **Chime** | Wooden mallet notes |
+| **Glass** (1.2) | Tiny tuned taps on glass; switches bend a fifth or an octave |
+| **Pop** (1.2) | Round drops that settle onto their note |
+| **Retro** | Band-limited 8-bit blips, 1 dB lower |
 
-New packs are made by `tools/new-packs.py`, using the same felt-loudness meter and target levels as Soft. Sharp hits are rounded off with a soft limiter until they reach their target without touching the ceiling, so the loudness order (move < keys < switches < lock) holds in every pack. Every file is checked to land within 0.5 dB of its target.
+Tonal packs (Chime, Glass, Pop, Retro) use C major pentatonic in pure ratios: on = up a fifth, off = down, lock = up an octave, Enter lands on the home note.
+
+**Every sound passes the eight ingredients** (SOUND.md): crisp start, one clean hit, soft edges (sharpness ≤ 1.75 acum), weight that fits, the same on every speaker, a natural ending, a contact click, and four matched letter takes. `tools/soundcheck.py` must say ALL PASS.
 
 **The Soft recipe (from the reference button sounds Emre chose)**
-- **Thud:** two very damped low resonances (~150–650 Hz). They last only 1–4 vibrations, so you get weight with no pitch.
-- **Click:** a crisp contact (~1.4–3 kHz), gone in 2–5 ms. This is the texture.
-- **Material glint** (optional, tiny): brushed metal on caps lock, glass on select all. Enter gets a rounder "thick wood" click.
-- **Nothing rings.** Every sound is 40 dB down within 4–15 ms, matching the references. A long low ring is what sounds like tapping a pipe.
-- **Thud and click together.** The references have the click 60 ms after the thud (button down, then up); on a keyboard that feels laggy, so both land the instant you press.
-- **Bigger action = more thud.**
-  - Space and delete are "bigger keys": more thud, darker click.
-  - Triggers carry the most weight.
-  - Moving the highlight uses only a tiny click.
-- **Four takes per letter**, rotated so the same take never plays twice in a row.
+- **Thud:** two very damped low resonances (~200–700 Hz). They last only 1–4 vibrations, so you get weight with no pitch.
+- **Click:** a crisp contact (~1.5–3 kHz), gone in 2–5 ms. This is the texture.
+- **Thud and click land together** the instant you press.
+- **Bigger action = more thud.** Moving the highlight is only a tiny, soft click.
 
 **Rules for every pack**
 - **One action = one hit** (and one vibration pulse). Actions differ by weight, click brightness and material, never by counting hits.
@@ -129,6 +137,8 @@ New packs are made by `tools/new-packs.py`, using the same felt-loudness meter a
   - enter −15.5, back −18
 
   Played 1:1, so Settings sounds exactly like the keyboard.
+- **Volume slider:** 2 dB per step. 10 plays the files as mastered, the default 7 is 6 dB lower, 1 is 18 dB lower.
+- **Four letter sounds in every pack**, rotated so the same one never plays twice in a row.
 - **Pitch never varies** between plays; only loudness does (±5 %).
 - Settings' volume buttons control media volume, the same one the sounds use.
 - **Settings speaks with the chosen pack**, never Android's own clicks:

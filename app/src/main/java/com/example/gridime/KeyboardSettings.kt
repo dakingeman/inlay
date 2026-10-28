@@ -7,6 +7,7 @@ import java.io.File
 import android.graphics.Color
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.roundToInt
 
 /** Which controller's button icons the keyboard shows. */
 enum class ButtonStyle(val label: String) {
@@ -44,16 +45,28 @@ enum class HighlightMotion(val label: String) {
 
 /**
  * Which set of sounds plays. Every pack has the same cues with the same meanings,
- * so switching never changes what a sound tells you. New packs go at the end.
+ * so switching never changes what a sound tells you. Settings shows them in this order
+ * (physical packs first, then the tonal ones); the choice is saved by name, so the order
+ * can change freely. [file] is the prefix of the pack's sounds in res/raw.
  */
-enum class SoundPack(val label: String, val description: String) {
-    SOFT("Soft", "A gentle thud with a crisp click. The default"),
-    SOFT_DEEP("Soft Deep", "Like Soft, darker and weightier"),
-    TACTILE("Tactile", "Dry mechanical clicks, no notes"),
-    CHIME("Chime", "Soft mallet notes"),
-    RETRO("Retro", "Short 8-bit blips, like a handheld's menus"),
-    TYPEWRITER("Typewriter", "A crisp metal strike, with a small bell on Enter"),
-    FELT("Felt", "Very soft taps for playing at night")
+enum class SoundPack(val label: String, val description: String, val file: String) {
+    SOFT("Soft", "A gentle thud with a crisp click. The default", "soft"),
+    THOCK("Thock", "A deep, rounded mechanical key", "thock"),
+    TACTILE("Tactile", "Dry, crisp switch clicks, no notes", "tactile"),
+    TYPEWRITER("Typewriter", "A metal strike, with a small bell on Enter", "typewriter"),
+    FELT("Felt", "Very soft taps for playing at night", "felt"),
+    CHIME("Chime", "Wooden mallet notes", "chime"),
+    GLASS("Glass", "Tiny tuned taps on glass", "glass"),
+    POP("Pop", "Round little drops, each on its own note", "pop"),
+    RETRO("Retro", "Short 8-bit blips, like a handheld's menus", "retro");
+
+    companion object {
+        /** Saved choices from older versions: Soft Deep became Thock in 1.2. */
+        fun fromSaved(name: String?): SoundPack? = when (name) {
+            "SOFT_DEEP" -> THOCK
+            else -> values().firstOrNull { it.name == name }
+        }
+    }
 }
 
 /** How the selected key is marked (after Android TV's focus system: fill, glow, outline, lift). */
@@ -75,7 +88,10 @@ enum class KeyShape(val label: String, val radiusDp: Float) {
  * The physical buttons, named by Android's keycodes.
  * A = bottom face button, B = right, X = left, Y = top (Xbox positions).
  */
-enum class ControllerButton { A, B, X, Y, L1, R1, L2, R2, SELECT, START, L3, R3 }
+enum class ControllerButton { A, B, X, Y, L1, R1, L2, R2, SELECT, START, L3, R3;
+    /** A stick press (or push): not there on most vertical handhelds, never on a remote. */
+    val isStick get() = this == L3 || this == R3
+}
 
 /**
  * A key colour set: keyboard background, letter keys, special keys.
@@ -149,7 +165,32 @@ object Palette {
     val tones: List<Tone> get() = baseTones + listOfNotNull(wallpaperTone)
 
     /** A custom accent from a hue (0..359), kept as bright and soft as the preset colours. */
-    fun customAccent(hue: Int): Int = Color.HSVToColor(floatArrayOf(hue.toFloat().mod(360f), 0.48f, 0.98f))
+    /**
+     * A custom highlight colour from three sliders: [hue] (0–359, around the colour wheel), [strength]
+     * (0–100, soft to vivid) and [brightness] (0–100, deeper to lighter). Made in OKLCH, so every hue is
+     * equally bright at the same setting. Brightness only moves within [CUSTOM_L_MIN]–[CUSTOM_L_MAX]: the
+     * colour is always light enough to read on the dark backgrounds, and dark or white ink is picked for
+     * text on it (Contrast.inkFor). Colours a screen can't show are softened, never shifted in hue.
+     * The consistency checks prove this for every setting.
+     */
+    fun customAccent(hue: Int, strength: Int = DEFAULT_STRENGTH, brightness: Int = DEFAULT_BRIGHTNESS): Int {
+        val l = customLightness(brightness); val h = hue.toDouble().mod(360.0)
+        return AccentLight.color(l, customChroma(strength, l, h), h)
+    }
+
+    fun customLightness(brightness: Int) = CUSTOM_L_MIN + (CUSTOM_L_MAX - CUSTOM_L_MIN) * brightness.coerceIn(0, 100) / 100.0
+    /** Strength runs from a hint of colour to the most vivid this hue can be at this brightness (capped), so the whole slider always does something. */
+    fun customChroma(strength: Int, lightness: Double, hue: Double): Double {
+        val top = minOf(CUSTOM_C_MAX, AccentLight.maxChroma(lightness, hue)).coerceAtLeast(CUSTOM_C_MIN)
+        return CUSTOM_C_MIN + (top - CUSTOM_C_MIN) * strength.coerceIn(0, 100) / 100.0
+    }
+
+    const val CUSTOM_L_MIN = 0.66       // the deepest a custom colour gets: still 6:1 against black
+    const val CUSTOM_L_MAX = 0.92
+    const val CUSTOM_C_MIN = 0.03       // soft: a hint of colour
+    const val CUSTOM_C_MAX = 0.22       // vivid (or as vivid as the hue allows)
+    const val DEFAULT_STRENGTH = 55     // about the presets' strength and brightness
+    const val DEFAULT_BRIGHTNESS = 72
 }
 
 /** Everything the Settings app can change. Saved on the device, read by the keyboard. */
@@ -157,7 +198,9 @@ data class KeyboardSettings(
     // Look
     val buttonStyle: ButtonStyle = ButtonStyle.XBOX,
     val accentIndex: Int = 2,           // -1 = custom colour from customHue. 2 = Inlay teal, the brand colour
-    val customHue: Int = 210,           // 0 to 359
+    val customHue: Int = 210,           // 0 to 359, around the OKLCH colour wheel
+    val customStrength: Int = Palette.DEFAULT_STRENGTH,       // 0 to 100, soft to vivid
+    val customBrightness: Int = Palette.DEFAULT_BRIGHTNESS,   // 0 to 100, deeper to lighter (always readable)
     val toneIndex: Int = 0,
     val font: FontChoice = FontChoice.HYPERLEGIBLE,
     val letterWeight: Int = 4,          // 0 to 10
@@ -180,8 +223,17 @@ data class KeyboardSettings(
     val comboHints: Boolean = true,     // chips while holding RT
     val selectAllButton: Boolean = false,
     val doubleSpacePeriod: Boolean = true,
+    val autoCaps: Boolean = true,
+    val learnWords: Boolean = true,      // words you type often come first in the suggestions
+    val tidyPunctuation: Boolean = true, // "word ." becomes "word. "        // a capital after . ! ? and at the start of sentences, where the box allows
     val undoCombo: Boolean = true,
     val smartKeys: Boolean = true,      // .com, / and @ where they help, a number pad for numbers
+    val wordSuggestions: Boolean = true, // words in the tool strip while typing (R3 takes the first)
+    val holdAccents: Boolean = true,     // hold A on a letter for its accents
+    val numberRow: Boolean = false,      // a slim row of 1 to 0 above the letters
+    val picture: PictureChoice = PictureChoice.AUTO,   // which device the tour, What's new and Button guide show
+    val verticalSticks: Boolean = false,  // a vertical handheld that does have sticks
+    val hasSticks: Boolean = true,        // worked out from the device, never saved (see Controls)
     // Sound & haptics
     val vibration: Boolean = true,
     val moveStrength: Int = 5,          // 0 to 10
@@ -208,7 +260,7 @@ data class KeyboardSettings(
         copy(activeLanguage = (languages.indexOf(language) + 1) % languages.size)
 
     val accent: Int
-        get() = if (accentIndex < 0) Palette.customAccent(customHue)
+        get() = if (accentIndex < 0) Palette.customAccent(customHue, customStrength, customBrightness)
         else Palette.accents[accentIndex.coerceIn(0, Palette.accents.lastIndex)].second
     val tone: Tone get() = Palette.tones[toneIndex.coerceIn(0, Palette.tones.lastIndex)]
 
@@ -222,6 +274,8 @@ data class KeyboardSettings(
             .put(K_STYLE, buttonStyle.name)
             .put(K_ACCENT, accentIndex)
             .put(K_HUE, customHue)
+            .put(K_STRENGTH, customStrength)
+            .put(K_BRIGHTNESS, customBrightness)
             .put(K_TONE, toneIndex)
             .put(K_FONT, font.name)
             .put(K_WEIGHT, letterWeight)
@@ -233,6 +287,11 @@ data class KeyboardSettings(
             .put(K_ACTIVE_LANGUAGE, activeLanguage)
             .put(K_LANGUAGE_LABEL, showLanguageLabel)
             .put(K_SMART_KEYS, smartKeys)
+            .put(K_WORDS, wordSuggestions)
+            .put(K_HOLD_ACCENTS, holdAccents)
+            .put(K_NUMBER_ROW, numberRow)
+            .put(K_PICTURE, picture.name)
+            .put(K_VERTICAL_STICKS, verticalSticks)
             .put(K_TV_MODE, tvMode.name)
             .put(K_TUTORIAL, tutorialDone)
             .put(K_WHATS_NEW, whatsNewSeen)
@@ -246,6 +305,9 @@ data class KeyboardSettings(
             .put(K_COMBO_HINTS, comboHints)
             .put(K_SELECT_ALL_BUTTON, selectAllButton)
             .put(K_DOUBLE_SPACE, doubleSpacePeriod)
+            .put(K_AUTO_CAPS, autoCaps)
+            .put(K_LEARN, learnWords)
+            .put(K_TIDY, tidyPunctuation)
             .put(K_UNDO, undoCombo)
             .put(K_VIBRATION, vibration)
             .put(K_MOVE, moveStrength)
@@ -254,6 +316,7 @@ data class KeyboardSettings(
             .put(K_PACK, soundPack.name)
             .put(K_MOVE_SOUNDS, moveSounds)
             .put(K_SILENT, soundInSilent)
+            .put(K_SILENT_2, soundInSilent)
             .put(K_CLIP_HISTORY, saveClipHistory)
             .put(K_PREVIEW, showPreview)
         SmallFile.write(context, FILE, json.toString())
@@ -267,6 +330,8 @@ data class KeyboardSettings(
         private const val K_STYLE = "button_style"
         private const val K_ACCENT = "accent"
         private const val K_HUE = "custom_hue"
+        private const val K_STRENGTH = "custom_strength"
+        private const val K_BRIGHTNESS = "custom_brightness"
         private const val K_PACK = "sound_pack"
         private const val K_SHAPE = "key_shape"
         private const val K_MOTION = "highlight_motion"
@@ -282,6 +347,11 @@ data class KeyboardSettings(
         private const val K_ACTIVE_LANGUAGE = "active_language"
         private const val K_LANGUAGE_LABEL = "language_label"
         private const val K_SMART_KEYS = "smart_keys"
+        private const val K_WORDS = "word_suggestions"
+        private const val K_HOLD_ACCENTS = "hold_accents"
+        private const val K_NUMBER_ROW = "number_row"
+        private const val K_PICTURE = "device_picture"
+        private const val K_VERTICAL_STICKS = "vertical_sticks"
         private const val K_TV_MODE = "tv_mode"
         private const val K_TUTORIAL = "tutorial_done"
         private const val K_WHATS_NEW = "whats_new_seen"
@@ -293,6 +363,9 @@ data class KeyboardSettings(
         private const val K_COMBO_HINTS = "combo_hints"
         private const val K_SELECT_ALL_BUTTON = "select_all_button"
         private const val K_DOUBLE_SPACE = "double_space_period"
+        private const val K_AUTO_CAPS = "auto_caps"
+        private const val K_LEARN = "learn_words"
+        private const val K_TIDY = "tidy_punctuation"
         private const val K_UNDO = "undo_combo"
         private const val K_VIBRATION = "vibration"
         private const val K_MOVE = "move_strength_v7"     // v7: vibration scale changed
@@ -300,16 +373,24 @@ data class KeyboardSettings(
         private const val K_VOLUME = "sound_volume_v7"    // v7: sounds remastered
         private const val K_MOVE_SOUNDS = "move_sounds"
         private const val K_SILENT = "sound_in_silent"
+        /**
+         * From 1.2 the silent-mode choice has a new name, so everyone gets the new starting value once:
+         * on (sounds play in silent mode) on anything that isn't a phone, since a handheld or TV is often
+         * "silent" with no phone to ring, and the keyboard sounded broken. Off on phones. Anyone who had
+         * turned it on keeps it on.
+         */
+        private const val K_SILENT_2 = "sound_in_silent_2"
         private const val K_CLIP_HISTORY = "save_clip_history"
         private const val K_PREVIEW = "show_preview"
 
         fun load(context: Context): KeyboardSettings {
             val text = SmallFile.read(context, FILE)
             val json = text?.let { runCatching { JSONObject(it) }.getOrNull() }
-            if (json != null) return from(Source.Json(json))
+            val phone = isPhone(context)
+            if (json != null) return from(Source.Json(json), phone)
             // First start after updating from 1.0: bring the old settings across once
             val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            val first = from(Source.Prefs(prefs))
+            val first = from(Source.Prefs(prefs), phone)
             first.save(context)
             return first
         }
@@ -333,12 +414,31 @@ data class KeyboardSettings(
             }
         }
 
-        private fun from(p: Source): KeyboardSettings {
+        /** A phone (it can make calls): silent mode there means "be quiet", so sounds respect it by default. */
+        fun isPhone(context: Context): Boolean =
+            context.packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_TELEPHONY)
+
+        private fun from(p: Source, phone: Boolean = true): KeyboardSettings {
             val d = KeyboardSettings()
+            // Custom colours saved before 1.2 had only a hue (a soft pastel): turn that colour into the
+            // three sliders, so it looks the same after the update
+            val oldHue = p.int(K_HUE, d.customHue)
+            val savedStrength = p.int(K_STRENGTH, -1)
+            val (hue, strength, brightness) = if (savedStrength >= 0)
+                Triple(oldHue, savedStrength, p.int(K_BRIGHTNESS, d.customBrightness))
+            else {
+                val (l, c, h) = AccentLight.oklch(Color.HSVToColor(floatArrayOf(oldHue.toFloat().mod(360f), 0.48f, 0.98f))).toList()
+                val b = ((l - Palette.CUSTOM_L_MIN) / (Palette.CUSTOM_L_MAX - Palette.CUSTOM_L_MIN) * 100).roundToInt().coerceIn(0, 100)
+                val lb = Palette.customLightness(b)
+                val top = minOf(Palette.CUSTOM_C_MAX, AccentLight.maxChroma(lb, h)).coerceAtLeast(Palette.CUSTOM_C_MIN + 0.001)
+                Triple(h.roundToInt() % 360, ((c - Palette.CUSTOM_C_MIN) / (top - Palette.CUSTOM_C_MIN) * 100).roundToInt().coerceIn(0, 100), b)
+            }
             return KeyboardSettings(
                 buttonStyle = enumOr(p.str(K_STYLE), d.buttonStyle),
                 accentIndex = p.int(K_ACCENT, d.accentIndex),
-                customHue = p.int(K_HUE, d.customHue),
+                customHue = hue,
+                customStrength = strength,
+                customBrightness = brightness,
                 toneIndex = p.int(K_TONE, d.toneIndex),
                 font = enumOr(p.str(K_FONT), d.font),
                 letterWeight = p.int(K_WEIGHT, d.letterWeight),
@@ -351,6 +451,11 @@ data class KeyboardSettings(
                 activeLanguage = p.int(K_ACTIVE_LANGUAGE, d.activeLanguage),
                 showLanguageLabel = p.bool(K_LANGUAGE_LABEL, d.showLanguageLabel),
                 smartKeys = p.bool(K_SMART_KEYS, d.smartKeys),
+                wordSuggestions = p.bool(K_WORDS, d.wordSuggestions),
+                holdAccents = p.bool(K_HOLD_ACCENTS, d.holdAccents),
+                numberRow = p.bool(K_NUMBER_ROW, d.numberRow),
+                picture = enumOr(p.str(K_PICTURE), d.picture),
+                verticalSticks = p.bool(K_VERTICAL_STICKS, d.verticalSticks),
                 tutorialDone = p.bool(K_TUTORIAL, d.tutorialDone),
                 whatsNewSeen = p.str(K_WHATS_NEW) ?: d.whatsNewSeen,
                 keyShape = enumOr(p.str(K_SHAPE), d.keyShape),
@@ -363,14 +468,17 @@ data class KeyboardSettings(
                 comboHints = p.bool(K_COMBO_HINTS, d.comboHints),
                 selectAllButton = p.bool(K_SELECT_ALL_BUTTON, d.selectAllButton),
                 doubleSpacePeriod = p.bool(K_DOUBLE_SPACE, d.doubleSpacePeriod),
+                autoCaps = p.bool(K_AUTO_CAPS, d.autoCaps),
+                learnWords = p.bool(K_LEARN, d.learnWords),
+                tidyPunctuation = p.bool(K_TIDY, d.tidyPunctuation),
                 undoCombo = p.bool(K_UNDO, d.undoCombo),
                 vibration = p.bool(K_VIBRATION, d.vibration),
                 moveStrength = p.int(K_MOVE, d.moveStrength),
                 pressStrength = p.int(K_PRESS, d.pressStrength),
                 soundVolume = p.int(K_VOLUME, d.soundVolume),
-                soundPack = enumOr(p.str(K_PACK), d.soundPack),
+                soundPack = SoundPack.fromSaved(p.str(K_PACK)) ?: d.soundPack,
                 moveSounds = p.bool(K_MOVE_SOUNDS, d.moveSounds),
-                soundInSilent = p.bool(K_SILENT, d.soundInSilent),
+                soundInSilent = p.bool(K_SILENT_2, p.bool(K_SILENT, false) || !phone),
                 saveClipHistory = p.bool(K_CLIP_HISTORY, d.saveClipHistory),
                 showPreview = p.bool(K_PREVIEW, d.showPreview)
             )
@@ -428,9 +536,5 @@ object SmallFile {
             temp.writeText(text, Charsets.UTF_8)
             if (!temp.renameTo(target)) { target.delete(); temp.renameTo(target) }
         }
-    }
-
-    fun delete(context: Context, name: String) {
-        file(context, name).delete()
     }
 }

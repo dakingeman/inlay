@@ -8,7 +8,6 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.Rect
-import android.graphics.RectF
 import android.graphics.Typeface
 import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
@@ -439,30 +438,40 @@ class ActionRow(
  * Pick any colour: a rainbow track, Left/Right steps 10° around the colour wheel.
  * The thumb shows the colour itself.
  */
-class HueRow(
+/**
+ * One of the custom colour's sliders (colour, strength, brightness). Its track shows the colours it
+ * really makes with the other two as they are now, and its knob is filled with the colour you'll get.
+ * Left and right move it a step; held, the row repeats like every other.
+ */
+class ColourSliderRow(
     context: Context,
     title: String,
     subtitle: String?,
-    hue: Int,
+    initial: Int,
+    private val max: Int,
+    private val stepBy: Int,
     active: Boolean,
+    colourAt: (Int) -> Int,
     private val onChange: (Int) -> Unit
 ) : SettingRow(context, title, subtitle, stacked = SettingsStyle.isNarrow(context)) {
 
-    private val hueSlider = HueSliderView(context, hue, active) { onChange(it) }
+    val slider = ColourSliderView(context, initial, max, active, colourAt) { onChange(it) }
 
     init {
-        setControl(hueSlider)
+        setControl(slider)
     }
 
     fun setActive(active: Boolean) {
-        hueSlider.active = active
+        slider.active = active
     }
 
     override fun step(dir: Int): Boolean {
-        hueSlider.hue = (hueSlider.hue + dir * 10 + 360) % 360
-        hueSlider.active = true
+        val v = (slider.value + dir * stepBy).let { if (max == 359) (it + 360) % 360 else it.coerceIn(0, max) }
+        if (v == slider.value && slider.active) return true
+        slider.value = v
+        slider.active = true
         sounds?.move()
-        onChange(hueSlider.hue)
+        onChange(v)
         return true
     }
 }
@@ -483,8 +492,9 @@ class InfoRow(context: Context, title: String, value: String) : SettingRow(conte
 /** One line of the button guide: what it does, and the buttons that do it. */
 class GuideRow(
     context: Context,
-    title: String,
-    buttons: String
+    val title: String,
+    /** The buttons, as hint text ("{R2} + {X}"): the Button guide's picture lights them up. */
+    val buttons: String
 ) : SettingRow(context, title, null) {
     override val interactive get() = false
 
@@ -897,7 +907,7 @@ class BadgeLineView(
         // Honour a fixed width from the layout (the tour lines badges up in a column), otherwise wrap
         setMeasuredDimension(
             resolveSize(painter.measureLine(parts, text).roundToInt() + 2, widthSpec),
-            resolveSize((maxOf(painter.height, textHeight) + 4).roundToInt(), heightSpec)
+            resolveSize((maxOf(painter.lineHeight(parts), textHeight) + 4).roundToInt(), heightSpec)
         )
     }
 
@@ -907,10 +917,13 @@ class BadgeLineView(
 }
 
 /** Rainbow slider for a custom colour. The thumb is filled with the chosen colour. */
-class HueSliderView(
+class ColourSliderView(
     context: Context,
     initial: Int,
+    private val max: Int,
     initialActive: Boolean,
+    /** The colour this slider makes at a value (with the other sliders as they are). */
+    var colourAt: (Int) -> Int,
     private val onDrag: (Int) -> Unit
 ) : View(context) {
 
@@ -920,18 +933,12 @@ class HueSliderView(
     private val thumbR = 11f * dp
     private val trackH = 6f * dp
 
-    var hue = initial.coerceIn(0, 359)
-        set(v) {
-            field = v
-            invalidate()
-        }
+    var value = initial.coerceIn(0, max)
+        set(v) { field = v; invalidate() }
 
     /** Dimmed while a preset colour is chosen. */
     var active = initialActive
-        set(v) {
-            field = v
-            invalidate()
-        }
+        set(v) { field = v; invalidate() }
 
     override fun onMeasure(widthSpec: Int, heightSpec: Int) {
         setMeasuredDimension(resolveSize((272f * dp).roundToInt(), widthSpec), (32f * dp).roundToInt())
@@ -941,15 +948,16 @@ class HueSliderView(
         val cy = height / 2f
         val left = thumbR
         val right = width - thumbR
-        val stops = IntArray(7) { Palette.customAccent(it * 60) }
+        // Thirteen stops: smooth enough for the colour wheel, and every stop a colour you can really pick
+        val stops = IntArray(13) { colourAt((max * it / 12f).roundToInt()) }
         paint.shader = android.graphics.LinearGradient(left, 0f, right, 0f, stops, null, android.graphics.Shader.TileMode.CLAMP)
         paint.alpha = if (active) 255 else 110
         canvas.drawRoundRect(left, cy - trackH / 2, right, cy + trackH / 2, trackH / 2, trackH / 2, paint)
         paint.shader = null
         paint.alpha = 255
 
-        val x = left + (right - left) * hue / 359f
-        paint.color = Palette.customAccent(hue)
+        val x = left + (right - left) * value / max.toFloat()
+        paint.color = colourAt(value)
         canvas.drawCircle(x, cy, thumbR, paint)
         ring.color = if (active) Color.WHITE else Contrast.withAlpha(Color.WHITE, 90)
         ring.strokeWidth = 2f * dp
@@ -961,9 +969,9 @@ class HueSliderView(
             MotionEvent.ACTION_DOWN, MotionEvent.ACTION_MOVE -> {
                 parent?.requestDisallowInterceptTouchEvent(true)
                 val span = (width - 2 * thumbR).coerceAtLeast(1f)
-                val v = (((e.x - thumbR) / span).coerceIn(0f, 1f) * 359).roundToInt()
-                if (v != hue || !active) {
-                    hue = v
+                val v = (((e.x - thumbR) / span).coerceIn(0f, 1f) * max).roundToInt()
+                if (v != value || !active) {
+                    value = v
                     active = true
                     onDrag(v)
                 }

@@ -1,0 +1,37 @@
+/* Inlay visuals: the app's own design tokens (app/src/main/java/com/example/gridime/Design.kt, BRAND.md) */
+@font-face{font-family:A;src:url(../../app/src/main/res/font/atkinson_next.ttf)}
+@font-face{font-family:I;src:url(../../app/src/main/res/font/inter.ttf)}
+@font-face{font-family:R;src:url(../../tools/video/roboto-latin-400-normal.woff2);font-weight:400}
+@font-face{font-family:R;src:url(../../tools/video/roboto-latin-500-normal.woff2);font-weight:500}
+@font-face{font-family:R;src:url(../../tools/video/roboto-latin-700-normal.woff2);font-weight:700}
+:root{
+  --ink:#0B0B0E; --black:#000; --card:#111114; --raised:#1C1C21; --key:#1B1B1F;
+  --edge:rgba(255,255,255,.08); --divider:rgba(255,255,255,.06);
+  --paper:#F2F3F5; --text2:#9A9DA5; --text3:#6B6E76; --teal:#72D6E8;
+  --r-card:22px; --r-row:18px; --r-cover:14px;
+  --s1:8px; --s2:16px; --s3:24px; --s4:32px; --s6:48px; --s8:64px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--ink);color:var(--paper)}
+.canvas{position:relative;overflow:hidden;background:var(--ink)}
+.h1{font-family:A;font-weight:700;letter-spacing:-.01em;line-height:1.1}
+.body{font-family:I;color:var(--text2);line-height:1.45}
+.label{font-family:I;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--text2)}
+/* A stylised game library, the use case: searching your games with the controller */
+.screen{position:absolute;background:var(--black);border-radius:var(--r-card);box-shadow:0 0 0 1px var(--edge),0 30px 80px rgba(0,0,0,.55);overflow:hidden}
+.lib{position:absolute;left:0;right:0;top:0;padding:var(--s3) var(--s3) 0}
+.lib .bar{display:flex;align-items:center;gap:var(--s2)}
+.lib .title{font-family:A;font-weight:700;color:var(--paper)}
+.field{display:flex;align-items:center;background:var(--card);border-radius:var(--r-row);box-shadow:inset 0 0 0 1px var(--edge);font-family:R;font-weight:500;color:var(--paper)}
+.field .ph{color:var(--text3)}
+.field .cur{display:inline-block;width:2px;background:var(--teal);border-radius:1px;margin-left:1px}
+.field .count{margin-left:auto;font-family:I;color:var(--text2)}
+.covers{display:grid;grid-auto-flow:column}
+.cover{border-radius:var(--r-cover);position:relative;overflow:hidden;box-shadow:inset 0 0 0 1px rgba(255,255,255,.06)}
+.cover .t{position:absolute;left:12%;right:10%;bottom:11%;font-family:A;font-weight:700;color:rgba(255,255,255,.92);line-height:1.08}
+.cover .p{position:absolute;left:12%;top:10%;font-family:I;font-weight:600;letter-spacing:.12em;color:rgba(255,255,255,.62)}
+.cover .art{position:absolute;inset:0}
+.kbd{position:absolute;left:0;right:0;bottom:0;display:block}
+.field .ftext{white-space:nowrap;overflow:hidden;display:flex;align-items:center;min-width:0}
+.field .sel{background:rgba(114,214,232,.35);border-radius:4px;padding:0 2px}
+.field .count{flex:none;padding-left:16px}

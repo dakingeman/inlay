@@ -9,7 +9,6 @@ import android.os.SystemClock
 import android.view.View
 import kotlin.math.max
 import kotlin.math.min
-import kotlin.math.pow
 
 /**
  * "What's new": a short screen that shows the highlights of an update, once.
@@ -22,12 +21,21 @@ import kotlin.math.pow
  * The pages themselves live in [TutorialActivity] (same layout, same badges, same acted-out
  * demos as the tour), so the two always look and behave alike.
  *
- * Every update with something new: bump [VERSION], write 1 to 3 pages, and make the matching
+ * Every update with something new: bump [VERSION], write a page per highlight (keep it to the few that matter), and make the matching
  * card and short clip for GitHub from the same storyboard (see docs/UPDATING.md).
+ * Each page's demo loops, and every looping demo shows the [LoopBarView] (the demo reports its
+ * progress; see TutorialActivity.every and runSteps). No new page goes without it.
+ *
+ * The look comes for free: a new page is only its Page entry (title, one sentence, button rows, demo).
+ * The background ([Backdrop], lit from the top right for What's new, top left for the tour), the
+ * "NEW IN [VERSION]" tag or "WELCOME TOUR" label, the window around the text box and keyboard, and the
+ * user's highlight colour (presets and the slider alike) are all applied by TutorialActivity.
+ * The sound showcase (Demo.SOUNDS) is a template too: it plays every pack in SoundPack, with its name tag. Long words
+ * shrink step by step to fit, and the consistency checks catch anything that still doesn't.
  */
 object WhatsNew {
     /** The update these highlights belong to. Change it only when there's something to show. */
-    const val VERSION = "1.1.1"
+    const val VERSION = "1.2.0"
 
     fun shouldShow(settings: KeyboardSettings) = settings.tutorialDone && settings.whatsNewSeen != VERSION
 
@@ -39,178 +47,146 @@ object WhatsNew {
 }
 
 /**
- * The right stick, drawn as a ring with a knob that leans the way it's pushed, plus a bar that
- * fills with the push and a short caption. Shown under the keyboard on the right-stick page.
- * [push] is -1 (full left) … 0 (resting) … 1 (full right).
+ * The loop bar: a small loop sign and a thin bar under the device picture, on every page whose
+ * demo plays in a loop. It fills as the demo plays and starts again with it, so you can see how
+ * much is left before the demo repeats.
+ *
+ * Each run of a demo says how long it takes ([begin]), worked out before it plays, so the bar
+ * fills at one even pace from empty to full, never in jumps. When the demo starts over, the full
+ * bar fades while the new one begins from empty.
+ *
+ * The rule for new pages (tour and What's new): every looping demo gives the length of its runs,
+ * and the bar shows by itself (see TutorialActivity.every and runSteps). Only the welcome page's
+ * device showcase, which has no beginning or end, goes without.
+ * With animations turned off in Android, the demos stand still and the bar is hidden.
  */
-class StickGaugeView(context: Context) : View(context) {
+class LoopBarView(context: Context) : View(context) {
 
     private val dp = resources.displayMetrics.density
     private val fill = Paint(Paint.ANTI_ALIAS_FLAG)
-    private val line = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+    private val icon = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
         strokeCap = Paint.Cap.ROUND
         strokeJoin = Paint.Join.ROUND
     }
-    private val label = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        textAlign = Paint.Align.CENTER
-        typeface = android.graphics.Typeface.create("sans-serif", android.graphics.Typeface.BOLD)
-    }
-    private val caption = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        textSize = android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_SP, Design.TYPE_CAPTION, resources.displayMetrics)
+    private val arrow = android.graphics.Path()
+    private val ring = android.graphics.Path()
+    var accent: Int = SettingsStyle.accent
+        set(value) { field = value; invalidate() }
+
+    private var shown = 0f             // how far the bar is drawn
+    private var loopStart = 0L         // when this run of the demo began
+    private var loopMs = 0L            // how long this run takes (0: no run yet, the bar is empty)
+    private var fadeStart = -1L        // the previous run's bar, fading out
+    private var fadeWidth = 0f
+
+    /** For the checks: when each run began and how long it said it would take. */
+    internal val runsForCheck = mutableListOf<Pair<Long, Long>>()
+
+    /** A new page: an empty bar until its demo begins its first run. */
+    fun restart() {
+        shown = 0f; loopMs = 0L; fadeStart = -1L
+        runsForCheck.clear()
+        invalidate()
     }
 
-    var accent: Int = SettingsStyle.accent
-    var style: ButtonStyle = ButtonStyle.XBOX
-    var push: Float = 0f
-        set(value) { field = value.coerceIn(-1f, 1f); invalidate() }
+    /** A run of the demo begins [at] (its timetable) and takes [runMs]: the bar fills from empty to full over that time. */
+    fun begin(runMs: Long, at: Long = SystemClock.uptimeMillis()) {
+        val now = SystemClock.uptimeMillis()
+        if (shown > 0.02f) { fadeStart = now; fadeWidth = shown }
+        loopStart = at
+        loopMs = runMs.coerceAtLeast(1L)
+        if (runsForCheck.size < 64) runsForCheck += at to loopMs
+        shown = 0f
+        invalidate()
+    }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         setMeasuredDimension(MeasureSpec.getSize(widthMeasureSpec), (HEIGHT_DP * dp).toInt())
     }
 
     override fun onDraw(canvas: Canvas) {
-        val r = RING_DP * dp
-        val barW = BAR_DP * dp
-        val gap = Design.SPACE_XL * dp
-        val arrowRoom = 14 * dp
-        // The ring, its arrows, the bar and caption sit together as one group, centred
-        val groupW = 2 * (r + arrowRoom + 6 * dp) + gap + barW
-        val left = (width - groupW) / 2f
-        val cx = left + r + arrowRoom + 6 * dp
+        val now = SystemClock.uptimeMillis()
+        shown = if (loopMs > 0L) min(1f, (now - loopStart) / loopMs.toFloat()) else 0f
+
+        // The loop sign and the bar sit together, centred. In a narrow column the bar gets shorter,
+        // and where even that won't do (a tall handheld on a small screen) the bar shows alone.
+        val r = ICON_R_DP * dp
+        val sign = 2 * r + GAP_DP * dp
+        val room = width - 2 * r                             // a little air at both ends
+        val withSign = room - sign >= MIN_BAR_DP * dp
+        val barW = if (withSign) min(BAR_DP * dp, room - sign) else min(BAR_DP * dp, room)
+        val left = (width - ((if (withSign) sign else 0f) + barW)) / 2f
         val cy = height / 2f
-        val strength = kotlin.math.abs(push)
-        val dir = if (push > 0) 1 else if (push < 0) -1 else 0
 
-        // Ring
-        fill.color = SettingsStyle.surface
-        canvas.drawCircle(cx, cy, r, fill)
-        line.color = Contrast.withAlpha(SettingsStyle.textPrimary, 0x33)
-        line.strokeWidth = max(1f, dp)
-        canvas.drawCircle(cx, cy, r, line)
+        // Loop sign: a circle with a gap, an arrowhead at its end
+        if (withSign) drawSign(canvas, left + r, cy, r)
 
-        // Knob: leans with the push, never past the ring
-        val kr = r * 0.52f
-        val kx = cx + push * (r - kr - 2 * dp)
-        fill.color = if (strength > 0f) Contrast.withAlpha(accent, (0x40 + 0xBF * strength).toInt()) else SettingsStyle.track
-        canvas.drawCircle(kx, cy, kr, fill)
-        line.color = if (strength > 0f) accent else Contrast.withAlpha(SettingsStyle.textPrimary, 0x44)
-        canvas.drawCircle(kx, cy, kr, line)
-        label.textSize = kr * 0.62f
-        label.color = if (strength > 0.5f) Contrast.inkFor(accent) else SettingsStyle.textPrimary
-        canvas.drawText(if (style == ButtonStyle.PLAYSTATION) "R3" else "RS", kx, cy - (label.descent() + label.ascent()) / 2f, label)
-
-        // Arrows: the one in the push direction lights up
-        line.strokeWidth = 2.2f * dp
-        for (d in intArrayOf(-1, 1)) {
-            line.color = if (d == dir) accent else Contrast.withAlpha(SettingsStyle.textPrimary, 0x30)
-            val ax = cx + d * (r + 6 * dp)
-            canvas.drawLine(ax, cy - 6 * dp, ax + d * 7 * dp, cy, line)
-            canvas.drawLine(ax + d * 7 * dp, cy, ax, cy + 6 * dp, line)
-        }
-
-        // Speed bar and caption
-        val bx = cx + r + arrowRoom + 6 * dp + gap
-        val bh = 6 * dp
+        // The bar: a track, the previous run fading, this run filling
+        val bx = left + if (withSign) sign else 0f
+        val bh = BAR_H_DP * dp
+        val bar = RectF(bx, cy - bh / 2, bx + barW, cy + bh / 2)
         fill.color = SettingsStyle.track
-        canvas.drawRoundRect(RectF(bx, cy - bh - 4 * dp, bx + barW, cy - 4 * dp), bh / 2, bh / 2, fill)
-        if (strength > 0f) {
+        canvas.drawRoundRect(bar, bh / 2, bh / 2, fill)
+        if (fadeStart >= 0L) {
+            val f = 1f - (now - fadeStart) / FADE_MS
+            if (f > 0f) {
+                fill.color = Contrast.withAlpha(accent, (0xFF * f).toInt())
+                canvas.drawRoundRect(RectF(bx, bar.top, bx + barW * fadeWidth, bar.bottom), bh / 2, bh / 2, fill)
+            } else fadeStart = -1L
+        }
+        if (shown > 0.002f) {
             fill.color = accent
-            canvas.drawRoundRect(RectF(bx, cy - bh - 4 * dp, bx + barW * strength, cy - 4 * dp), bh / 2, bh / 2, fill)
+            canvas.drawRoundRect(RectF(bx, bar.top, bx + max(bh, barW * shown), bar.bottom), bh / 2, bh / 2, fill)
         }
-        caption.color = SettingsStyle.textSecondary
-        val words = when {
-            strength == 0f -> "Resting"
-            strength < 0.6f -> "Light push · slow"
-            else -> "Full push · fast"
+        // Redraw only while the bar fills or the last run fades; a full or empty bar stands still
+        // 30 times a second is plenty for a bar that fills over seconds (it moves a pixel or two per frame),
+        // and spares the screen redrawing up to 120 times a second for it
+        if (isShown && WhatsNew.motionAllowed() && ((loopMs > 0L && shown < 1f) || fadeStart >= 0L)) postInvalidateDelayed(BAR_FRAME_MS)
+    }
+
+    private fun drawSign(canvas: Canvas, cx: Float, cy: Float, r: Float) {
+        icon.strokeWidth = ICON_STROKE_DP * dp
+        icon.color = SettingsStyle.textSecondary
+        val oval = RectF(cx - r, cy - r, cx + r, cy + r)
+        ring.reset()                                     // traced point by point, so every renderer draws it the same
+        for (i in 0..ARC_POINTS) {
+            val t = Math.toRadians((ARC_START + ARC_SWEEP * i / ARC_POINTS).toDouble())
+            val px = oval.centerX() + r * kotlin.math.cos(t).toFloat()
+            val py = oval.centerY() + r * kotlin.math.sin(t).toFloat()
+            if (i == 0) ring.moveTo(px, py) else ring.lineTo(px, py)
         }
-        canvas.drawText(words, bx, cy + 6 * dp - caption.ascent(), caption)
+        canvas.drawPath(ring, icon)
+        val end = Math.toRadians((ARC_START + ARC_SWEEP).toDouble())
+        val ex = cx + r * kotlin.math.cos(end).toFloat()
+        val ey = cy + r * kotlin.math.sin(end).toFloat()
+        val tx = -kotlin.math.sin(end).toFloat()         // the way the arc runs at its end (clockwise)
+        val ty = kotlin.math.cos(end).toFloat()
+        val a = ARROW_DP * dp
+        arrow.reset()
+        arrow.moveTo(ex + tx * a, ey + ty * a)
+        arrow.lineTo(ex - ty * a * 0.9f, ey + tx * a * 0.9f)
+        arrow.lineTo(ex + ty * a * 0.9f, ey - tx * a * 0.9f)
+        arrow.close()
+        fill.color = SettingsStyle.textSecondary
+        canvas.drawPath(arrow, fill)
     }
 
-    private companion object {
-        const val HEIGHT_DP = 72f
-        const val RING_DP = 26f
-        const val BAR_DP = 120f
-    }
-}
-
-/**
- * "And this screen": a small drawing of the What's new screen, with the same screen inside it,
- * and inside that… It zooms slowly into itself, in a loop with no visible jump.
- * With animations turned off in Android, it stays still.
- */
-class ScreenInScreenView(context: Context) : View(context) {
-
-    private val dp = resources.displayMetrics.density
-    private val fill = Paint(Paint.ANTI_ALIAS_FLAG)
-    private val edge = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE }
-    private val startedAt = SystemClock.uptimeMillis()
-    var accent: Int = SettingsStyle.accent
-
-    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
-        val w = MeasureSpec.getSize(widthMeasureSpec)
-        setMeasuredDimension(w, (w * 9f / 16f).toInt())
-    }
-
-    override fun onDraw(canvas: Canvas) {
-        val w = width.toFloat()
-        val h = height.toFloat()
-        // The inner screen sits where the stage sits on the real screen
-        val ix = w * INNER_X
-        val iy = h * INNER_Y
-        val k = INNER_SIZE
-        // Zoom: over one loop, the inner screen grows to exactly where the outer one was.
-        // The point that stays put is the fixed point of that move: P = inner corner / (1 - k).
-        val t = if (WhatsNew.motionAllowed()) ((SystemClock.uptimeMillis() - startedAt) % LOOP_MS) / LOOP_MS.toFloat() else 0f
-        val px = ix / (1 - k)
-        val py = iy / (1 - k)
-        val s = (1f / k).pow(t)
-        val saved = canvas.save()
-        canvas.clipRect(0f, 0f, w, h)
-        canvas.translate(px, py)
-        canvas.scale(s, s)
-        canvas.translate(-px, -py)
-        drawLevel(canvas, 0f, 0f, w, h, DEPTH)
-        canvas.restoreToCount(saved)
-        if (WhatsNew.motionAllowed()) postInvalidateOnAnimation()
-    }
-
-    private fun drawLevel(canvas: Canvas, x: Float, y: Float, w: Float, h: Float, depth: Int) {
-        if (depth == 0 || w < 6 * dp) return
-        val u = w / 100f                                   // one hundredth of this level's width
-        fill.color = SettingsStyle.background
-        canvas.drawRoundRect(RectF(x, y, x + w, y + h), 1.2f * u, 1.2f * u, fill)
-        edge.color = Contrast.withAlpha(SettingsStyle.textPrimary, 0x26)
-        edge.strokeWidth = max(0.6f, 0.18f * u)
-        canvas.drawRoundRect(RectF(x, y, x + w, y + h), 1.2f * u, 1.2f * u, edge)
-        // Progress dots, the last one lit
-        for (i in 0..2) {
-            fill.color = if (i == 2) accent else SettingsStyle.track
-            val dw = if (i == 2) 2.4f * u else 0.8f * u
-            val dx = x + w / 2f - 2.4f * u + i * 1.5f * u
-            canvas.drawRoundRect(RectF(dx, y + 1.9f * u, dx + dw, y + 2.7f * u), 0.4f * u, 0.4f * u, fill)
-        }
-        // Eyebrow, title, three lines of body
-        fill.color = accent
-        canvas.drawRoundRect(RectF(x + 4f * u, y + 5f * u, x + 17f * u, y + 6.2f * u), 0.4f * u, 0.4f * u, fill)
-        fill.color = Contrast.withAlpha(SettingsStyle.textPrimary, 0xD9)
-        canvas.drawRoundRect(RectF(x + 4f * u, y + 8.4f * u, x + 30f * u, y + 11f * u), 0.6f * u, 0.6f * u, fill)
-        fill.color = Contrast.withAlpha(SettingsStyle.textSecondary, 0x80)
-        floatArrayOf(29f, 25f, 21f).forEachIndexed { i, len ->
-            canvas.drawRoundRect(RectF(x + 4f * u, y + (14f + i * 2.7f) * u, x + (4f + len) * u, y + (15.4f + i * 2.7f) * u), 0.5f * u, 0.5f * u, fill)
-        }
-        // The control bar's line
-        fill.color = Contrast.withAlpha(SettingsStyle.textPrimary, 0x18)
-        canvas.drawRect(x, y + h * 0.907f, x + w, y + h * 0.907f + max(0.6f, 0.12f * u), fill)
-        // And the same screen again, where the stage is
-        drawLevel(canvas, x + w * INNER_X, y + h * INNER_Y, w * INNER_SIZE, h * INNER_SIZE, depth - 1)
-    }
-
-    private companion object {
-        const val INNER_X = 0.40f
-        const val INNER_Y = 0.275f
-        const val INNER_SIZE = 0.565f
-        const val DEPTH = 9
-        const val LOOP_MS = 4200L
+    companion object {
+        /** How often the bar redraws while it fills (about 30 times a second). */
+        const val BAR_FRAME_MS = 33L
+        /** The bar's own height; the picture above leaves this much room (plus the gap) for it. */
+        const val HEIGHT_DP = 16f
+        private const val BAR_DP = 88f
+        private const val MIN_BAR_DP = 40f
+        private const val BAR_H_DP = 3f
+        private const val GAP_DP = 8f
+        private const val ICON_R_DP = 5f
+        private const val ICON_STROKE_DP = 1.6f
+        private const val ARROW_DP = 2.8f
+        private const val ARC_START = -70f
+        private const val ARC_SWEEP = 290f
+        private const val ARC_POINTS = 48
+        private const val FADE_MS = 260f
     }
 }

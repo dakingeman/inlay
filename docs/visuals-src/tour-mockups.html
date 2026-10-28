@@ -1,0 +1,24 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="inlay.css"><script src="backdrop.js"></script>
+<style>body{margin:0}.m{position:absolute}#c{position:relative;width:1654px;height:824px;overflow:hidden}</style></head><body>
+<div id="c"></div><script>
+const Q=new URLSearchParams(location.search), mode=Q.get('m')||'a', scr=Q.get('scr')||'screen-whatsnew-1';
+const c=document.getElementById('c');
+// where the content sits on the tour / What's new page (at the Odin's size), so the motif keeps clear of it
+const BOX=[[60,20,1600,330],[640,360,1600,715],[120,395,540,715],[660,740,1000,815]];
+let html=BOX.map(([l,t,r,b])=>`<div class="m" style="left:${l}px;top:${t}px;width:${r-l}px;height:${b-t}px"></div>`).join('');
+c.innerHTML=html;
+c.style.background=inlayBackground(scr,0,1654,824);
+if(mode==='b') inlayBackdrop(c,scr,2,{motif:'dots'});
+if(mode==='c'||mode==='d'){ // a small tiled stage behind the device picture: the device sits "inlaid" in the surface
+  const P=46,G=8,x0=52,y0=356,cols=12,rows=8; let t='';
+  for(let i=0;i<cols;i++)for(let j=0;j<rows;j++){const cx=(i+.5)/cols-.5, cy=(j+.5)/rows-.5, k=Math.max(0,1-Math.hypot(cx*1.1,cy*1.25)*1.55);
+    if(k<=.04)continue; const lit=mode==="d"&&i===10&&j===1;
+    t+=lit?`<rect x="${x0+i*P-4}" y="${y0+j*P-4}" width="${P-G+8}" height="${P-G+8}" rx="13" fill="none" stroke="rgba(114,214,232,.27)" stroke-width="2.5"/><rect x="${x0+i*P}" y="${y0+j*P}" width="${P-G}" height="${P-G}" rx="9" fill="rgba(114,214,232,.6)"/>`
+      :`<rect x="${x0+i*P+.5}" y="${y0+j*P+.5}" width="${P-G-1}" height="${P-G-1}" rx="9" fill="rgba(255,255,255,${(.06*k).toFixed(3)})" stroke="rgba(255,255,255,${(.17*k).toFixed(3)})" stroke-width="1"/>`;}
+  c.insertAdjacentHTML('afterbegin',`<svg width="1654" height="824" style="position:absolute;left:0;top:0">${t}</svg>`);
+  c.insertAdjacentHTML('beforeend','<div style="position:absolute;inset:0;pointer-events:none;background:radial-gradient(1550px 870px at 50% 46%, rgba(0,0,0,0) 58%, rgba(0,0,0,.24) 100%)"></div>');
+}
+if(mode==='a') c.insertAdjacentHTML('beforeend','<div style="position:absolute;inset:0;pointer-events:none;background:radial-gradient(1550px 870px at 50% 46%, rgba(0,0,0,0) 58%, rgba(0,0,0,.24) 100%)"></div>');
+c.insertAdjacentHTML('beforeend',`<img src="renders/${scr}-clear.png" style="position:absolute;left:0;top:0;width:1654px;height:824px">`);
+Promise.all([...document.images].map(i=>i.decode().catch(()=>{}))).then(()=>document.title='done');
+</script></body></html>

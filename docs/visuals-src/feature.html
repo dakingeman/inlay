@@ -1,0 +1,48 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="inlay.css">
+<script src="parts.js"></script><script src="features.js"></script><script src="backdrop.js"></script>
+<style>
+.abs{position:absolute}
+.t-h1{font-size:46px}
+.t-body{font-size:21px;margin-top:16px}
+.cardimg{display:block;border-radius:14px;box-shadow:0 0 0 1px var(--edge)}
+.lbl{font-family:I;font-size:17px;color:var(--text2);text-align:center;margin-top:14px}
+.shot{display:block;border-radius:var(--r-card);box-shadow:0 0 0 1px var(--edge),0 24px 60px rgba(0,0,0,.5)}
+.row{display:flex;align-items:center;height:56px}
+.row .b{width:310px;flex:none;display:flex;align-items:center}
+.row .w{font-family:I;font-size:19px;color:var(--paper)}
+.sec{font-size:14px;margin-bottom:12px}
+/* the new look: panels lift with a light hairline, device pictures one step lighter (as in the hero) */
+.screen{box-shadow:0 0 0 2px #2F323A,0 2px 4px rgba(0,0,0,.3),0 24px 60px rgba(0,0,0,.45)!important}
+.shot,.cardimg{box-shadow:0 0 0 2px #2F323A,0 2px 4px rgba(0,0,0,.3),0 20px 50px rgba(0,0,0,.4)!important}
+
+.canvas{background:transparent}
+.zoom{background:#000;border-radius:22px;box-shadow:0 0 0 2px #2F323A,0 2px 4px rgba(0,0,0,.3),0 20px 50px rgba(0,0,0,.4)}
+</style></head><body>
+<div id="c" class="canvas"></div>
+<script>
+const id=new URLSearchParams(location.search).get('id');
+const F=FEATURES[id]; const CW=F.W||1600, CH=F.H||900; Object.assign(document.getElementById('c').style,{width:CW+'px',height:CH+'px'});
+const LOGO='<img class="m" src="hero-parts/lockup-clear.svg" style="display:block;height:100%">';
+let H=COVER_DEFS;
+const text=(x,y,w,t,b,size=46)=>`<div class="abs" style="left:${x}px;top:${y}px;width:${w}px"><div class="h1 t-h1 m" style="font-size:${size}px">${t}</div>${b?`<div class="body t-body m">${b}</div>`:''}</div>`;
+if(F.layout==='stage'){
+  // words and the device on the left, the screen on the right (as in the videos)
+  const scr=libScreen(Object.assign({x:F.screenX||680,y:0,w:F.screenW||824},F.screen));
+  const top=Math.round((CH-scr.h)/2);
+  H+=scr.html.replace('top:0px',`top:${top}px`);
+  if(F.logo) H+=`<div class="abs" style="left:${F.textX||96}px;top:${F.textY-104}px;height:68px">${LOGO}</div>`;
+  H+=text(F.textX||96,F.textY||200,F.textW||520,F.title,F.body,F.size||46);
+  // the device stands on the same line as the bottom of the screen next to it
+  H+=`<img class="abs m pic" src="renders/${F.pic}.png" style="left:${F.picX||F.textX||96}px;bottom:${CH-top-scr.h}px;width:${F.picW||530}px">`;
+}else if(F.layout==='top'){
+  H+=text(96,80,1300,F.title,F.body);
+  H+=F.content();
+}
+document.getElementById('c').innerHTML=H;
+// the picture renders have empty margins: trim the measured box to the drawing (see check)
+// README order: neighbours never share a corner or a motif
+const ORDER=['social','typing','words','accents','devices','hold','editing','tidy','looks','icons','tv-mode','languages','settings','sound-packs','tour','controls'];
+document.fonts.ready.then(()=>Promise.all([...document.images].map(i=>i.decode().catch(()=>{})))).then(()=>{ if(F.after) F.after();
+  inlayBackdrop(document.getElementById('c'), id, Math.max(0,ORDER.indexOf(id)), {motif:'none', grain: new URLSearchParams(location.search).get('grain')!=='0'});
+  document.title='done'; });
+</script></body></html>

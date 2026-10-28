@@ -1,19 +1,12 @@
-<?xml version="1.0" encoding="utf-8"?><!--
-   Sample data extraction rules file; uncomment and customize as necessary.
-   See https://developer.android.com/about/versions/12/backup-restore#xml-changes
-   for details.
--->
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 12 and newer. Settings are backed up and moved to a new phone; copied text and learned words never leave this device. -->
 <data-extraction-rules>
     <cloud-backup>
-        <!-- TODO: Use <include> and <exclude> to control what is backed up.
-        <include .../>
-        <exclude .../>
-        -->
+        <exclude domain="file" path="clipboard.json" />
+        <exclude domain="file" path="my_words.json" />
     </cloud-backup>
-    <!--
     <device-transfer>
-        <include .../>
-        <exclude .../>
+        <exclude domain="file" path="clipboard.json" />
+        <exclude domain="file" path="my_words.json" />
     </device-transfer>
-    -->
 </data-extraction-rules>

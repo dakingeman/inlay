@@ -1,6 +1,6 @@
 # Inlay brand kit
 
-Everything needed to show Inlay consistently: the icon, the name, the colours and the type, with the rules that keep them looking right.
+Everything needed to show Inlay consistently: the icon, the name, the colours and the type, with the rules that keep them looking right. How Inlay sounds is in [SOUND.md](SOUND.md).
 
 ![Inlay](png/inlay-lockup-dark-1600.png)
 

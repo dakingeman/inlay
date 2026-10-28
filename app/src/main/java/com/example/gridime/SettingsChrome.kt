@@ -33,7 +33,46 @@ object HintText {
             last = match.range.last + 1
         }
         text.substring(last).trim().takeIf { it.isNotEmpty() }?.let { parts += HintPart.Text(it) }
-        return parts
+        return markHolds(parts)
+    }
+
+    private val holdWord = Regex("""(?i)(^|\s)hold$""")
+
+    /**
+     * The one rule for held buttons, so every hint follows it: a button right after the word "hold"
+     * is held (the word goes into its HOLD capsule), and so is the first button of a combo
+     * ("{R2} + {A}": hold RT, press A).
+     */
+    private fun markHolds(parts: List<HintPart>): List<HintPart> {
+        val out = parts.toMutableList()
+        out.indices.forEach { i ->
+            val badge = out[i] as? HintPart.Badge ?: return@forEach
+            val before = out.getOrNull(i - 1) as? HintPart.Text
+            val after = out.getOrNull(i + 1) as? HintPart.Text
+            if (before != null && holdWord.containsMatchIn(before.text)) {
+                out[i] = badge.copy(held = true)
+                out[i - 1] = HintPart.Text(before.text.replace(holdWord, "").trim())
+            } else if (after != null && after.text.startsWith("+") && out.getOrNull(i - 1) !is HintPart.Badge) {
+                out[i] = badge.copy(held = true)
+            }
+        }
+        return out.filterNot { it is HintPart.Text && it.text.isEmpty() }.flatMap(::remoteHolds)
+    }
+
+    private val holdRemoteKey = Regex("""(?i)\bhold (OK|Back)\b""")
+
+    /** A remote has no badges, so "hold OK" becomes the same capsule with the key's name in it. */
+    private fun remoteHolds(part: HintPart): List<HintPart> {
+        if (part !is HintPart.Text) return listOf(part)
+        val out = mutableListOf<HintPart>()
+        var last = 0
+        holdRemoteKey.findAll(part.text).forEach { m ->
+            part.text.substring(last, m.range.first).trim().takeIf { it.isNotEmpty() }?.let { out += HintPart.Text(it) }
+            out += HintPart.HeldWord(m.groupValues[1])
+            last = m.range.last + 1
+        }
+        part.text.substring(last).trim().takeIf { it.isNotEmpty() }?.let { out += HintPart.Text(it) }
+        return out
     }
 }
 
@@ -83,11 +122,54 @@ class SettingsCard(context: Context) : LinearLayout(context) {
  * Section tabs across the top, switched with the shoulder buttons.
  * Every tab is a pill; a white indicator slides to the one you're on.
  */
+private const val TAB_MOTION_MS = 120L
+
 class TabBar(
     context: Context,
     private val titles: List<String>,
     private val onTap: (Int) -> Unit
 ) : View(context) {
+
+    /**
+     * Without shoulder buttons (a TV remote), the tabs take the focus: up from the first row lands
+     * here, left and right switch sections, down goes back to the list. With a remote there's also
+     * a keyboard key at the end of the row ([onKeyboard]), since there's no Y.
+     */
+    var remote = false
+        set(v) { field = v; invalidate() }
+    var onKeyboard: () -> Unit = {}
+    var onDown: () -> Unit = {}
+    /** The slot the focus is on: a tab, or titles.size for the keyboard key. */
+    private var focusSlot = 0
+    private val keyRect = RectF()
+    private val ring = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE }
+
+    init {
+        isFocusable = true
+        isFocusableInTouchMode = true      // reachable even after the screen was touched
+        defaultFocusHighlightEnabled = false
+    }
+
+    override fun onFocusChanged(gained: Boolean, direction: Int, previous: android.graphics.Rect?) {
+        super.onFocusChanged(gained, direction, previous)
+        if (gained) focusSlot = selected
+        invalidate()
+    }
+
+    override fun onKeyDown(keyCode: Int, event: android.view.KeyEvent): Boolean {
+        val last = if (remote) titles.size else titles.lastIndex
+        when (keyCode) {
+            android.view.KeyEvent.KEYCODE_DPAD_LEFT -> if (focusSlot > 0) { focusSlot--; if (focusSlot < titles.size) onTap(focusSlot) }
+            android.view.KeyEvent.KEYCODE_DPAD_RIGHT -> if (focusSlot < last) { focusSlot++; if (focusSlot < titles.size) onTap(focusSlot) }
+            android.view.KeyEvent.KEYCODE_DPAD_DOWN -> onDown()
+            android.view.KeyEvent.KEYCODE_DPAD_CENTER, android.view.KeyEvent.KEYCODE_ENTER, android.view.KeyEvent.KEYCODE_BUTTON_A ->
+                if (focusSlot == titles.size) onKeyboard() else onDown()
+            android.view.KeyEvent.KEYCODE_DPAD_UP -> Unit
+            else -> return super.onKeyDown(keyCode, event)
+        }
+        invalidate()
+        return true
+    }
 
     private val dp = resources.displayMetrics.density
     private val painter = BadgePainter(dp).apply { scale = 1.45f }
@@ -112,14 +194,31 @@ class TabBar(
         private set
     private var indicator = 0f
     private var anim: ValueAnimator? = null
+
+    /** Where the highlight is (between tabs while it slides). */
+    val indicatorAt: Float get() = indicator
+
+    /**
+     * 0 = the tabs as usual; 1 = folded into a slim line of bars at the bottom edge of this view, one per
+     * tab and as wide as it, the one you're on in the highlight colour. Settings moves this with the
+     * keyboard sliding up (and slides this view up so only that line shows): the tabs themselves shrink
+     * into the line, so nothing appears from behind anything.
+     */
+    var collapse = 0f
+        set(v) { val c = v.coerceIn(0f, 1f); if (field != c) { field = c; invalidate() } }
+    /** How tall the folded line is (the part of this view still showing with the keyboard up). */
+    val foldedHeightPx: Float get() = FOLDED_DP * dp
     private val tabRects = mutableListOf<RectF>()
 
     fun select(index: Int) {
+        // The focus ring follows the section, however it was switched (L1/R1 too)
+        if (focusSlot < titles.size) focusSlot = index
         if (index == selected) return
         selected = index
         anim?.cancel()
         anim = ValueAnimator.ofFloat(indicator, index.toFloat()).apply {
-            duration = Design.MOTION_CONTROL
+            // Quick, so the fill keeps up with fast presses; the ring and the slide ride on the same value
+            duration = TAB_MOTION_MS
             interpolator = Design.EASE_OUT
             addUpdateListener {
                 indicator = it.animatedValue as Float
@@ -133,17 +232,30 @@ class TabBar(
         setMeasuredDimension(MeasureSpec.getSize(widthSpec), (64f * dp).roundToInt())
     }
 
+    /** Where the tabs may be drawn: between the badges (or the keyboard key) at the ends. */
+    private var clipLeft = 0f
+    private var clipRight = 0f
+
     private fun layoutTabs() {
         tabRects.clear()
         val widths = titles.map { text.measureText(it) + 2 * tabPad }
         val total = widths.sum() + tabGap * (titles.size - 1)
-        val side = Design.SPACE_L * dp + painter.width(ControllerButton.L1) + Design.SPACE_M * dp
-        val available = width - 2 * side
-        // Centre the tabs; if they don't fit, slide them so the chosen one stays visible
-        var x = if (total <= available) side + (available - total) / 2f else {
-            val before = widths.take(selected).sum() + tabGap * selected
-            val wanted = side + available / 2f - (before + widths[selected] / 2f)
-            wanted.coerceIn(side + available - total, side)
+        // A remote has no L1/R1 (no badges at the ends); it has the keyboard key at the end instead
+        val left = if (remote) Design.SPACE_L * dp else Design.SPACE_L * dp + painter.width(ControllerButton.L1) + Design.SPACE_M * dp
+        val right = if (remote) Design.SPACE_L * dp + tabHeight * 1.3f + Design.SPACE_S * dp
+            else Design.SPACE_L * dp + painter.width(ControllerButton.R1) + Design.SPACE_M * dp
+        clipLeft = left; clipRight = width - right
+        val available = width - left - right
+        // Centre the tabs; if they don't fit, they slide (with the indicator) so the chosen one stays in view
+        fun startFor(i: Int): Float {
+            val before = widths.take(i).sum() + tabGap * i
+            return (left + available / 2f - (before + widths[i] / 2f)).coerceIn(left + available - total, left)
+        }
+        var x = if (total <= available) left + (available - total) / 2f else {
+            val lo = floor(indicator).toInt().coerceIn(0, titles.lastIndex)
+            val hi = ceil(indicator).toInt().coerceIn(0, titles.lastIndex)
+            val t = indicator - floor(indicator)
+            startFor(lo) + (startFor(hi) - startFor(lo)) * t
         }
         val top = (height - tabHeight) / 2f
         widths.forEach { w ->
@@ -152,32 +264,115 @@ class TabBar(
         }
     }
 
+    private val fade = Paint()
+
+    /** A tab's pill as drawn right now: itself, or on its way to (or as) its bar in the folded line. */
+    private fun shaped(rect: RectF): RectF {
+        if (collapse <= 0f) return rect
+        val c = collapse
+        val e = c * c * (3 - 2 * c)                                  // smooth, so it settles softly
+        val h = tabHeight + (FOLD_BAR_DP * dp - tabHeight) * e
+        val cy = rect.centerY() + (height - FOLDED_DP * dp / 2f - rect.centerY()) * c
+        val inset = FOLD_INSET_DP * dp * e
+        return RectF(rect.left + inset, cy - h / 2f, rect.right - inset, cy + h / 2f)
+    }
+
     override fun onDraw(canvas: Canvas) {
         layoutTabs()
-        val r = tabHeight / 2f
-        fill.color = SettingsStyle.surface
-        tabRects.forEach { canvas.drawRoundRect(it, r, r, fill) }
+        val c = collapse
+        val ringGap = 3.5f * dp + 2.5f * dp
+        // Words, badges and rings belong to the full tabs: they're gone in the first third of the fold
+        val chrome = (1f - c / 0.35f).coerceIn(0f, 1f)
+        canvas.save()
+        canvas.clipRect(clipLeft - ringGap, 0f, clipRight + ringGap, height.toFloat())
+        fill.color = SettingsStyle.blend(SettingsStyle.surface, SettingsStyle.track, c)
+        tabRects.forEach { val s = shaped(it); val rr = s.height() / 2f; canvas.drawRoundRect(s, rr, rr, fill) }
 
         // Sliding indicator
-        val a = tabRects[floor(indicator).toInt().coerceIn(0, tabRects.lastIndex)]
-        val b = tabRects[ceil(indicator).toInt().coerceIn(0, tabRects.lastIndex)]
+        val a = shaped(tabRects[floor(indicator).toInt().coerceIn(0, tabRects.lastIndex)])
+        val b = shaped(tabRects[ceil(indicator).toInt().coerceIn(0, tabRects.lastIndex)])
         val t = indicator - floor(indicator)
+        val r = a.height() / 2f
         fill.color = SettingsStyle.accent
         canvas.drawRoundRect(
             a.left + (b.left - a.left) * t, a.top, a.right + (b.right - a.right) * t, a.bottom, r, r, fill
         )
 
-        val baseline = tabRects[0].centerY() - (text.descent() + text.ascent()) / 2f
-        titles.forEachIndexed { i, title ->
-            val onIndicator = 1f - min(1f, abs(indicator - i))
-            text.color = SettingsStyle.blend(SettingsStyle.textSecondary, SettingsStyle.onAccent, onIndicator)
-            canvas.drawText(title, tabRects[i].centerX(), baseline, text)
+        if (chrome > 0f) {
+            val baseline = a.centerY() - (text.descent() + text.ascent()) / 2f
+            text.alpha = 255
+            titles.forEachIndexed { i, title ->
+                val onIndicator = 1f - min(1f, abs(indicator - i))
+                text.color = SettingsStyle.blend(SettingsStyle.textSecondary, SettingsStyle.onAccent, onIndicator)
+                text.alpha = (255 * chrome).roundToInt()
+                canvas.drawText(title, tabRects[i].centerX(), baseline, text)
+            }
+            text.alpha = 255
         }
 
-        // Shoulder button badges at each end
+        // Focus (moving through the tabs without shoulder buttons): a ring round the tab. On the
+        // chosen tab it rides with the fill, so the two always move as one
+        if (c == 0f && hasFocus() && focusSlot < titles.size) {
+            val f = if (focusSlot == selected) RectF(
+                a.left + (b.left - a.left) * t, a.top, a.right + (b.right - a.right) * t, a.bottom) else tabRects[focusSlot.coerceIn(0, tabRects.lastIndex)]
+            ring.color = SettingsStyle.accent
+            ring.strokeWidth = 2.5f * dp
+            val g = 3.5f * dp
+            canvas.drawRoundRect(f.left - g, f.top - g, f.right + g, f.bottom + g, r + g, r + g, ring)
+        }
+        canvas.restore()
+
+        // Tabs that run past the ends fade out softly instead of being cut
+        val first = tabRects.first(); val last = tabRects.last()
+        val fw = 18f * dp
+        val bg = SettingsStyle.background
+        val clear = bg and 0x00FFFFFF
+        if (first.left < clipLeft - 1f) {
+            fade.shader = android.graphics.LinearGradient(clipLeft - ringGap, 0f, clipLeft - ringGap + fw, 0f, bg, clear, android.graphics.Shader.TileMode.CLAMP)
+            canvas.drawRect(clipLeft - ringGap, 0f, clipLeft - ringGap + fw, height.toFloat(), fade)
+        }
+        if (last.right > clipRight + 1f) {
+            fade.shader = android.graphics.LinearGradient(clipRight + ringGap - fw, 0f, clipRight + ringGap, 0f, clear, bg, android.graphics.Shader.TileMode.CLAMP)
+            canvas.drawRect(clipRight + ringGap - fw, 0f, clipRight + ringGap, height.toFloat(), fade)
+        }
+
         val cy = height / 2f
-        painter.draw(canvas, ControllerButton.L1, Design.SPACE_L * dp, cy)
-        painter.draw(canvas, ControllerButton.R1, width - Design.SPACE_L * dp - painter.width(ControllerButton.R1), cy)
+        if (chrome <= 0f) return
+        val layer = if (chrome < 1f) canvas.saveLayerAlpha(0f, 0f, width.toFloat(), height.toFloat(), (255 * chrome).roundToInt()) else -1
+        if (remote) {
+            // The keyboard key: a small keyboard drawn in a round key
+            val right = width - Design.SPACE_L * dp
+            keyRect.set(right - tabHeight * 1.3f, tabRects[0].top, right, tabRects[0].bottom)
+            fill.color = SettingsStyle.surface
+            canvas.drawRoundRect(keyRect, tabHeight / 2f, tabHeight / 2f, fill)
+            ring.color = SettingsStyle.textSecondary
+            ring.strokeWidth = 1.5f * dp
+            val kw = 16f * dp; val kh = 11f * dp
+            val k = RectF(keyRect.centerX() - kw / 2, cy - kh / 2, keyRect.centerX() + kw / 2, cy + kh / 2)
+            canvas.drawRoundRect(k, 2.5f * dp, 2.5f * dp, ring)
+            fill.color = SettingsStyle.textSecondary
+            for (row in 0..1) for (col in 0..3) canvas.drawCircle(k.left + kw * (col + 1) / 5f, k.top + kh * (row + 1) / 3.6f, 0.9f * dp, fill)
+            canvas.drawLine(k.left + kw * 0.3f, k.bottom - kh * 0.25f, k.right - kw * 0.3f, k.bottom - kh * 0.25f, ring)
+        } else {
+            // Shoulder button badges at each end
+            painter.draw(canvas, ControllerButton.L1, Design.SPACE_L * dp, cy)
+            painter.draw(canvas, ControllerButton.R1, width - Design.SPACE_L * dp - painter.width(ControllerButton.R1), cy)
+        }
+        // The keyboard key's own focus ring
+        if (hasFocus() && focusSlot >= titles.size) {
+            val f = keyRect
+            ring.color = SettingsStyle.accent
+            ring.strokeWidth = 2.5f * dp
+            val g = 3.5f * dp
+            canvas.drawRoundRect(f.left - g, f.top - g, f.right + g, f.bottom + g, tabHeight / 2f + g, tabHeight / 2f + g, ring)
+        }
+        if (layer >= 0) canvas.restoreToCount(layer)
+    }
+
+    companion object {
+        const val FOLDED_DP = 16f       // the folded line: what still shows of the tabs with the keyboard up
+        const val FOLD_BAR_DP = 4f      // each bar's thickness when folded
+        const val FOLD_INSET_DP = 6f    // each bar is this much shorter than its tab at both ends
     }
 
     override fun onTouchEvent(e: MotionEvent): Boolean {
@@ -230,3 +425,5 @@ class ControlBar(context: Context) : View(context) {
         }
     }
 }
+
+
