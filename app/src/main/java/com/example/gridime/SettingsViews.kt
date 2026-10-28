@@ -350,13 +350,18 @@ class SliderRow(
     private val slider = SliderView(context, min, max, value) { update(it) }
 
     init {
+        val narrow = SettingsStyle.isNarrow(context)
         val control = LinearLayout(context).apply {
             orientation = HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            addView(slider)
-            addView(valueText, LayoutParams(px(72f), LayoutParams.WRAP_CONTENT))
+            // Under its title (narrow screens) the slider spans the row and the value sits at its end,
+            // instead of floating in the middle (audit, 28 Oct 2026)
+            if (narrow) addView(slider, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f)) else addView(slider)
+            addView(valueText, LayoutParams(if (narrow) LayoutParams.WRAP_CONTENT else px(72f), LayoutParams.WRAP_CONTENT)
+                .apply { if (narrow) marginStart = px(Design.SPACE_L) })
         }
         setControl(control)
+        if (narrow) control.layoutParams = (control.layoutParams as LayoutParams).apply { width = LayoutParams.MATCH_PARENT }
     }
 
     override fun step(dir: Int): Boolean {
@@ -477,7 +482,8 @@ class ColourSliderRow(
 }
 
 /** Read-only row with a value on the right. */
-class InfoRow(context: Context, title: String, value: String) : SettingRow(context, title, null) {
+/** Long values (credits, licences) sit under the title, so neither gets squeezed (audit, 28 Oct 2026). */
+class InfoRow(context: Context, title: String, value: String) : SettingRow(context, title, null, stacked = value.length > 28) {
     override val interactive get() = false
 
     init {
@@ -1000,7 +1006,7 @@ class SetupRow(
             orientation = VERTICAL
             addView(step(1, "Turn on Inlay",
                 if (enabled) "Done" else "Switch Inlay on in the list that opens",
-                done = enabled, current = !enabled))
+                done = enabled, current = !enabled), LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
             addView(step(2, "Make it your keyboard", "Pick Inlay in the list that opens",
                 done = false, current = enabled), LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
                 .apply { topMargin = px(Design.SPACE_M) })
@@ -1014,6 +1020,8 @@ class SetupRow(
                 .apply { topMargin = px(Design.SPACE_L) })
         }
         setControl(body)
+        // The steps use the card's full width (wrapping to the button's width cut their text off, audit 28 Oct 2026)
+        body.layoutParams = (body.layoutParams as LayoutParams).apply { width = LayoutParams.MATCH_PARENT }
     }
 
     private fun step(n: Int, title: String, subtitle: String, done: Boolean, current: Boolean): View =
@@ -1035,7 +1043,7 @@ class SetupRow(
                     textSize = Design.TYPE_CAPTION
                     setTextColor(SettingsStyle.textSecondary)
                 })
-            }, LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT).apply { marginStart = px(Design.SPACE_M) })
+            }, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f).apply { marginStart = px(Design.SPACE_M) })
         }
 
     override fun activate() {

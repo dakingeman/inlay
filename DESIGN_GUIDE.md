@@ -17,7 +17,8 @@ When adding anything new, check it against these rules first.
 ## 2. Layout and spacing
 
 - Everything sits on a **4 dp grid**: 4, 8, 12, 16, 24, 32.
-- Settings content is centred and never wider than **720 dp**.
+- Settings content is centred and never wider than **720 dp**. The device picture sits beside the page only from **600 dp** wide; below that it moves above the page, so rows keep their full width. With the keyboard up, the page glides to the screen's middle.
+- Info rows with long values (credits, licences) stack the value under the title.
 - Settings rows: 16 dp side padding, 12 dp top and bottom, at least 64 dp tall.
 - Related rows sit together in a **card**, with 6 % white hairlines between rows and a small uppercase **section header** (32 dp above, 8 dp below).
 - **Nested corners share a centre:** inner radius = outer radius − the gap. Cards are 22 dp with a 4 dp inset, so rows inside are 18 dp. This keeps curves parallel, which reads as "made with care".
@@ -31,8 +32,12 @@ When adding anything new, check it against these rules first.
 
 ## 3. Focus
 
-- Keyboard: the key under focus is filled with the **accent colour** plus a soft glow, and it jumps three quarters of the way to the next key on the very first frame, then settles (70 ms).
-- Settings: the focused row gets a **2 dp white ring** on a lifted surface, faded in over 140 ms. It stays readable on any colour (WCAG two-colour focus indicator).
+- Keyboard: the key under focus is filled with the **accent colour** plus a soft glow ring, and it jumps three quarters of the way to the next key on the very first frame, then settles (70 ms).
+- **Rings sit on the element's own edge, never outside it** (keys, clipboard cards, accent cells, Settings tabs). An outside ring fills the gap and touches the neighbour. Glow: ring on the edge, a hairline of key, then the fill (nested corners). Lift grows by at most a quarter of the key gap. The accent tray fills exactly the tool strip's slot. Corner badges share the key corner's centre, at least 3 units in. (Design audit, 28 Oct 2026.)
+- Quiet labels (the space bar's language, the TV box's placeholder and word ghost) are dimmed only as far as 4.5 : 1, on every theme.
+- **Icons step aside for badges:** on keys too narrow for both, the shift, delete and enter icons move left (then down) so the corner badge never covers them; Round keys' badges fall back to the tight inset there. Checked for every key, style and platform at the Odin 2 Portal and Retroid Pocket Classic sizes (`HighlightGeometryTest`).
+- **Your highlight colour, two strengths** (decided with Emre, 28 Oct 2026): full colour plus a ring means "selected / you are here" (keys, focused rows, tabs). A soft tint without any ring means "this is yours" (the NEW IN tag, the word HOLD, the tour label). Rings are never used for anything but focus and selection.
+- Settings: the focused row gets a **2 dp ring in the highlight colour** on a lifted surface, faded in over 140 ms, on the row's own edge.
 - Pressing A on a row gives a tiny press-in (98.5 %) and release, so every action feels physical. Rows that only show information don't react.
 - Changing section slides the new page in from the side you moved towards.
 - Up and Down never leave a page by accident. The first and last rows hold focus.
@@ -54,6 +59,9 @@ When adding anything new, check it against these rules first.
 - One family: **1.8 dp stroke, round caps and joins**, drawn in the same box size.
 - Controller badges always sit on a dark disc with a thin light edge, so they read on any key.
 - Badges follow the chosen style everywhere (Xbox, PlayStation, Switch), in Settings too.
+- **Each platform's own system buttons:** Xbox View (a window in front of another) and Menu (three lines); PlayStation Create (three short rays) and Options (three lines); Switch − and +. Traced from KDE's gamepad icon set, never drawn from memory.
+- **Badge icons share one stroke (`BadgePainter.ICON_STROKE`, 1.3 dp) and one keyline:** every icon fits a circle with at least 12 % of the badge's height to spare. Shapes are balanced by eye: PlayStation's square a little smaller, its triangle a little bigger and sitting on its visual centre.
+- `BadgeDesignTest` checks every badge in every style: distinct, inside its keyline, and never borrowing another platform's icon.
 
 ## 7. Hints
 

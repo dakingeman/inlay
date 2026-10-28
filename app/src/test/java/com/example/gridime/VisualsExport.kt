@@ -123,6 +123,23 @@ class VisualsExport {
         kb("hero-tv", base { it.copy(tvMode = TvMode.ON, showHints = false, comboHints = false) }, widthDp = 520) { boost(); setTvMode(true); walkTo("h"); setPreview("stranger t", "", "") }
     }
 
+    /** The keyboard at each device's real screen width, for the studio hero (handheld + vertical). */
+    @Test @Config(sdk = [34], qualifiers = "w827dp-h412dp-land-xhdpi")
+    fun studioOdin() {
+        assumeTrue(File("build/visuals-studio").exists())
+        val s = base { it.copy(picture = PictureChoice.HANDHELD) }
+        kb("studio-odin-solid", s, 827) { walkTo("l"); setSuggestions(listOf("solid", "sold", "solo"), "sol") }
+        kb("studio-odin-rep", s, 827) { walkTo("p"); setSuggestions(listOf("republic", "report", "reply"), "rep") }
+    }
+
+    @Test @Config(sdk = [34], qualifiers = "w472dp-h363dp-land-420dpi")
+    fun studioPocketClassic() {
+        assumeTrue(File("build/visuals-studio").exists())
+        val s = base { it.copy(picture = PictureChoice.VERTICAL) }
+        kb("studio-rpc-select", s, 472) { walkTo("d"); setSelecting(true, 30) }
+        kb("studio-rpc-solid", s, 472) { walkTo("l"); setSuggestions(listOf("solid", "sold", "solo"), "sol") }
+    }
+
     @Test
     fun stills() {
         assumeTrue(File("build/visuals-request").exists())

@@ -1,0 +1,68 @@
+{
+ "name": "studio-audit-1.2",
+ "title": "Studio audit fixes for 1.2.0 (rings, badges per platform, small screens, guard tests)",
+ "recorded": "2026-10-28",
+ "base": "fd83ca3",
+ "files": [
+  {
+   "path": "CHANGELOG.md",
+   "before": "9b4e9839357671d542470abe22e79f7e625e4b99",
+   "after": "921e6412b8bf14b997d7cbf3b86fbbe68d51ce21"
+  },
+  {
+   "path": "DESIGN_GUIDE.md",
+   "before": "deabe50d64eee5888e1fd32e8cd7c27f1b3489f4",
+   "after": "6d0dae96fdf3302bbbf95b8616e586838dacafbe"
+  },
+  {
+   "path": "app/src/main/java/com/example/gridime/BadgePainter.kt",
+   "before": "250700500d90bed2a8bf24030741f1201ffcd301",
+   "after": "debb3f472207b5c5f93fa953cb2abf1f5b70189d"
+  },
+  {
+   "path": "app/src/main/java/com/example/gridime/KeyGridView.kt",
+   "before": "4dc84c851d6d0b90b97e7d534cd4d2d0f72132e7",
+   "after": "a6fa9080f42dc5c5bc4ec3ac3ae1cbd1792e8e1a"
+  },
+  {
+   "path": "app/src/main/java/com/example/gridime/SettingsActivity.kt",
+   "before": "104e0b1de4451e55ee0e2ac72f5035822a899f9f",
+   "after": "5244d711dd943da9e5c389a0d5557d2da4f303e4"
+  },
+  {
+   "path": "app/src/main/java/com/example/gridime/SettingsChrome.kt",
+   "before": "b32c9de2e6541e9814068ab4b3408d7c08efb8e6",
+   "after": "571ecdf56d2f568bf1bba3d616299931cdaf1599"
+  },
+  {
+   "path": "app/src/main/java/com/example/gridime/SettingsViews.kt",
+   "before": "3e6621c7e6235d853c168642649e23509708bdc7",
+   "after": "ef4519ef0bc8af4bfef7b185b4a7fff1189417a0"
+  },
+  {
+   "path": "app/src/main/java/com/example/gridime/TutorialActivity.kt",
+   "before": "c2f2bc74725ff36790ac66786227b3481954b187",
+   "after": "1fd1450eb274d3332cf6742a246ef33da423fec8"
+  },
+  {
+   "path": "app/src/test/java/com/example/gridime/AuditShots.kt",
+   "before": null,
+   "after": "ade723605a9e9c5bf20935f9b5da9cb741952055"
+  },
+  {
+   "path": "app/src/test/java/com/example/gridime/BadgeDesignTest.kt",
+   "before": null,
+   "after": "34a1383697c35d879c839085ddec117f6968556d"
+  },
+  {
+   "path": "app/src/test/java/com/example/gridime/HighlightGeometryTest.kt",
+   "before": null,
+   "after": "589e33f1a4022a5b2b157d0aaf2d05288ebe8074"
+  },
+  {
+   "path": "app/src/test/java/com/example/gridime/VisualsExport.kt",
+   "before": "05be43904fccda17f1e35e64a167312e3ed1ee43",
+   "after": "9699d4ad91aa1f3dafa5b801a1a606b1f2f9be46"
+  }
+ ]
+}

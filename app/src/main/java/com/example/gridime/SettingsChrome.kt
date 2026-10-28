@@ -315,10 +315,13 @@ class TabBar(
         if (c == 0f && hasFocus() && focusSlot < titles.size) {
             val f = if (focusSlot == selected) RectF(
                 a.left + (b.left - a.left) * t, a.top, a.right + (b.right - a.right) * t, a.bottom) else tabRects[focusSlot.coerceIn(0, tabRects.lastIndex)]
-            ring.color = SettingsStyle.accent
+            // On the tab's own edge, never outside it, so it can't reach the next tab (design audit, 28 Oct 2026)
+            // On the chosen (accent-filled) tab the ring is drawn in the text colour, a little inside the edge
+            val onChosen = focusSlot == selected
+            ring.color = if (onChosen) SettingsStyle.onAccent else SettingsStyle.accent
             ring.strokeWidth = 2.5f * dp
-            val g = 3.5f * dp
-            canvas.drawRoundRect(f.left - g, f.top - g, f.right + g, f.bottom + g, r + g, r + g, ring)
+            val g = ring.strokeWidth / 2f + if (onChosen) 2.5f * dp else 0f
+            canvas.drawRoundRect(f.left + g, f.top + g, f.right - g, f.bottom - g, r - g, r - g, ring)
         }
         canvas.restore()
 
@@ -328,12 +331,15 @@ class TabBar(
         val bg = SettingsStyle.background
         val clear = bg and 0x00FFFFFF
         if (first.left < clipLeft - 1f) {
-            fade.shader = android.graphics.LinearGradient(clipLeft - ringGap, 0f, clipLeft - ringGap + fw, 0f, bg, clear, android.graphics.Shader.TileMode.CLAMP)
-            canvas.drawRect(clipLeft - ringGap, 0f, clipLeft - ringGap + fw, height.toFloat(), fade)
+            // The solid end overlaps the clip line by 2 px, so no seam shows where the tab is cut (audit, 28 Oct 2026)
+            val x0 = clipLeft - ringGap - 2f * dp
+            fade.shader = android.graphics.LinearGradient(x0 + 2f * dp, 0f, x0 + 2f * dp + fw, 0f, bg, clear, android.graphics.Shader.TileMode.CLAMP)
+            canvas.drawRect(x0, 0f, x0 + 2f * dp + fw, height.toFloat(), fade)
         }
         if (last.right > clipRight + 1f) {
-            fade.shader = android.graphics.LinearGradient(clipRight + ringGap - fw, 0f, clipRight + ringGap, 0f, clear, bg, android.graphics.Shader.TileMode.CLAMP)
-            canvas.drawRect(clipRight + ringGap - fw, 0f, clipRight + ringGap, height.toFloat(), fade)
+            val x1 = clipRight + ringGap + 2f * dp
+            fade.shader = android.graphics.LinearGradient(x1 - 2f * dp - fw, 0f, x1 - 2f * dp, 0f, clear, bg, android.graphics.Shader.TileMode.CLAMP)
+            canvas.drawRect(x1 - 2f * dp - fw, 0f, x1, height.toFloat(), fade)
         }
 
         val cy = height / 2f
@@ -363,8 +369,8 @@ class TabBar(
             val f = keyRect
             ring.color = SettingsStyle.accent
             ring.strokeWidth = 2.5f * dp
-            val g = 3.5f * dp
-            canvas.drawRoundRect(f.left - g, f.top - g, f.right + g, f.bottom + g, tabHeight / 2f + g, tabHeight / 2f + g, ring)
+            val g = ring.strokeWidth / 2f
+            canvas.drawRoundRect(f.left + g, f.top + g, f.right - g, f.bottom - g, tabHeight / 2f - g, tabHeight / 2f - g, ring)
         }
         if (layer >= 0) canvas.restoreToCount(layer)
     }

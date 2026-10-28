@@ -23,6 +23,11 @@ sealed class HintPart {
 class BadgePainter(private val dp: Float) {
 
     var style = ButtonStyle.XBOX
+
+    companion object {
+        /** One stroke weight for every icon line in every badge (brand: one unified stroke). */
+        const val ICON_STROKE = 1.3f
+    }
     var scale = 1f
     /**
      * Breathing room in hint lines (dp, before scaling). The keyboard's chips are tight;
@@ -99,20 +104,20 @@ class BadgePainter(private val dp: Float) {
         return left + w
     }
 
-    /** The capsule itself: dark plate, accent outline, a softer second outline, and HOLD. */
+    /**
+     * The capsule itself: dark plate, the badges' own edge, and HOLD in your colour. No accent ring:
+     * rings mean "you are here" (audit + Emre, 28 Oct 2026). The word says what it is.
+     */
     private fun holdCapsule(canvas: Canvas, left: Float, w: Float, centerY: Float): Float {
         val h = height + 2 * holdPad
         val box = RectF(left + holdHalo, centerY - h / 2, left + w - holdHalo, centerY + h / 2)
-        val accent = SettingsStyle.accent
         fill.color = plate
         canvas.drawRoundRect(box, h / 2, h / 2, fill)
-        ring.strokeWidth = 1.2f * dp * scale
-        ring.color = accent
-        canvas.drawRoundRect(box, h / 2, h / 2, ring)
-        val g = 2.2f * dp * scale                    // the second, softer outline: "held down"
-        ring.color = Contrast.withAlpha(accent, 110)
-        canvas.drawRoundRect(box.left - g, box.top - g, box.right + g, box.bottom + g, h / 2 + g, h / 2 + g, ring)
-        val p = holdPaint().apply { color = accent; textAlign = Paint.Align.LEFT }
+        ring.strokeWidth = 1f * dp * scale
+        ring.color = edge
+        val e = ring.strokeWidth / 2f
+        canvas.drawRoundRect(box.left + e, box.top + e, box.right - e, box.bottom - e, h / 2 - e, h / 2 - e, ring)
+        val p = holdPaint().apply { color = SettingsStyle.accent; textAlign = Paint.Align.LEFT }
         canvas.drawText("HOLD", box.left + holdPad + 5f * dp * scale, centerY - (p.descent() + p.ascent()) / 2f, p)
         p.textAlign = Paint.Align.CENTER
         p.letterSpacing = 0f
@@ -141,7 +146,7 @@ class BadgePainter(private val dp: Float) {
             // A thumbstick seen from above: the ring it sits in and its cap, then which one (L or R)
             val sx = left + r
             glyph.color = Color.WHITE
-            glyph.strokeWidth = 1.1f * dp * scale
+            glyph.strokeWidth = ICON_STROKE * dp * scale
             canvas.drawCircle(sx, centerY, r * 0.62f, glyph)
             fill.color = Color.WHITE
             canvas.drawCircle(sx, centerY, r * 0.3f, fill)
@@ -156,21 +161,13 @@ class BadgePainter(private val dp: Float) {
             return box.right
         }
 
-        glyph.strokeWidth = 1.3f * dp * scale
+        glyph.strokeWidth = ICON_STROKE * dp * scale
         val g = r * 0.48f
         when (button) {
             ControllerButton.A, ControllerButton.B, ControllerButton.X, ControllerButton.Y ->
                 drawFace(canvas, button, cx, centerY, g)
-            ControllerButton.START -> {           // menu / options: three lines
-                glyph.color = Color.WHITE
-                for (i in -1..1) canvas.drawLine(cx - g, centerY + i * g * 0.6f, cx + g, centerY + i * g * 0.6f, glyph)
-            }
-            ControllerButton.SELECT -> {          // view / create: two overlapping squares
-                glyph.color = Color.WHITE
-                val q = g * 1.2f
-                canvas.drawRect(cx - g, centerY - g, cx - g + q, centerY - g + q, glyph)
-                canvas.drawRect(cx + g - q, centerY + g - q, cx + g, centerY + g, glyph)
-            }
+            ControllerButton.START -> drawStart(canvas, cx, centerY, g)
+            ControllerButton.SELECT -> drawSelect(canvas, cx, centerY, g)
             else -> Unit
         }
         return box.right
@@ -284,6 +281,45 @@ class BadgePainter(private val dp: Float) {
         if (style == ButtonStyle.PLAYSTATION) (if (button == ControllerButton.L3) "L3" else "R3")
         else (if (button == ControllerButton.L3) "L" else "R")
 
+    /** Start: Xbox Menu and PlayStation Options are three lines; Switch is a plus (traced from KDE's gamepad icon set). */
+    private fun drawStart(canvas: Canvas, cx: Float, cy: Float, g: Float) {
+        glyph.color = Color.WHITE
+        if (style == ButtonStyle.SWITCH) {
+            canvas.drawLine(cx - g, cy, cx + g, cy, glyph)
+            canvas.drawLine(cx, cy - g, cx, cy + g, glyph)
+        } else for (i in -1..1) canvas.drawLine(cx - g * 0.9f, cy + i * g * 0.62f, cx + g * 0.9f, cy + i * g * 0.62f, glyph)
+    }
+
+    /** Select: Xbox View (a window in front of another), PlayStation Create (three short rays), Switch minus. */
+    private fun drawSelect(canvas: Canvas, cx: Float, cy: Float, g: Float) {
+        glyph.color = Color.WHITE
+        when (style) {
+            ButtonStyle.SWITCH -> canvas.drawLine(cx - g, cy, cx + g, cy, glyph)
+            ButtonStyle.PLAYSTATION -> {
+                // Rays from a point below the badge, the middle one upright, the outer two tilted 22°
+                val len = g * 0.95f
+                val bottom = cy + len / 2f
+                for (deg in listOf(-22.0, 0.0, 22.0)) {
+                    val a = Math.toRadians(deg)
+                    val off = if (deg == 0.0) 0f else g * 0.62f * Math.signum(deg).toFloat()
+                    val bx = cx + off; val by = bottom + (if (deg == 0.0) 0f else len * 0.12f)
+                    canvas.drawLine(bx, by, bx + (len * Math.sin(a)).toFloat(), by - (len * Math.cos(a)).toFloat(), glyph)
+                }
+            }
+            ButtonStyle.XBOX -> {
+                // The front window, and only the visible corner of the one behind it (corners on the keyline)
+                val g = g * 0.9f
+                val q = g * 1.15f
+                val fx = cx + g - q; val fy = cy + g - q
+                canvas.drawRect(fx, fy, cx + g, cy + g, glyph)
+                val bx = cx - g; val by = cy - g; val sw = glyph.strokeWidth
+                canvas.drawPath(Path().apply {
+                    moveTo(bx, fy - sw); lineTo(bx, by); lineTo(bx + q, by); lineTo(bx + q, fy - sw)
+                }, glyph)
+            }
+        }
+    }
+
     private fun drawFace(canvas: Canvas, button: ControllerButton, cx: Float, cy: Float, g: Float) {
         when (style) {
             ButtonStyle.PLAYSTATION -> {
@@ -297,17 +333,25 @@ class BadgePainter(private val dp: Float) {
                 )
                 when (button) {
                     ControllerButton.A -> {
-                        canvas.drawLine(cx - g, cy - g, cx + g, cy + g, glyph)
-                        canvas.drawLine(cx + g, cy - g, cx - g, cy + g, glyph)
+                        val k = g * 0.88f                       // the cross's tips on the same keyline as the others
+                        canvas.drawLine(cx - k, cy - k, cx + k, cy + k, glyph)
+                        canvas.drawLine(cx + k, cy - k, cx - k, cy + k, glyph)
                     }
-                    ControllerButton.B -> canvas.drawCircle(cx, cy, g, glyph)
-                    ControllerButton.X -> canvas.drawRect(cx - g * 0.85f, cy - g * 0.85f, cx + g * 0.85f, cy + g * 0.85f, glyph)
-                    else -> canvas.drawPath(Path().apply {
-                        moveTo(cx, cy - g)
-                        lineTo(cx + g, cy + g * 0.75f)
-                        lineTo(cx - g, cy + g * 0.75f)
-                        close()
-                    }, glyph)
+                    // Optical balance: a square looks bigger than a circle of the same width and a triangle
+                    // smaller, so the square shrinks a little and the triangle grows and sits on its visual centre
+                    ControllerButton.B -> canvas.drawCircle(cx, cy, g * 0.98f, glyph)
+                    ControllerButton.X -> canvas.drawRect(cx - g * 0.8f, cy - g * 0.8f, cx + g * 0.8f, cy + g * 0.8f, glyph)
+                    else -> {
+                        val t = g * 1.1f                        // half the base
+                        val h = t * 1.73f                       // equilateral
+                        val top = cy - h * 0.55f                // bounding box a touch below centre reads as centred
+                        canvas.drawPath(Path().apply {
+                            moveTo(cx, top)
+                            lineTo(cx + t, top + h)
+                            lineTo(cx - t, top + h)
+                            close()
+                        }, glyph)
+                    }
                 }
             }
             ButtonStyle.XBOX -> letter(

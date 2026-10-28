@@ -451,19 +451,19 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
         root.addView(dots, lpMatchWrap())
 
         // ---- The words ----
-        // The label above the title says which this is: "WELCOME TOUR" in the highlight colour, or, for
+        // The label above the title says which this is: "WELCOME TOUR" in quiet grey, or, for
         // What's new, a "NEW IN 1.2.0" tag. The page count sits next to it, quieter.
         eyebrow = TextView(this).apply {
             textSize = Design.TYPE_SECTION
             letterSpacing = 0.12f
             typeface = SettingsStyle.medium
+            // Your colour as a soft tint, never a ring: rings mean "you are here" (audit + Emre, 28 Oct 2026)
             setTextColor(SettingsStyle.accent)
             includeFontPadding = false
             if (whatsNew) {
                 background = android.graphics.drawable.GradientDrawable().apply {
                     cornerRadius = px(100f).toFloat()
                     setColor(Contrast.withAlpha(settings.accent, 0x26))
-                    setStroke(px(1.5f), Contrast.withAlpha(settings.accent, 0x99))
                 }
                 setPadding(px(Design.SPACE_S + 2f), px(5f), px(Design.SPACE_S + 2f), px(5f))
             }

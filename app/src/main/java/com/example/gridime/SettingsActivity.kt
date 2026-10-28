@@ -52,7 +52,7 @@ class SettingsActivity : Activity() {
     /** Landscape with room for the page and the picture side by side. */
     /** The picture's column beside the page: narrower on small screens, so the rows keep room. */
     private val pictureColumnDp get() = minOf(PICTURE_PANEL_DP, resources.configuration.screenWidthDp * 0.36f)
-    private val wideScreen get() = resources.configuration.screenWidthDp >= Design.WIDE_MIN_DP &&
+    private val wideScreen get() = resources.configuration.screenWidthDp >= SIDE_PICTURE_MIN_DP &&
         resources.configuration.screenWidthDp > resources.configuration.screenHeightDp
     private var currentPage = 0
     private var focusableRows: List<SettingRow> = emptyList()
@@ -530,6 +530,7 @@ class SettingsActivity : Activity() {
         content.layoutParams = (content.layoutParams as FrameLayout.LayoutParams).apply {
             width = minOf(available - 2 * side, px(MAX_CONTENT_WIDTH))
         }
+        scroll.translationX = if (beside) sheetProgress * px(pictureColumnDp) / 2f else 0f
     }
 
     private fun refreshGuidePicture() {
@@ -585,6 +586,8 @@ class SettingsActivity : Activity() {
         // The Button guide's picture keeps to the space above the keyboard, and fades as the keyboard takes it
         picturePanel.translationY = -p * full / 2f
         picturePanel.alpha = (1f - p * 1.6f).coerceIn(0f, 1f)
+        // ...and the page glides to the middle of the screen, so no empty half is left behind (audit, 28 Oct 2026)
+        scroll.translationX = if (picturePanel.visibility == View.VISIBLE) p * px(pictureColumnDp) / 2f else 0f
     }
 
     /**
@@ -1251,6 +1254,8 @@ class SettingsActivity : Activity() {
     private companion object {
         const val MAX_CONTENT_WIDTH = 720f
         const val PICTURE_PANEL_DP = 300f
+        /** The device picture sits beside the page only when the page keeps at least ~380 dp (DESIGN_GUIDE: narrow under 600 dp). */
+        const val SIDE_PICTURE_MIN_DP = 600
         const val SHEET_FADE_DP = 12f
         const val EDGE_FADE_DP = 16f        // the page's soft top and bottom edges
         const val BUTTON_TEST_IDLE_MS = 8000L    // the button test ends on its own after this long without a press
