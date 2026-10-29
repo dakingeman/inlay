@@ -11,17 +11,20 @@ const CTRL2 = {"ps":{"l1":"M128.1,79.1 C129.0,78.2 131.1,76.8 132.8,75.9 C134.6,
 
 function controllerOther(w, on, style) {
   const VW = 657, VH = 423, line = '#5a5e6a', detail = '#33363f', ACC = '#72D6E8', v = k => on[k] || 0, ps = style === 'ps';
-  const D = ps ? CTRL2.ps : CTRL2.switch, M = D.meta;
+  const D = ps ? CTRL2.ps : CTRL2.switch, M0 = D.meta;
+  // Layout for the press and hold rings (28 Oct 2026, measured with room.py): PlayStation face cluster 2.5 left
+  // (the D-pad mirrors it), Share and Options 4 lower and 3 further from the touchpad; Switch Pro D-pad 6 down and right, clear of the left stick
+  const M = Object.assign({}, M0, ps ? { face: Object.fromEntries(Object.entries(M0.face).map(([k, v]) => [k, k === 'r' ? v : [v[0] - 2.5, v[1]]])) }
+                                     : { dpad: [M0.dpad[0] + 6, M0.dpad[1] + 6, M0.dpad[2], M0.dpad[3]] });
   const lit = (k) => v(k) > 0 ? `fill="${ACC}" fill-opacity="${0.9 * v(k)}" stroke="${ACC}" stroke-opacity="${0.5 + 0.5 * v(k)}" filter="url(#g)"` : `fill="#0f1014" stroke="${line}"`;
   const ink = (k) => v(k) > 0.5 ? '#0B0F17' : '#8d919c';
   const lab = ([x, y], s, k, size) => `<text x="${x}" y="${y}" fill="${ink(k)}" font-family="I" font-weight="700" font-size="${size || 11}" text-anchor="middle" dominant-baseline="central">${s}</text>`;
   const shape = (d, k, sw) => `<path d="${d}" ${k ? lit(k) : `fill="#0f1014" stroke="${line}"`} stroke-width="${sw || 2}" stroke-linejoin="round"/>`;
   const stick = ([x, y], k) => {
-    const S = M.sticks, on_ = v(k) > 0;
+    const S = Object.assign({}, M.sticks, { ring: M.sticks.cap + 8 }), on_ = v(k) > 0;
     const arrows = on_ && on[k + 'dir'] === 'sideways' ? [-1, 1].map(d => `<path d="M${x + d * (S.ring + 8)},${y - 9}L${x + d * (S.ring + 20)},${y}L${x + d * (S.ring + 8)},${y + 9}" fill="none" stroke="${ACC}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>`).join('') : '';
     return `<circle cx="${x}" cy="${y}" r="${S.ring}" fill="#0c0d11" stroke="${detail}" stroke-width="2"/>
-      <circle cx="${x}" cy="${y}" r="${S.cap}" ${on_ ? lit(k) : `fill="#0f1014" stroke="${line}"`} stroke-width="2"/>
-      <circle cx="${x}" cy="${y}" r="${S.inner}" fill="none" stroke="${on_ ? '#0B0F17' : detail}" stroke-opacity="${on_ ? .5 : 1}" stroke-width="2"/>${arrows}`;
+      <circle cx="${x}" cy="${y}" r="${S.cap}" ${on_ ? lit(k) : `fill="#0f1014" stroke="${line}"`} stroke-width="2"/>${arrows}`;
   };
   let parts = '';
   if (ps) {
@@ -38,8 +41,7 @@ function controllerOther(w, on, style) {
         }).join('')
       + (window.KIT_FLOATING ? '' : `<path d="${D.lwell}" fill="#101116" stroke="${line}" stroke-width="2.5"/><path d="${D.rwell}" fill="#101116" stroke="${line}" stroke-width="2.5"/>`)
       + stick(M.sticks.LS, 'LS') + stick(M.sticks.RS, 'RS')
-      + shape(D.share, 'SELECT') + shape(D.options, 'START')
-      + `<circle cx="${M.ps[0]}" cy="${M.ps[1]}" r="${M.ps[2]}" fill="#0f1014" stroke="${line}" stroke-width="2"/>`;
+      + shape(D.share, 'SELECT').replace('<path ', '<path transform="translate(-3,4)" ') + shape(D.options, 'START').replace('<path ', '<path transform="translate(3,4)" ');
   } else {
     const L = M.labels, [dx, dy, dl, dt] = M.dpad, r = 4;
     const arm = (dir) => {
@@ -60,7 +62,7 @@ function controllerOther(w, on, style) {
       + Object.entries(M.face).filter(([k]) => k !== 'r').map(([k, [x, y]]) => {
           // Switch Pro: plain dark buttons with light letters (physical A spot reads B, and so on)
           const label = { A: 'B', B: 'A', X: 'Y', Y: 'X' }[k];
-          return `<circle cx="${x}" cy="${y}" r="${M.face.r}" ${lit(k)} stroke-width="2"/><text x="${x}" y="${y + 1}" fill="${v(k) > 0.5 ? '#0B0F17' : '#E6E8EC'}" font-family="I" font-weight="700" font-size="${M.face.r * 0.95}" text-anchor="middle" dominant-baseline="central">${label}</text>`;
+          return `<circle cx="${x}" cy="${y}" r="${M.face.r}" ${lit(k)} stroke-width="2"/><text x="${x}" y="${y}" fill="${v(k) > 0.5 ? '#0B0F17' : '#E6E8EC'}" font-family="I" font-weight="700" font-size="${M.face.r * LETTER}" text-anchor="middle" dominant-baseline="central">${label}</text>`;
         }).join('')
       + (KF ? `<rect x="${mx - 13}" y="${my - 10}" width="26" height="20" rx="10" ${lit('SELECT')} stroke-width="2"/><rect x="${px - 13}" y="${py - 10}" width="26" height="20" rx="10" ${lit('START')} stroke-width="2"/>` : (''
       + `<circle cx="${mx}" cy="${my}" r="${mr}" ${lit('SELECT')} stroke-width="2"/><path d="M${mx - mr * .5},${my}H${mx + mr * .5}" stroke="${ink('SELECT')}" stroke-width="2.2" stroke-linecap="round"/>`
@@ -80,9 +82,10 @@ function controller(w, on, style) {
   const lit = (k) => v(k) > 0 ? `fill="${ACC}" fill-opacity="${0.9 * v(k)}" stroke="${ACC}" stroke-opacity="${0.5 + 0.5 * v(k)}" filter="url(#g)"` : `fill="#0f1014" stroke="${line}"`;
   // A stick lights up like a button; 'sideways' adds a left-right arrow (the right stick moving the cursor)
   const stick = (x, y, k) => {
-    if (!(v(k) > 0)) return `<circle cx="${x}" cy="${y}" r="36" fill="#0f1014" stroke="${line}" stroke-width="2"/><circle cx="${x}" cy="${y}" r="24" fill="none" stroke="#33363f" stroke-width="2"/>`;
+    const well = `<circle cx="${x}" cy="${y}" r="44" fill="#0c0d11" stroke="#33363f" stroke-width="2"/>`;
+    if (!(v(k) > 0)) return well + `<circle cx="${x}" cy="${y}" r="36" fill="#0f1014" stroke="${line}" stroke-width="2"/>`;
     const arrows = on[k + 'dir'] === 'sideways' ? [-1, 1].map(d => `<path d="M${x + d * 48},${y - 9}L${x + d * 60},${y}L${x + d * 48},${y + 9}" fill="none" stroke="${ACC}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>`).join('') : '';
-    return `<circle cx="${x}" cy="${y}" r="36" ${lit(k)} stroke-width="2"/><circle cx="${x}" cy="${y}" r="24" fill="none" stroke="#0B0F17" stroke-opacity=".5" stroke-width="2"/>${arrows}`;
+    return well + `<circle cx="${x}" cy="${y}" r="36" ${lit(k)} stroke-width="2"/>${arrows}`;
   };
   // D-pad: a traditional cross, rounded ends, each arm lights separately
   const dx = 289, dy = 261, t = 12, L = 39, r = 5;
@@ -95,11 +98,14 @@ function controller(w, on, style) {
   };
   const dpad = dpadCross(dx, dy, L, t, on);
   // face buttons, Xbox positions; the letter or symbol follows the icon style
-  const face = [['Y', 489, 139], ['X', 454, 176], ['B', 525, 176], ['A', 489, 212]].map(([k, x, y]) => {
+  // Face buttons (28 Oct 2026, by the design rules): radius 19.5 (0.54 of the stick, mid-family; 12.9 units clear of the body edge and the right stick), the same 16-unit gap
+  // between neighbours as before, centred where the trace puts the cluster; letters at 40 % of the button
+  const FC = [489, 176], FR = 19.5, FS = (2 * FR + 14) / Math.SQRT2;
+  const face = [['Y', FC[0], FC[1] - FS], ['X', FC[0] - FS, FC[1]], ['B', FC[0] + FS, FC[1]], ['A', FC[0], FC[1] + FS]].map(([k, x, y]) => {
     const lv = v(k), label = style === 'switch' ? { A: 'B', B: 'A', X: 'Y', Y: 'X' }[k] : k;
     const col = lv > 0.5 ? '#0B0F17' : (style === 'ps' ? '#9aa0ad' : { A: '#6CC24A', B: '#F0503C', X: '#3E9BFF', Y: '#F5C518' }[k]);
-    const glyph = style === 'ps' ? psGlyph(k, x, y, 8, col) : `<text x="${x}" y="${y + 1}" fill="${col}" font-family="I" font-weight="700" font-size="16" text-anchor="middle" dominant-baseline="central">${label}</text>`;
-    return `<circle cx="${x}" cy="${y}" r="17.5" ${lit(k)} stroke-width="2"/>${glyph}`;
+    const glyph = style === 'ps' ? psGlyph(k, x, y, 8, col) : `<text x="${x}" y="${y}" fill="${col}" font-family="I" font-weight="700" font-size="${LETTER * FR}" text-anchor="middle" dominant-baseline="central">${label}</text>`;
+    return `<circle cx="${x}" cy="${y}" r="${FR}" ${lit(k)} stroke-width="2"/>${glyph}`;
   }).join('');
   const small = (x, y, k) => `<rect x="${x - 13}" y="${y - 10}" width="26" height="20" rx="10" ${lit(k)} stroke-width="2"/>`;
   const sh = { xbox: ['LT', 'RT', 'LB', 'RB'], ps: ['L2', 'R2', 'L1', 'R1'], switch: ['ZL', 'ZR', 'L', 'R'] }[style || 'xbox'];
@@ -113,6 +119,9 @@ function controller(w, on, style) {
     ${stick(226, 176, 'LS')}${dpad}${face}${stick(424, 255, 'RS')}${small(322, 176, 'SELECT')}${small(393, 176, 'START')}
   </svg>`;
 }
+// Letters on face buttons: Roboto Bold capitals about 40 % of the button's diameter (cap height ≈ 0.71 em),
+// the same visual weight as the PlayStation symbols. One number for every device.
+const LETTER = 1.13;
 function psGlyph(k, cx, cy, g, col) {
   const sw = 2.2;
   if (k === 'A') return `<path d="M${cx - g},${cy - g}L${cx + g},${cy + g}M${cx + g},${cy - g}L${cx - g},${cy + g}" stroke="${col}" stroke-width="${sw}" stroke-linecap="round"/>`;

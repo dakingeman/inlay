@@ -16,6 +16,12 @@ for(const f of fs.readdirSync(dir).filter(f=>f.endsWith('.svg'))){
       const g=toRoot(el); if(wasHidden) el.setAttribute('display','none');
       const e={x:+g.x.toFixed(2),y:+g.y.toFixed(2),w:+g.w.toFixed(2),h:+g.h.toFixed(2),tag:el.tagName};
       if(el.tagName==='rect') e.rx=+((+el.getAttribute('rx')||0)*g.k).toFixed(2);
+      // The press ring around this button (if it has one): its class, and its gap and width in picture units,
+      // so a held button's ring can sweep round in exactly the same place
+      for(const [,cls] of m){ const r=s.querySelector('.'+cls); if(!r||!r.getAttribute('mask')) continue;
+        const mk=s.querySelector(r.getAttribute('mask').replace(/^url\((#[^)]+)\)$/,'$1')); const cut=mk&&mk.children[1];
+        if(!cut) continue; const gap=(+cut.getAttribute('stroke-width'))/2, out=(+r.getAttribute('stroke-width'))/2;
+        e.ring={cls, gap:+(gap*g.k).toFixed(3), w:+((out-gap)*g.k).toFixed(3)}; break; }
       // Any other shape: its outline and where it sits, so the held ring can follow it exactly
       if(el.tagName==='path'){ e.d=el.getAttribute('d'); e.m=[g.M.a,g.M.b,g.M.c,g.M.d,g.M.e,g.M.f].map(v=>+v.toFixed(4)); }
       if(key==='LS'||key==='RS'){ const cx=+el.getAttribute('cx'), cy=+el.getAttribute('cy');

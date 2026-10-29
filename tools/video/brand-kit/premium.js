@@ -27,9 +27,9 @@ function polish(svg,f){ const rid='ring'+(_ring++); f=f||1;
     const has=(k,v)=>new RegExp(`${k}="${v}"`).test(a);
     let isBody=has('fill','#101116'), isLit=/filter="url\(#(g|hg2|grm)\)"/.test(a);
     const outline=/stroke="(#5a5e6a|#33363f|#2c2e36|#72D6E8)"/.test(a);
-    if(isBody){ a=a.replace(/fill="#101116"/,'fill="url(#pb)"').replace(/stroke="[^"]*"/,`stroke="${P.rimBody}"`); }
+    if(isBody){ a=a.replace(/fill="#101116"/,'fill="#1C1F26"').replace(/stroke="[^"]*"/,`stroke="${P.rimBody}"`); }
     else if(isLit){ a=a.replace(/fill-opacity="[^"]*"/,'fill-opacity="1"').replace(/stroke-opacity="[^"]*"/,'').replace(/filter="url\(#\w+\)"/,'').replace(/stroke="[^"]*"/,`stroke="${P.acc}"`); }
-    else { a=a.replace(/fill="#0f1014"/,`fill="${P.well}"`).replace(/fill="#0c0d11"/,`fill="#101218"`).replace(/fill="#0d0e12"/,`fill="${P.well}"`).replace(/stroke="(#5a5e6a|#33363f|#2c2e36)"/,`stroke="${P.rimPart}"`); }
+    else { a=a.replace(/fill="#0f1014"/,`fill="${P.well}"`).replace(/fill="#0c0d11"/,`fill="${P.well}"`).replace(/fill="#0d0e12"/,`fill="${P.well}"`).replace(/stroke="(#5a5e6a|#33363f|#2c2e36)"/,`stroke="${P.rimPart}"`); }
     if(outline) a=a.replace(/stroke-width="[^"]*"/,'stroke-width="2.5" vector-effect="non-scaling-stroke"');
     else if(/stroke-width=/.test(a) && !/stroke="none"/.test(a)) a=a.replace(/stroke-width="[^"]*"/,'stroke-width="2.5" vector-effect="non-scaling-stroke"');
     let out=`<${tag}${a}${close}>`;
@@ -45,12 +45,12 @@ function polish(svg,f){ const rid='ring'+(_ring++); f=f||1;
   return ringFilter(rid,f)+out1;
 }
 // soft shadow on the floor under a device: cx, bottom y, width (in the drawing's units)
-const floorShadow=(cx,by,w)=>`<ellipse cx="${cx}" cy="${by+6}" rx="${w*0.46}" ry="${w*0.035}" fill="url(#floor)"/>`;
+const floorShadow=(cx,by,w)=>''; // flat kit (28 Oct 2026): no floor shadow; a scene adds its own if it needs one
 
 // D-pad: one cross with rounded ends and no seams; a pressed arm fills inside the same outline
 let _dp=0;
 function dpadCross(dx,dy,L,t,on){
-  const r=Math.min(6,t*0.5), v=k=>(on&&on[k])||0, id='dp'+(_dp++);
+  const r=Math.min(6,t), v=k=>(on&&on[k])||0, id='dp'+(_dp++);
   const d=`M${dx-t},${dy-L+r} A${r},${r} 0 0 1 ${dx-t+r},${dy-L} H${dx+t-r} A${r},${r} 0 0 1 ${dx+t},${dy-L+r} V${dy-t} H${dx+L-r} A${r},${r} 0 0 1 ${dx+L},${dy-t+r} V${dy+t-r} A${r},${r} 0 0 1 ${dx+L-r},${dy+t} H${dx+t} V${dy+L-r} A${r},${r} 0 0 1 ${dx+t-r},${dy+L} H${dx-t+r} A${r},${r} 0 0 1 ${dx-t},${dy+L-r} V${dy+t} H${dx-L+r} A${r},${r} 0 0 1 ${dx-L},${dy+t-r} V${dy-t+r} A${r},${r} 0 0 1 ${dx-L+r},${dy-t} H${dx-t} Z`;
   const arm={Dup:[dx-t,dy-L,2*t,L-t],Ddown:[dx-t,dy+t,2*t,L-t],Dleft:[dx-L,dy-t,L-t,2*t],Dright:[dx+t,dy-t,L-t,2*t]};
   let s=`<clipPath id="${id}"><path d="${d}"/></clipPath><path d="${d}" fill="#0f1014" stroke="#5a5e6a" stroke-width="2" stroke-linejoin="round"/>`;

@@ -130,6 +130,9 @@ class VisualsExport {
         val s = base { it.copy(picture = PictureChoice.HANDHELD) }
         kb("studio-odin-solid", s, 827) { walkTo("l"); setSuggestions(listOf("solid", "sold", "solo"), "sol") }
         kb("studio-odin-rep", s, 827) { walkTo("p"); setSuggestions(listOf("republic", "report", "reply"), "rep") }
+        kb("studio-odin-holdrt", s, 827) { walkTo("g"); setHeldShift(true) }
+        kb("studio-odin-accents", s, 827) { walkTo("n"); instantAnimations { pressA(); idle(400) } }
+        kb("studio-odin-select", s, 827) { walkTo("d"); setSelecting(true, 24) }
     }
 
     @Test @Config(sdk = [34], qualifiers = "w472dp-h363dp-land-420dpi")
@@ -138,6 +141,7 @@ class VisualsExport {
         val s = base { it.copy(picture = PictureChoice.VERTICAL) }
         kb("studio-rpc-select", s, 472) { walkTo("d"); setSelecting(true, 30) }
         kb("studio-rpc-solid", s, 472) { walkTo("l"); setSuggestions(listOf("solid", "sold", "solo"), "sol") }
+        kb("studio-rpc-select24", s, 472) { walkTo("d"); setSelecting(true, 24) }
     }
 
     @Test

@@ -1,0 +1,238 @@
+{
+ "name": "device-kit-1.2",
+ "title": "Device kit clean-up, press and Timer hold, layout audit (28 Oct 2026)",
+ "recorded": "2026-10-29",
+ "base": "5a61a5e",
+ "files": [
+  {
+   "path": "CHANGELOG.md",
+   "before": "921e6412b8bf14b997d7cbf3b86fbbe68d51ce21",
+   "after": "abc76fe21b39d59a92952de8d146b47dd47a86df"
+  },
+  {
+   "path": "app/src/main/assets/devices/controller-ps.json",
+   "before": "2e1f07b994248b5c25845de9b782e80506f34bb8",
+   "after": "be930d829b59952be2f629607c4f593b54287d25"
+  },
+  {
+   "path": "app/src/main/assets/devices/controller-ps.svg",
+   "before": "32028f00a2f9bd7e18e3486852ac88f5d44ec387",
+   "after": "152f1884b30167f281e102e9346f049cbff87740"
+  },
+  {
+   "path": "app/src/main/assets/devices/controller-switch.json",
+   "before": "e7bf1f80e32ffd9c6fe8041b93f10be9e4130290",
+   "after": "f2d432f528f28c583d4ab37f85af74fa05b77eef"
+  },
+  {
+   "path": "app/src/main/assets/devices/controller-switch.svg",
+   "before": "7537369b7d1f2156e62e09f2ea61682af412f962",
+   "after": "d6f507a9a083a8903e1bc12f240ec592ea981e7a"
+  },
+  {
+   "path": "app/src/main/assets/devices/controller-xbox.json",
+   "before": "e064fab25a6e8d2d5474ca9a1bef7303b0da94d9",
+   "after": "d93d95bf5002b7eea0b707f80a4584fdadf60a84"
+  },
+  {
+   "path": "app/src/main/assets/devices/controller-xbox.svg",
+   "before": "f7f5c0ffd906bbc9592bddcf18168b5edc53cb9f",
+   "after": "15def9a63b8717721fd6cc240f55b6b5f71a347c"
+  },
+  {
+   "path": "app/src/main/assets/devices/remote.json",
+   "before": "baa797251d64b297aa4c9f4a50b2d52b81c45e1b",
+   "after": "f079b7bfb0b5f7a8764f44d956606a83070c7e95"
+  },
+  {
+   "path": "app/src/main/assets/devices/remote.svg",
+   "before": "ae3081ed5b820f0694d531751ee3f79176f16e3b",
+   "after": "27dfd8882ddca76317e5271c266738bfc6d7cb5b"
+  },
+  {
+   "path": "app/src/main/assets/devices/vertical-ps.json",
+   "before": "0cc1f99513963f5e8f1630f6bfe9e8dabc318ec8",
+   "after": "07a9ee079a79bcb118686dca981b44fed4beb2f0"
+  },
+  {
+   "path": "app/src/main/assets/devices/vertical-ps.svg",
+   "before": "ea7e2462c24c94047b88ccd597211cf6b737a5f7",
+   "after": "e2c1c095080813d713300658ee9398b5acb83c23"
+  },
+  {
+   "path": "app/src/main/assets/devices/vertical-sticks-ps.json",
+   "before": "52b8830eb8625ec8189fcad98e1a831fca1de95b",
+   "after": "7749e8714dcc6d99dbe220e484703c343be02fc8"
+  },
+  {
+   "path": "app/src/main/assets/devices/vertical-sticks-ps.svg",
+   "before": "7b5d00ca1fcb96fc53339623df811dfd87f7d790",
+   "after": "056e57fbf204d3bb9707b4c716247beb789f2dd1"
+  },
+  {
+   "path": "app/src/main/assets/devices/vertical-sticks-switch.json",
+   "before": "68c22b9acf618fba933a14f54381d9c430a2247a",
+   "after": "b188c7e42ffc0bd0df40996d22465e5c824f123f"
+  },
+  {
+   "path": "app/src/main/assets/devices/vertical-sticks-switch.svg",
+   "before": "d05825049884bb1d2cad3e1545c57e269e375711",
+   "after": "618bf805954d42eb1aeae981a8facb2f733d7b5c"
+  },
+  {
+   "path": "app/src/main/assets/devices/vertical-sticks-xbox.json",
+   "before": "68c22b9acf618fba933a14f54381d9c430a2247a",
+   "after": "b188c7e42ffc0bd0df40996d22465e5c824f123f"
+  },
+  {
+   "path": "app/src/main/assets/devices/vertical-sticks-xbox.svg",
+   "before": "adfbf1ace6ec81f5a2f22a802f2095326d5a8ea1",
+   "after": "5d01a6617cda110e8d1b99c1e158acd269588202"
+  },
+  {
+   "path": "app/src/main/assets/devices/vertical-switch.json",
+   "before": "b0e67a705122a7a2d5521729b4a339cad2943494",
+   "after": "b9e4f177990079fe7030a5086b00f0e1d0b1bdfb"
+  },
+  {
+   "path": "app/src/main/assets/devices/vertical-switch.svg",
+   "before": "bc6e2b76d0af891f81da9f3f780ca6c7bf89d5d3",
+   "after": "678a8178b933ddb57e58a03d6bb0713bc5fe075d"
+  },
+  {
+   "path": "app/src/main/assets/devices/vertical-xbox.json",
+   "before": "b0e67a705122a7a2d5521729b4a339cad2943494",
+   "after": "b9e4f177990079fe7030a5086b00f0e1d0b1bdfb"
+  },
+  {
+   "path": "app/src/main/assets/devices/vertical-xbox.svg",
+   "before": "787b229294eaeb1d0c51d5de7aed0b7d966ef426",
+   "after": "4bd139cc54c329075b108a57be6e7ef777b94ae5"
+  },
+  {
+   "path": "app/src/main/assets/devices/wide-ps.json",
+   "before": "efa585a2dd640dde80967fff0691fb360c166871",
+   "after": "27b0bca1870f221096ba1abace2437c135d54d1d"
+  },
+  {
+   "path": "app/src/main/assets/devices/wide-ps.svg",
+   "before": "3228cd8f0d81546992b6473419258ff8594c8df7",
+   "after": "8d36ef3940695babbccdd850a2d29d11564dfd16"
+  },
+  {
+   "path": "app/src/main/assets/devices/wide-switch.json",
+   "before": "0bdda03f8fc67358aa623008c8de9539ec17ac4f",
+   "after": "cca7e47a31b9513b79470926db9089eb63fca0a0"
+  },
+  {
+   "path": "app/src/main/assets/devices/wide-switch.svg",
+   "before": "7f1bffd91259c0c7b7ef4ab9edf2fdcc604203ae",
+   "after": "6e6cdc56df28a141010174a2abc95a171d0028d6"
+  },
+  {
+   "path": "app/src/main/assets/devices/wide-xbox.json",
+   "before": "0bdda03f8fc67358aa623008c8de9539ec17ac4f",
+   "after": "cca7e47a31b9513b79470926db9089eb63fca0a0"
+  },
+  {
+   "path": "app/src/main/assets/devices/wide-xbox.svg",
+   "before": "37a55a91770ad37b2f2a6495d1954ea877f30a70",
+   "after": "e64b41406dcfd8412902fe99040d92d2e4ef6a0d"
+  },
+  {
+   "path": "app/src/main/java/com/example/gridime/DevicePicture.kt",
+   "before": "313e2e6b916bd10626cf77ff3d0a20fc073d3c0b",
+   "after": "5c147a18c3c08c1321e232576fc9fd8adaf82fac"
+  },
+  {
+   "path": "app/src/test/java/com/example/gridime/DeviceAssetsTest.kt",
+   "before": null,
+   "after": "6189368ccb4e08ad90025c19e0cdae8a2f5f0761"
+  },
+  {
+   "path": "app/src/test/java/com/example/gridime/HoldOptionsExport.kt",
+   "before": null,
+   "after": "cc4f6d0d2d8a461aa12f6948bb8639a9667ecb6f"
+  },
+  {
+   "path": "app/src/test/java/com/example/gridime/LayoutAuditExport.kt",
+   "before": null,
+   "after": "ae87bac8881c8a167ba8d381ecd21741cf59257f"
+  },
+  {
+   "path": "app/src/test/java/com/example/gridime/PressAudit.kt",
+   "before": null,
+   "after": "fd92f683044c0d7bb9409a2d17e4556dc3157540"
+  },
+  {
+   "path": "app/src/test/java/com/example/gridime/VisualsExport.kt",
+   "before": "9699d4ad91aa1f3dafa5b801a1a606b1f2f9be46",
+   "after": "0010389abda40237f867b55b46c22447f3c10b60"
+  },
+  {
+   "path": "tools/audit/layout_audit.py",
+   "before": null,
+   "after": "5842c116af0a7c72536f23fe996ad45bc6716c56"
+  },
+  {
+   "path": "tools/video/brand-kit/README.md",
+   "before": "96cf8c4c870df8187dd5be43d6bfe3a8fd56443c",
+   "after": "503afcb517480a44856098e95433f81f6d6c2dd8"
+  },
+  {
+   "path": "tools/video/brand-kit/build.sh",
+   "before": null,
+   "after": "861ad6553b8afa5a9a602048e942d44e9ad0e799"
+  },
+  {
+   "path": "tools/video/brand-kit/controller.merged.js",
+   "before": null,
+   "after": "a9c3deb87bf04b35077033e136ac15556e2dadc6"
+  },
+  {
+   "path": "tools/video/brand-kit/controller.prem.js",
+   "before": "3e1f703e36bacb3ce332371dd664c128493b539e",
+   "after": "5b93963384aaea288c7f8bb2cd8bcd14cb77ff9c"
+  },
+  {
+   "path": "tools/video/brand-kit/devices2.js",
+   "before": "c523a8da72106c8c846eb954b0a9f1896f2b4b50",
+   "after": "b5b22191ffe688f475f40fda8a4f631ef5f2bff0"
+  },
+  {
+   "path": "tools/video/brand-kit/geo.js",
+   "before": "a703f6a1b9f8ab6b95d2f53bae1cada81dae5a93",
+   "after": "1780eb085c79fe3aed27ae5bbfcae9b08eeaa3c8"
+  },
+  {
+   "path": "tools/video/brand-kit/handhelds2.js",
+   "before": "37325b45385fdaed146db0170616d89d51d94b5b",
+   "after": "cbcedc6590be4060b0edf71585333c7c5103254c"
+  },
+  {
+   "path": "tools/video/brand-kit/kit.js",
+   "before": "6eddbd5eec646a4dec99813a357659c28c367273",
+   "after": "b8bdd94ed40ad93a03137f662d6dbe77f3129372"
+  },
+  {
+   "path": "tools/video/brand-kit/kitgen.js",
+   "before": "335543b99d4cadc13229c93ae7538bfe5135b529",
+   "after": "911c8f8292c7289e93f2af1987d5e71941bde0f1"
+  },
+  {
+   "path": "tools/video/brand-kit/merge-outlines.py",
+   "before": null,
+   "after": "c61369d923c1ef2ea33184a152edf6a2ecc59ae9"
+  },
+  {
+   "path": "tools/video/brand-kit/premium.js",
+   "before": "9238016f6c82d1a208c3e04e83b27229c8e8bfe0",
+   "after": "6bdd422a000d8021cd4a14145da949f255c33670"
+  },
+  {
+   "path": "tools/video/brand-kit/room.py",
+   "before": null,
+   "after": "1e351ba89f2b5982ecb46512fada13e7d5a28f42"
+  }
+ ]
+}

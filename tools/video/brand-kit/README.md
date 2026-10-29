@@ -17,7 +17,9 @@ Anything older is superseded and must not be used:
 | `device-kit.html` | Renders `device-kit.png`. |
 | `in-use.html` | Renders the six in-use screens. |
 | `kit.js` | One function per device: `kitController(style, on, width)`, `kitHandheld('wide' or 'vertical', style, on, width)`, `kitRemote(on, width)`. `style` is `xbox`, `ps` or `switch`. `on` lists the lit buttons, e.g. `{RT:1, A:1, Dright:1}`. |
-| `controller.prem.js` | The three controller drawings. Xbox is the traced original and is the reference; never change its shape. |
+| `controller.prem.js` | The three controller drawings. Xbox is the traced original and is the reference; never change its shape. (28 Oct 2026: its grip ends had been clipped flat by the frame; `merge-outlines.py` completes them as round ends, fitted to the grip's own sides.) |
+| `merge-outlines.py` → `controller.merged.js` | Each controller's body and bumper humps as one smooth outline, checked against the trace (max 0.9 units off). |
+| `build.sh` | Rebuilds the app's pictures, every step in order. Always use it; `DeviceAssetsTest` fails if a step was skipped. |
 | `handhelds2.js` | Wide handheld (traced from an AYN Odin 3 front photo) and vertical handheld (after the Retroid Pocket Classic). Start and Select sit at the top of the wide handheld. `HH_VERTICAL_STICKS` is the vertical handheld with two sticks. Also holds the floating shoulder keys (`shoulderKeysA`) and the spacing check (`spacingCheck`). |
 | `devices2.js` | TV remote. |
 | `premium.js` | The finish applied to every device (`polish`): one line thickness, recessed parts, a pressed ring that follows each button's shape, and the plain D-pad (`dpadCross`). |
@@ -29,9 +31,11 @@ The pages also load `../kb2.js`, `../spotlight4.js` and the Roboto fonts from `t
 ## The rules (they apply everywhere the pictures appear)
 
 1. **One line thickness on every outline.** No thin decoration lines, and no glow.
-2. **Shoulder buttons are floating keys** above the device, over the real shoulder spots, with the trigger on top and the bumper below. They are the only place bumpers and triggers are shown and lit. Controllers keep their bumper curves on the outline, unlit and without labels.
+2. **Shoulder buttons are floating keys** above the device, over the real shoulder spots, with the trigger on top and the bumper below. They are the only place bumpers and triggers are shown and lit. Controllers keep their bumper curves on the outline, unlit and without labels. One spec on every device, in dp on the Device tab (`SHOULDER` in `kit.js`): bumper 36 × 11 (pill), trigger 28 × 14 (5 dp corners), 8 dp between them, 10 dp above the body, 6 dp of ring room round the picture.
 3. **A pressed button** is solid accent (#72D6E8) with a ring that follows its exact shape. Unpressed buttons sit darker than the body.
-4. **The D-pad** is one plain cross with no arrows. Only the pressed arm lights up. It's the same size on every device.
+4. **The D-pad** is one plain cross with no arrows. Only the pressed arm lights up, with the same ring as a button round its three outer sides. It's the same size on every device.
+9. **Sticks:** a recessed well 8 units wider than the cap, nothing else. Clicked in, the cap sinks to 86 % and gets the standard press ring.
+10. **No PS button** on the PlayStation controller: Inlay doesn't use it.
 5. **Labels** use Roboto Bold, never below the minimum size.
 6. **The spacing check** (`spacingCheck('wide')` and `spacingCheck('vertical')`) must return an empty list.
 7. **Minimum size:** never show a handheld picture smaller than about 400 px wide.

@@ -10,7 +10,7 @@ function handheldSvg(kind, w, opt){
   s+=tab(S.LT,'LT',0,names[0])+tab(S.LT,'RT',1,names[2])+tab(S.LB,'LB',0,names[1])+tab(S.LB,'RB',1,names[3]);
   s+=`<path d="${d.body}" fill="#101116" stroke="${line}" stroke-width="${1.7*sw}" stroke-linejoin="round"/>`;
   const r=d.screen; s+=`<rect x="${r[0]}" y="${r[1]}" width="${r[2]}" height="${r[3]}" rx="${7*sw}" fill="#08090c" stroke="${detail}" stroke-width="${1.2*sw}"/>`+(opt.screen||'');
-  const stick=([x,y],rr,k)=>`<circle cx="${x}" cy="${y}" r="${rr*1.3}" fill="#0c0d11" stroke="${detail}" stroke-width="${sw}"/><circle cx="${x}" cy="${y}" r="${rr}" ${L(k)} stroke-width="${1.3*sw}"/><circle cx="${x}" cy="${y}" r="${rr*0.62}" fill="none" stroke="${lit(k)?'#0B0F17':detail}" stroke-opacity="${lit(k)?.4:1}" stroke-width="${sw}"/>`;
+  const stick=([x,y],rr,k)=>`<circle cx="${x}" cy="${y}" r="${rr*1.3}" fill="#0c0d11" stroke="${detail}" stroke-width="${sw}"/><circle cx="${x}" cy="${y}" r="${rr}" ${L(k)} stroke-width="${1.3*sw}"/>`;
   if(kind==='horizontal') s+=stick(d.sticks[0],d.stickR,'LS')+stick(d.sticks[1],d.stickR,'RS');
   // D-pad: a cross whose arms light separately
   const [x,y,rr]=d.dpad, t=rr*0.34, arm=(dx,dy,k)=>{const a=dx?[x+dx*t,y-t,x+dx*rr,y+t]:[x-t,y+dy*t,x+t,y+dy*rr];return `<rect x="${Math.min(a[0],a[2])}" y="${Math.min(a[1],a[3])}" width="${Math.abs(a[2]-a[0])}" height="${Math.abs(a[3]-a[1])}" rx="${t*0.35}" ${L(k)} stroke-width="${1.2*sw}"/>`};
@@ -30,19 +30,19 @@ function handheldSvg(kind, w, opt){
 // Proportions from the Google TV remote; the other buttons are drawn quieter, because Inlay never uses them.
 function remote2Svg(w, opt){
   opt=opt||{}; const line='#5a5e6a', detail='#2c2e36', ACC=opt.acc||'#72D6E8', on=opt.on||{};
-  const W=150, H=560, sw=W/w, lit=k=>on[k]>0, L=k=>lit(k)?`fill="${ACC}" fill-opacity=".92" stroke="${ACC}" filter="url(#grm)"`:`fill="#0f1014" stroke="${line}"`, ink=k=>lit(k)?'#0B0F17':'#E6E8EC';
+  const W=150, H=560, sw=W/w, lit=k=>on[k]>0, L=k=>lit(k)?`fill="${ACC}" fill-opacity=".92" stroke="${ACC}" filter="url(#grm)"`:`fill="#0f1014" stroke="${line}"`, ink=k=>lit(k)?'#0B0F17':'#F2F3F5';
   let s=`<svg width="${w}" height="${w*H/W}" viewBox="0 0 ${W} ${H}" style="overflow:visible"><defs><filter id="grm" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="${4*sw}" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>`;
   s+=`<rect x="5" y="5" width="${W-10}" height="${H-10}" rx="${(W-10)/2}" fill="#101116" stroke="${line}" stroke-width="${1.8*sw}"/>`;
   // the ring: four arcs, each lights on its own; OK in the middle
-  const cx=W/2, cy=82, R1=56, R0=27, gap=0.07;
-  const arc=(a0,a1,k)=>{const p=(r,a)=>[cx+r*Math.cos(a),cy+r*Math.sin(a)];const A=p(R1,a0+gap),B=p(R1,a1-gap),C=p(R0+5,a1-gap),Dd=p(R0+5,a0+gap);
-    return `<path d="M${A} A${R1},${R1} 0 0 1 ${B} L${C} A${R0+5},${R0+5} 0 0 0 ${Dd} Z" ${L(k)} stroke-width="${1.3*sw}" stroke-linejoin="round"/>`};
+  const cx=W/2, cy=82, R1=56, R0=18, RI=35, gap=0.2;
+  const arc=(a0,a1,k)=>{const p=(r,a)=>[cx+r*Math.cos(a),cy+r*Math.sin(a)];const A=p(R1,a0+gap),B=p(R1,a1-gap),C=p(RI,a1-gap),Dd=p(RI,a0+gap);
+    return `<path d="M${A} A${R1},${R1} 0 0 1 ${B} L${C} A${RI},${RI} 0 0 0 ${Dd} Z" ${L(k)} stroke-width="${1.3*sw}" stroke-linejoin="round"/>`};
   const q=Math.PI/4;
   s+=arc(-3*q,-q,'Dup')+arc(-q,q,'Dright')+arc(q,3*q,'Ddown')+arc(3*q,5*q,'Dleft');
   // small arrow marks on the ring so it reads as a D-pad
-  s+=[[0,-1],[1,0],[0,1],[-1,0]].map(([dx,dy])=>{const mx=cx+dx*(R1+R0+5)/2, my=cy+dy*(R1+R0+5)/2, k={'0,-1':'Dup','1,0':'Dright','0,1':'Ddown','-1,0':'Dleft'}[dx+','+dy];
-    const a=7; return `<path d="M${mx+dx*a},${my+dy*a} L${mx-dx*a+dy*a},${my-dy*a+dx*a} L${mx-dx*a-dy*a},${my-dy*a-dx*a} Z" fill="${lit(k)?'#0B0F17':'#8d919c'}"/>`}).join('');
-  s+=`<circle cx="${cx}" cy="${cy}" r="${R0}" ${L('OK')} stroke-width="${1.4*sw}"/><text x="${cx}" y="${cy+1}" fill="${ink('OK')}" font-family="I" font-weight="700" font-size="15" text-anchor="middle" dominant-baseline="central">OK</text>`;
+  s+=[[0,-1],[1,0],[0,1],[-1,0]].map(([dx,dy])=>{const mx=cx+dx*(R1+RI)/2, my=cy+dy*(R1+RI)/2, k={'0,-1':'Dup','1,0':'Dright','0,1':'Ddown','-1,0':'Dleft'}[dx+','+dy];
+    const a=4.5; return `<path d="M${mx-dx*a+dy*a*1.4},${my-dy*a+dx*a*1.4} L${mx+dx*a},${my+dy*a} L${mx-dx*a-dy*a*1.4},${my-dy*a-dx*a*1.4}" fill="none" stroke="${lit(k)?'#0B0F17':'#8d919c'}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>`}).join('');
+  s+=`<circle cx="${cx}" cy="${cy}" r="${R0}" ${L('OK')} stroke-width="${1.4*sw}"/><text x="${cx}" y="${cy+1}" fill="${ink('OK')}" font-family="I" font-weight="700" font-size="14" text-anchor="middle" dominant-baseline="central">OK</text>`;
   // Back and Home
   const bx=46, hx=104, by=176, br=19;
   s+=`<circle cx="${bx}" cy="${by}" r="${br}" ${L('BACK')} stroke-width="${1.4*sw}"/>`+backIcon(bx,by,9,ink('BACK'));
@@ -50,8 +50,7 @@ function remote2Svg(w, opt){
   // the rest, quieter: mic, volume, two app buttons, power
   s+=`<circle cx="${cx}" cy="236" r="16" fill="#0d0e12" stroke="${detail}" stroke-width="${1.2*sw}"/><rect x="${cx-3.5}" y="228" width="7" height="11" rx="3.5" fill="none" stroke="#3a3c45" stroke-width="1.6"/><path d="M${cx-7},237 a7,7 0 0 0 14,0" fill="none" stroke="#3a3c45" stroke-width="1.6"/>`;
   s+=`<rect x="${cx-17}" y="276" width="34" height="88" rx="17" fill="#0d0e12" stroke="${detail}" stroke-width="${1.2*sw}"/><path d="M${cx-6},298 h12 M${cx},292 v12 M${cx-6},342 h12" stroke="#3a3c45" stroke-width="2" stroke-linecap="round"/>`;
-  s+=`<circle cx="46" cy="404" r="15" fill="#0d0e12" stroke="${detail}" stroke-width="${1.2*sw}"/><circle cx="104" cy="404" r="15" fill="#0d0e12" stroke="${detail}" stroke-width="${1.2*sw}"/>`;
-  s+=`<circle cx="${cx}" cy="470" r="12" fill="#0d0e12" stroke="${detail}" stroke-width="${1.2*sw}"/><path d="M${cx},464 v6 M${cx-5},467 a6.5,6.5 0 1 0 10,0" fill="none" stroke="#3a3c45" stroke-width="1.6" stroke-linecap="round"/>`;
+  s+=`<circle cx="${cx}" cy="404" r="16" fill="#0d0e12" stroke="${detail}" stroke-width="${1.2*sw}"/><path d="M${cx},398 v6 M${cx-5},401 a6.5,6.5 0 1 0 10,0" fill="none" stroke="#3a3c45" stroke-width="1.6" stroke-linecap="round"/>`;
   return s+'</svg>';
 }
 // Android's own symbols: back is the arrow pointing left, home the house
