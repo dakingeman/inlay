@@ -111,7 +111,7 @@ object Palette {
     val accents: List<Pair<String, Int>> = listOf(
         "Sky" to "#8AB4F8",
         "Ocean" to "#4FA8FF",
-        "Inlay" to "#72D6E8",      // the brand teal, same as the app icon (was Cyan #4DD9E8)
+        "Inlay" to "#72D6E8",      // the brand teal, same as the app icon (was Cyan #4DD9E8); = Design.BRAND_ACCENT (TokenSyncTest)
         "Teal" to "#3FD1B0",
         "Mint" to "#7EE6A8",
         "Lime" to "#B5E853",
@@ -491,7 +491,7 @@ data class KeyboardSettings(
 
 /** Picks readable colours automatically, using the WCAG contrast formula. */
 object Contrast {
-    val DARK: Int = Color.parseColor("#0B0F17")
+    val DARK: Int = Design.INK_DARK
 
     fun ratio(a: Int, b: Int): Double {
         val la = Color.luminance(a) + 0.05
@@ -514,6 +514,28 @@ object Contrast {
     }
 
     fun withAlpha(color: Int, alpha: Int): Int = (color and 0x00FFFFFF) or (alpha shl 24)
+
+    /**
+     * The highlight colour as this theme needs it: the same hue, made just deep enough (or bright enough)
+     * to stand out at least [min]:1 against every one of [surfaces] (the keys and the background).
+     * Dark themes get the colour untouched; on Light it deepens, so the highlight never disappears.
+     */
+    /** The highlight colour for words in it on [background]: brightened (dark backgrounds) or deepened (light ones) only as far as 4.5:1 needs. */
+    fun accentText(accent: Int, background: Int, min: Double = 4.5): Int = accentOn(accent, background, min = min)
+
+    fun accentOn(accent: Int, vararg surfaces: Int, min: Double = 3.0): Int {
+        val solid = surfaces.filter { Color.alpha(it) == 255 }
+        if (solid.isEmpty() || solid.all { ratio(accent, it) >= min }) return accent
+        val (l0, c, h) = AccentLight.oklch(accent).toList()
+        val down = solid.all { Color.luminance(it) > 0.18f }        // light surfaces: go deeper; dark ones: brighter
+        var l = l0
+        repeat(80) {
+            l = if (down) l - 0.01 else l + 0.01
+            val col = AccentLight.color(l.coerceIn(0.0, 1.0), minOf(c, AccentLight.maxChroma(l.coerceIn(0.0, 1.0), h)), h)
+            if (solid.all { ratio(col, it) >= min }) return col
+        }
+        return if (down) DARK else Color.WHITE
+    }
 }
 
 /**

@@ -4,7 +4,7 @@ window.KIT_FLOATING=true;
 const KIT_ANCH={xbox:{left:236,right:478,top:77.9},ps:{left:171,right:486,top:68.9},switch:{left:180,right:477,top:56.8}};
 // Floating shoulder keys, one spec on every device (28 Oct 2026). Sizes are in dp as seen on the Device tab,
 // turned into each picture's units with UPD (picture units per dp there), so every device shows the same keys.
-const SHOULDER={bumperW:36, bumperH:11, triggerW:28, triggerH:14, triggerR:5, gap:8, lift:10, label:6};
+const SHOULDER={bumperW:36, bumperH:11, triggerW:28, triggerH:14, triggerR:5, gap:8, lift:10, label:7};
 const PICTURE_DP=165;   // the Device tab shows every picture this tall
 // anchors.top is where the body's outline is under each key (checked by measuring: within 0.2 dp on every device)
 const BODY_DROP={};
@@ -19,9 +19,9 @@ function unitsPerDp(anchors, style, bodyBottom){
   let u=3; for(let i=0;i<30;i++){ const top=shoulderTop(anchors,style,u)-RING_ROOM*u; u=(bodyBottom+20-top)/PICTURE_DP; } return u;
 }
 function shoulderKeysKit(anchors, style, on, u){
-  const S=SHOULDER, ACC='#72D6E8', line='#5a5e6a', v=k=>on[k]||0;
+  const S=SHOULDER, ACC=TOKENS.brandAccent, line='#5a5e6a', v=k=>on[k]||0;
   const lit=k=>v(k)>0?`fill="${ACC}" fill-opacity=".9" stroke="${ACC}" filter="url(#hg2)"`:`fill="#0f1014" stroke="${line}"`;
-  const ink=k=>v(k)>0.5?'#0B0F17':'#C9CCD3';
+  const ink=k=>v(k)>0.5?TOKENS.inkDark:'#C9CCD3';
   const N={xbox:['LT','LB','RT','RB'],ps:['L2','L1','R2','R1'],switch:['ZL','L','ZR','R']}[style];
   const txt=(x,y,t,k)=>`<text x="${x}" y="${y}" fill="${ink(k)}" font-family="I" font-weight="700" font-size="${S.label*u}" text-anchor="middle" dominant-baseline="central">${t}</text>`;
   const bh=S.bumperH*u, th=S.triggerH*u, gap=S.gap*u, tr=S.triggerR*u;

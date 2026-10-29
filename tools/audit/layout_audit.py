@@ -14,7 +14,8 @@ from scipy import ndimage
 
 ROOT = sys.argv[1] if len(sys.argv) > 1 else 'app/build/layout'
 ASSETS = 'app/src/main/assets/devices'
-ACCENT = np.array([138, 180, 248])
+_t = json.load(open('design/tokens.json'))['brandAccent']
+ACCENT = np.array([int(_t[i:i + 2], 16) for i in (1, 3, 5)])   # the app default (Design.BRAND_ACCENT), from design/tokens.json
 DENSITY = 3.0                      # the shots are xxhdpi
 MIN_AIR = 0.5                      # dp of clear air between a ring and anything else (DevicePicture ROOM_AIR_DP)
 MIN_EDGE = 0.5                     # dp from the picture's edge

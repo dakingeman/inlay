@@ -54,19 +54,19 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
     private lateinit var demo: KeyGridView
     private lateinit var controlBar: ControlBar
     private var wordsScroll: ScrollView? = null
-    private lateinit var loopBar: LoopBarView
-    private var loopBarRoom = 0                 // what the picture leaves under itself for the loop bar
+    /** The timing of the demo's loop, shown on the keyboard window's edge (StagePanel). */
+    private val loop = LoopClock()
     /** NEW: the device you're holding, lighting up the buttons the keyboard acts out. */
     private lateinit var picture: DevicePictureView
     private lateinit var stage: LinearLayout
     private lateinit var panel: StagePanel
     private lateinit var pictureCol: LinearLayout
     private var stageRow: LinearLayout? = null
+    /** Small screens: the words and the device beside them. */
+    private var header: LinearLayout? = null
     private val rowTexts = mutableListOf<TextView>()
     private val rowCells = mutableListOf<View>()
     private var shownRows: List<Pair<String, String>> = emptyList()
-    /** How closely the rows pack when the words need the room: 0 normal, 1 like a short screen, 2 tightest. */
-    private var tightRows = 0
 
     /** Opened as "What's new" instead of the tour. */
     private val whatsNew by lazy { intent.getBooleanExtra(EXTRA_WHATS_NEW, false) }
@@ -204,11 +204,14 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
     internal fun pageCheck(): List<Pair<String, List<String>>> = pages.map { it.title to it.rows.map { r -> r.second } }
 
     /** For the consistency checks: whether this page shows the loop bar, and its runs so far. */
-    internal val loopBarShown get() = loopBar.visibility == View.VISIBLE
-    internal val loopRuns get() = loopBar.runsForCheck.toList()
+    internal val loopBarShown get() = panel.loopShown
+    internal val loopRuns get() = loop.runsForCheck.toList()
 
     /** For the consistency checks: the device picture, to listen to what it lights. */
     internal val pictureForCheck get() = picture
+
+    /** For the renders: the area holding the device and the keyboard. */
+    internal val stageAreaForCheck: View? get() = splitRight ?: stageRow
 
     private fun offNote(on: Boolean, what: String) = if (on) "" else " $what switched off right now: turn it on in Settings → Typing."
 
@@ -219,12 +222,12 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
             Page("Word suggestions that learn",
                 "While you type, the words you probably mean show in the top row." + learns +
                     offNote(settings.wordSuggestions, "They're"),
-                listOf("Take the first word" to "{R3}", "Pick another one" to "up, then {A}"),
+                listOf("Take the first word" to "{R3}", "Pick another one" to "{DUP} then {A}"),
                 Demo.WORDS, For.CONTROLLER, sticks = true),
             Page("Word suggestions that learn",
                 "While you type, the words you probably mean show in the top row." + learns +
                     offNote(settings.wordSuggestions, "They're"),
-                listOf("Take a word" to "up, then {A}"),
+                listOf("Take a word" to "{DUP} then {A}"),
                 Demo.WORDS, For.CONTROLLER, sticks = false),
             Page("Word suggestions that learn",
                 "While you type, the words you probably mean show in the top row." + learns +
@@ -303,7 +306,7 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
                 Demo.ACCENTS_AND_WORDS, For.CONTROLLER, sticks = true),
             Page("Accents and word suggestions",
                 "Hold $aName on a letter for é, ñ, ü and more. While you type, words show in the top row: move up to one and press $aName.",
-                listOf("Accents · move, then let go" to "hold {A}", "Keep the plain letter" to "{B}", "Take a word" to "up, then {A}"),
+                listOf("Accents · move, then let go" to "hold {A}", "Keep the plain letter" to "{B}", "Take a word" to "{DUP} then {A}"),
                 Demo.ACCENTS_AND_WORDS, For.CONTROLLER, sticks = false),
             Page("Accents and word suggestions",
                 "Hold OK on a letter for é, ñ, ü and more. While you type, words show in the top row: move up to one and press OK.",
@@ -327,6 +330,7 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Palette.init(this)
+        SettingsStyle.init(this)
         settings = KeyboardSettings.load(this)
         SettingsStyle.accent = settings.accent
         volumeControlStream = AudioManager.STREAM_MUSIC
@@ -337,7 +341,7 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
         window.statusBarColor = SettingsStyle.background
         @Suppress("DEPRECATION")
         window.navigationBarColor = SettingsStyle.background
-        setContentView(buildScreen())
+        setContentView(buildScreen().also { SettingsStyle.useFont(it) })
         goFullScreen()
         // Turning the device rebuilds the screen; stay on the same page
         show(savedInstanceState?.getInt(KEY_PAGE) ?: 0, animate = false)
@@ -418,8 +422,28 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
     // =====================================================================
     // SCREEN
     // =====================================================================
-    /** A short landscape screen (a small 4:3 or squarish handheld): everything a little tighter. */
-    private val short get() = wide && resources.configuration.screenHeightDp < SHORT_MAX_DP
+    /**
+     * A compact landscape screen: short (a small 4:3 handheld) or too narrow for the split (a square screen, a
+     * 16:9 phone). The words stack above the device and keyboard, a little tighter, with the caption for the rows.
+     */
+    private val short get() = wide && (resources.configuration.screenHeightDp < SHORT_MAX_DP || resources.configuration.screenWidthDp < SPLIT_MIN_DP)
+    /** Landscape but too small for the split: the rows show one at a time, as a caption that follows the demo. */
+    private val captionMode get() = wide && (!split || splitCaption)
+    /** Split, but some page's button list is taller than the words column: the rows show as the caption there too. */
+    private var splitCaption = false
+    internal var reserveDebug = ""
+
+    /** The width a row's words get in the list: the column, less the widest button group and the gaps. */
+    private fun rowRoom(): Float {
+        val cell = rowCells.firstOrNull() ?: return Float.MAX_VALUE
+        val badge = (cell as LinearLayout).getChildAt(0).layoutParams.width
+        return (words.width - words.paddingLeft - words.paddingRight - badge - px(ROW_TEXT_GAP_DP)).toFloat()
+    }
+
+    /** Landscape and wide enough to put the words beside the demo (handhelds, phones, tablets, TVs): see [buildScreen]. */
+    private val split get() = wide && !short && resources.configuration.screenWidthDp >= SPLIT_MIN_DP
+    private var splitRight: LinearLayout? = null
+
     /** Landscape with room for two columns of words: handhelds, tablets and TVs. */
     private val wide get() = resources.configuration.screenWidthDp >= Design.WIDE_MIN_DP &&
         resources.configuration.screenWidthDp > resources.configuration.screenHeightDp
@@ -457,18 +481,20 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
             textSize = Design.TYPE_SECTION
             letterSpacing = 0.12f
             typeface = SettingsStyle.medium
-            // Your colour as a soft tint, never a ring: rings mean "you are here" (audit + Emre, 28 Oct 2026)
-            setTextColor(SettingsStyle.accent)
+            // Your colour as a soft tint, never a ring: rings mean "you are here" (audit + Emre, 28 Oct 2026).
+            // The words are measured on the backdrop's light (and the tag's tint): 4.5:1 with any colour
+            setTextColor(labelColor(settings.accent, whatsNew))
             includeFontPadding = false
             if (whatsNew) {
                 background = android.graphics.drawable.GradientDrawable().apply {
-                    cornerRadius = px(100f).toFloat()
-                    setColor(Contrast.withAlpha(settings.accent, 0x26))
+                    cornerRadius = Design.RADIUS_PILL
+                    setColor(Contrast.withAlpha(settings.accent, Design.ALPHA_TINT_TAG))
                 }
-                setPadding(px(Design.SPACE_S + 2f), px(5f), px(Design.SPACE_S + 2f), px(5f))
+                setPadding(px(Design.SPACE_S), px(Design.SPACE_XS), px(Design.SPACE_S), px(Design.SPACE_XS))
             }
         }
         eyebrowCount = TextView(this).apply {
+            fontFeatureSettings = Design.NUMBERS_TABULAR      // "2 OF 7" → "3 OF 7": the line keeps its length
             textSize = Design.TYPE_SECTION
             letterSpacing = 0.12f
             typeface = SettingsStyle.medium
@@ -483,20 +509,27 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
                 .apply { marginStart = px(if (whatsNew) Design.SPACE_M else Design.SPACE_S) })
         }
         title = TextView(this).apply {
+            // Two lines break evenly ("Word suggestions / that learn"), never one word alone on the last line
+            breakStrategy = android.text.Layout.BREAK_STRATEGY_BALANCED
             textSize = Design.TYPE_DISPLAY
             typeface = SettingsStyle.medium
             setTextColor(SettingsStyle.textPrimary)
             setLineSpacing(0f, 1.1f)
+            letterSpacing = Design.TRACKING_TITLE
         }
         body = TextView(this).apply {
+            typeface = SettingsStyle.regular
+            breakStrategy = android.text.Layout.BREAK_STRATEGY_BALANCED
             textSize = Design.TYPE_ROW
             setTextColor(SettingsStyle.textSecondary)
             setLineSpacing(0f, 1.3f)
             maxWidth = px(BODY_MAX_WIDTH_DP)       // comfortable line length
         }
+        title.textSize = titleSize
+        body.textSize = bodySp()
         words = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER_VERTICAL
+            gravity = Gravity.TOP              // the title sits at one height on every page
             addView(eyebrowRow, lpMatchWrap())
             addView(title, lpMatchWrap(topMargin = if (short) 0f else Design.SPACE_S))
             addView(body, lpMatchWrap(topMargin = if (short) Design.SPACE_XS else Design.SPACE_M))
@@ -507,7 +540,6 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
 
         // ---- The stage: the device you hold and the keyboard it drives, side by side ----
         field = DemoFieldView(this)
-        loopBar = LoopBarView(this).apply { accent = settings.accent; visibility = View.INVISIBLE; importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO }
         picture = DevicePictureView(this).apply {
             accent = settings.accent
             maxHeightDp = if (wide) 2000f else PICTURE_NARROW_DP   // side by side: as tall as the stage allows
@@ -552,33 +584,77 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
             gravity = Gravity.CENTER
             addView(panel, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT))
         }
-        pictureCol = LinearLayout(this).apply {
+        pictureCol = object : LinearLayout(this) {
+            // Beside the words (small screens) the device fits the words' height and never adds to it
+            override fun onMeasure(widthSpec: Int, heightSpec: Int) =
+                if (header != null && !deviceBesideKeyboard && MeasureSpec.getMode(heightSpec) != MeasureSpec.EXACTLY)
+                    super.onMeasure(widthSpec, MeasureSpec.makeMeasureSpec(0, MeasureSpec.EXACTLY))
+                else super.onMeasure(widthSpec, heightSpec)
+        }.apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
             addView(picture, lpMatchWrap())
-            addView(loopBar, lpMatchWrap(topMargin = if (short) Design.SPACE_XS else Design.SPACE_S))
         }
-        // The picture grows to fill its column, so it leaves the loop bar its room
-        loopBarRoom = px(LoopBarView.HEIGHT_DP + if (short) Design.SPACE_XS else Design.SPACE_S)
-        picture.roomBelowPx = loopBarRoom
+        panel.loop = loop
+        panel.loopAccent = settings.accent
 
-        val side = px(Design.SPACE_XXL)
+        // The screen's side margin; small screens keep a little less, so the keyboard gets the width
+        val side = px(if (short) Design.SPACE_XL else Design.SPACE_XXL)
         words.addView(rows, lpMatchWrap(topMargin = if (short) Design.SPACE_S else if (wide) Design.SPACE_M else Design.SPACE_XL))
         rowsPane = rows
-        if (wide) {
+        if (split) {
+            // Split: the words on the left, the device above the keyboard on the right. The words never take
+            // the keyboard's room, so the device and the keyboard keep one size on every page and the keyboard
+            // is drawn larger than it could be under a block of words.
+            demo.keepProportions = true
+            body.maxWidth = Int.MAX_VALUE
+            wordsScroll = null
+            words.setPadding(0, px(Design.SPACE_L), 0, 0)
+            splitRight = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                gravity = Gravity.CENTER_HORIZONTAL
+                addView(pictureCol, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
+                addView(stage, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = px(Design.SPACE_M) })
+            }
+            root.addView(LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                setPadding(side, 0, side, px(Design.SPACE_M))
+                addView(words, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, SPLIT_WORDS))
+                addView(splitRight, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f - SPLIT_WORDS).apply { marginStart = side; topMargin = px(Design.SPACE_L) })
+            }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
+        } else if (wide) {
             // The words across the top, then the device and the keyboard side by side, both as big as they fit.
             // The keyboard is a scaled copy of the real one, so keys and hints keep their shape.
             demo.keepProportions = true
             body.maxWidth = px(HEADER_BODY_MAX_DP)
+            // Small screens: the device sits beside the words, so the keyboard gets the screen's whole width (a small
+            // screen's keyboard is held back by its width, never its height). The device is centred on the words,
+            // the same margin on its right as the words have on their left.
+            // The title runs across the whole width; the sentence and the caption sit beside the device, which is
+            // centred on them. The caption stays at their foot, right above the keyboard it describes.
             words.setPadding(side, px(if (short) Design.SPACE_S else Design.SPACE_L), side, 0)
+            words.removeView(body); words.removeView(rows)
+            val bodyCol = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                addView(body)
+                addView(View(context), LinearLayout.LayoutParams(1, 0, 1f))
+                addView(rows)
+            }
+            header = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                addView(bodyCol, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f))
+                addView(pictureCol, LinearLayout.LayoutParams(deviceColumnPx(), ViewGroup.LayoutParams.MATCH_PARENT).apply {
+                    marginStart = px(DEVICE_HEADER_GAP_DP) })
+            }
+            words.addView(header, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
             root.addView(words, lpMatchWrap())
             wordsScroll = null
             stageRow = LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL
+                // Centred in its room: the number row's page shows a taller keyboard, which grows evenly both ways
                 gravity = Gravity.CENTER_VERTICAL
                 setPadding(side, px(if (short) Design.SPACE_S else Design.SPACE_L), side, px(if (short) Design.SPACE_S else Design.SPACE_M))
-                addView(pictureCol, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 0.3f))
-                addView(stage, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 0.7f).apply { marginStart = side })
+                addView(stage, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
             }
             root.addView(stageRow, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
         } else {
@@ -620,7 +696,6 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
         eyebrowCount.text = if (whatsNew) "${index + 1} OF ${pages.size}" else "· ${index + 1} OF ${pages.size}"
         title.text = p.title
         body.text = p.body
-        tightRows = 0
         buildRows(p.rows)
         rowsPane.visibility = if (rows.childCount == 0) View.GONE else View.VISIBLE
         refreshDots()
@@ -646,199 +721,520 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
     }
 
     /**
-     * The button rows. Badges sit in their own column, sized to the widest badge group on the
-     * page, then a full 24 dp of air, then the words. Every row is at least 44 dp tall.
+     * THE PAGE TEMPLATE. Every tour and What's new page is the same four zones, top to bottom:
+     *  1. the label line ("WELCOME TOUR · 2 OF 7", or the NEW IN tag)
+     *  2. the title: one line, one size per screen
+     *  3. one or two sentences, never hidden
+     *  4. the button rows: a grid (three columns for five or more rows on wide screens, two otherwise,
+     *     one under the other upright). In each column the buttons get that column's own width, then the words.
+     *     Rows that all start with the same held button ("{R2} + …") show it once, above them.
+     * The words take the room of this screen's longest page (measured once, [reserveWords]), so the device and
+     * the keyboard below keep one place and one size on every page: only the words change. A page whose words
+     * don't fit the template on some screen fails TourTemplateTest, which names it.
      */
     private fun buildRows(list: List<Pair<String, String>>) {
         shownRows = list
         rows.removeAllViews()
         rowTexts.clear()
         rowCells.clear()
+        caption = null
         if (list.isEmpty()) return
-        // Packed as tight as they go, rows that all start with the same held button ("HOLD RT + …")
-        // show it once above them, so the rows themselves get narrow enough to sit side by side
+        if (captionMode) { buildCaption(list); return }
         val combo = Regex("""^(\{\w+\}) \+ (.+)$""")
         val matches = list.map { combo.matchEntire(it.second) }
-        val shared = if (tightRows >= 2 && list.size >= 2 && matches.all { it != null } &&
-            matches.map { it!!.groupValues[1] }.distinct().size == 1) matches.first()!!.groupValues[1] else null
+        val shared = if (list.size >= 2 && matches.all { it != null } && matches.map { it!!.groupValues[1] }.distinct().size == 1)
+            matches.first()!!.groupValues[1] else null
         val shown = if (shared != null) list.mapIndexed { i, (what, _) -> what to matches[i]!!.groupValues[2] } else list
         if (shared != null) rows.addView(BadgeLineView(this, HintText.parse("$shared +"), settings.buttonStyle, Design.TYPE_CAPTION,
             SettingsStyle.textSecondary, badgeScale = badgeScale, gapBadgeToBadge = BADGE_GAP, gapBadgeToText = TEXT_GAP),
             lpMatchWrap().apply { bottomMargin = px(Design.SPACE_XS) })
         val parsed = shown.map { (what, buttons) -> what to HintText.parse(buttons) }
-        val painter = BadgePainter(dp).apply {
-            style = settings.buttonStyle; scale = badgeScale
-            gapBadgeToBadge = BADGE_GAP; gapBadgeToText = TEXT_GAP
-        }
-        val joiner = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            textSize = android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_SP, Design.TYPE_CAPTION, resources.displayMetrics)
-        }
-        val column = parsed.maxOf { painter.measureLine(it.second, joiner) }.roundToInt() + 2 + px(Design.SPACE_L)
-        val cells = parsed.map { (what, parts) ->
-            LinearLayout(this).apply {
+        // The buttons sit right next to their words, and the words line up down the list
+        val badgeW = parsed.maxOf { badgeWidth(it.second) }
+        parsed.forEachIndexed { i, (what, parts) ->
+            val own = badgeWidth(parts)
+            rows.addView(LinearLayout(this).apply {
                 rowCells += this
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
-                minimumHeight = px(when {
-                    tightRows >= 2 -> GRID_ROW_TIGHT_DP
-                    short || tightRows == 1 -> GRID_ROW_SHORT_DP
-                    wide -> GRID_ROW_HEIGHT_DP
-                    else -> ROW_HEIGHT_DP
-                })
-                addView(BadgeLineView(context, parts, settings.buttonStyle, Design.TYPE_CAPTION,
-                    SettingsStyle.textSecondary, badgeScale = badgeScale, gapBadgeToBadge = BADGE_GAP, gapBadgeToText = TEXT_GAP),
-                    LinearLayout.LayoutParams(column, ViewGroup.LayoutParams.WRAP_CONTENT))
-                addView(TextView(context).apply {
-                    text = what
-                    textSize = Design.TYPE_ROW
-                    setTextColor(SettingsStyle.textPrimary)
-                    setLineSpacing(0f, 1.15f)
-                    maxLines = 2
-                    ellipsize = android.text.TextUtils.TruncateAt.END
-                    rowTexts += this
-                }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
-            }
+                minimumHeight = px(rowHeightDp)
+                // The marker, then the buttons, then the words. The marker hangs in the margin, a fixed step
+                // before its own buttons, so the buttons and words still line up with the title
+                addView(rowMarker(parts).apply { alpha = 0f })
+                addView(badgeLine(parts), LinearLayout.LayoutParams(own, ViewGroup.LayoutParams.WRAP_CONTENT))
+                addView(rowLabel(what).apply { setTextColor(SettingsStyle.textSecondary) },
+                    LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { marginStart = px(ROW_TEXT_GAP_DP) })
+            }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                if (i > 0) topMargin = px(ROW_GAP_DP)
+                marginStart = -markerReach() + (badgeW - own)
+            })
         }
-        // Across the top the grid needs room for the words beside each button group; on a narrow
-        // screen with wide groups (HOLD RT + two buttons) it falls back to one row under the other
-        val wordsWidth = resources.displayMetrics.widthPixels - 2 * px(Design.SPACE_XXL)
-        val gridCols = if (cells.size >= 5) 3 else 2
-        val cellRoom = (wordsWidth - (gridCols - 1) * px(Design.SPACE_XL)) / gridCols - column
-        if (!wide || cellRoom < px(MIN_ROW_TEXT_DP)) {
-            // One row under the other, like a list
-            cells.forEachIndexed { i, cell -> rows.addView(cell, lpMatchWrap(topMargin = if (i > 0) Design.SPACE_XS else 0f)) }
-            return
+        allowMarkerMargin()
+    }
+
+    private fun badgeLine(parts: List<HintPart>) = BadgeLineView(this, parts, settings.buttonStyle, Design.TYPE_CAPTION,
+        SettingsStyle.textSecondary, badgeScale = badgeScale, gapBadgeToBadge = BADGE_GAP, gapBadgeToText = TEXT_GAP)
+
+    private fun rowLabel(what: String) = TextView(this).apply {
+        typeface = SettingsStyle.regular
+        text = what
+        textSize = bodySp()
+        setTextColor(SettingsStyle.textPrimary)
+        setLineSpacing(0f, 1.15f)
+        maxLines = 2                     // a safety net only: TourTemplateTest wants every row on one line
+        ellipsize = android.text.TextUtils.TruncateAt.END
+        rowTexts += this
+    }
+
+    private fun badgeWidth(parts: List<HintPart>): Int {
+        val painter = BadgePainter(dp).apply { style = settings.buttonStyle; scale = badgeScale; gapBadgeToBadge = BADGE_GAP; gapBadgeToText = TEXT_GAP }
+        val joiner = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            typeface = SettingsStyle.regular             // as the badge line draws its words
+            textSize = android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_SP, Design.TYPE_CAPTION, resources.displayMetrics)
         }
-        // Across the top: a neat grid, two columns (three for five or more rows), read left to right
-        val cols = gridCols
-        cells.chunked(cols).forEachIndexed { line, group ->
-            rows.addView(LinearLayout(this).apply {
-                orientation = LinearLayout.HORIZONTAL
-                group.forEachIndexed { i, cell ->
-                    addView(cell, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply {
-                        if (i > 0) marginStart = px(Design.SPACE_XL)
-                    })
-                }
-                repeat(cols - group.size) { addView(View(context), LinearLayout.LayoutParams(0, 0, 1f).apply { marginStart = px(Design.SPACE_XL) }) }
-            }, lpMatchWrap(topMargin = if (line > 0) Design.SPACE_XS else 0f))
-        }
+        return painter.measureLine(parts, joiner).roundToInt()
     }
 
     /**
-     * Every row must be visible without scrolling: the controller can't reach what's below the edge.
-     * Side by side, the words may take at most [HEADER_SHARE] of the height, so the device and the
-     * keyboard always get the rest. On short screens or long pages the words shrink a step at a time
-     * until they fit. Measured once the screen has its real size (on the very first page it doesn't yet).
+     * THE CURRENT-ROW MARKER, one for the list (wide screens) and the caption (small screens): a short bar in your
+     * colour, as tall as the row's buttons, [MARKER_GAP_DP] before them, in the margin. In the list the row it
+     * marks is bright and the others step back to the quiet grey. No box, so it never reads as a button.
+     * TourMarkerTest checks it is drawn whole, centred on the buttons, the same step before them everywhere.
      */
+    private fun rowMarker(parts: List<HintPart>) = View(this).apply {
+        tag = MARKER_TAG
+        background = android.graphics.drawable.GradientDrawable().apply {
+            cornerRadius = px(MARKER_WIDTH_DP / 2f).toFloat()
+            setColor(markerColor(settings.accent, whatsNew))
+        }
+        layoutParams = LinearLayout.LayoutParams(px(MARKER_WIDTH_DP), badgeHeight(parts).roundToInt()).apply { marginEnd = px(MARKER_GAP_DP) }
+        importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+    }
+
+    /** How far the marker reaches out before the buttons: its width and its gap. */
+    private fun markerReach() = px(MARKER_WIDTH_DP) + px(MARKER_GAP_DP)
+
+    /** The marker sits in the screen's margin, outside the words' own edge: nothing on the way may cut it off. */
+    private fun allowMarkerMargin() {
+        var g: ViewGroup? = rows
+        val top = window.decorView as? ViewGroup
+        while (g != null && g !== top) { g.clipChildren = false; g.clipToPadding = false; g = g.parent as? ViewGroup }
+    }
+
+    private fun badgeHeight(parts: List<HintPart>): Float =
+        BadgePainter(dp).apply { style = settings.buttonStyle; scale = badgeScale; gapBadgeToBadge = BADGE_GAP; gapBadgeToText = TEXT_GAP }.lineHeight(parts)
+
+    // ---- The caption (small screens): one row at a time, the one the demo is acting out ----------------
+    private class Caption(val box: LinearLayout, val label: TextView, val pips: LinearLayout, val parts: List<List<HintPart>>, val words: List<String>, val marker: View)
+    private var caption: Caption? = null
+
+    private fun buildCaption(list: List<Pair<String, String>>) {
+        val parts = list.map { HintText.parse(it.second) }
+        val label = rowLabel(list[0].first).apply { maxLines = 2 }
+        val pips = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            if (list.size > 1) repeat(list.size) { addView(View(context).apply { background = pip(false) },
+                LinearLayout.LayoutParams(px(PIP_DP), px(PIP_DP)).apply { marginStart = if (it == 0) 0 else px(PIP_GAP_DP) }) }
+        }
+        // One line when every row fits beside its buttons and the markers; otherwise the markers sit under it
+        // and a long row may take a second line. Measured for every row, so the caption never changes height.
+        val room = (wordsWidthOverride ?: (if (header != null && columnRegular >= 0) wordsWidthFor(pages[page].demo) else null)
+            ?: if (words.width > 0) words.width - words.paddingLeft - words.paddingRight else resources.displayMetrics.widthPixels - 2 * px(Design.SPACE_XXL)).toFloat()
+        val paint = android.text.TextPaint(label.paint)
+        val pipsW = if (list.size > 1) px(Design.SPACE_M) + list.size * px(PIP_DP) + (list.size - 1) * px(PIP_GAP_DP) else 0
+        val widths = list.mapIndexed { i, (what, _) -> badgeWidth(parts[i]) + px(ROW_TEXT_GAP_DP) + paint.measureText(what) }
+        val inline = widths.all { it + pipsW <= room }
+        // The same marker as the list's, always on (the caption is the current row), hanging in the margin
+        val marker = rowMarker(parts[0])
+        val inner = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            addView(badgeLine(parts[0]))
+            addView(label, LinearLayout.LayoutParams(if (inline) ViewGroup.LayoutParams.WRAP_CONTENT else 0, ViewGroup.LayoutParams.WRAP_CONTENT, if (inline) 0f else 1f)
+                .apply { marginStart = px(ROW_TEXT_GAP_DP) })
+        }
+        val line = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            addView(marker)
+            addView(inner, LinearLayout.LayoutParams(if (inline) ViewGroup.LayoutParams.WRAP_CONTENT else 0, ViewGroup.LayoutParams.WRAP_CONTENT, if (inline) 0f else 1f))
+            if (inline) addView(pips, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { marginStart = px(Design.SPACE_M) })
+        }
+        val box = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            minimumHeight = px(rowHeightDp)
+            gravity = Gravity.CENTER_VERTICAL
+            addView(line, lpMatchWrap().apply { marginStart = -markerReach() })
+            if (!inline) addView(pips, lpMatchWrap(topMargin = Design.SPACE_XS))
+        }
+        // The tallest any row makes it, so the caption keeps one height on the page
+        val lineH = label.lineHeight
+        val twoLines = !inline && widths.any { it > room }
+        box.minimumHeight = maxOf(px(rowHeightDp), (if (twoLines) 2 * lineH else lineH) + (if (inline) 0 else px(Design.SPACE_XS) + px(PIP_DP)) + px(Design.SPACE_S))
+        rows.addView(box, lpMatchWrap())
+        caption = Caption(inner, label, pips, parts, list.map { it.first }, marker)
+        allowMarkerMargin()
+        setCaption(0)
+    }
+
+    private fun pip(on: Boolean) = android.graphics.drawable.GradientDrawable().apply {
+        shape = android.graphics.drawable.GradientDrawable.OVAL
+        setColor(if (on) settings.accent else Design.DOT_IDLE)
+    }
+
+    private fun setCaption(i: Int) {
+        val c = caption ?: return
+        c.box.removeViewAt(0)
+        c.box.addView(badgeLine(c.parts[i]), 0)
+        c.marker.layoutParams.height = badgeHeight(c.parts[i]).roundToInt()      // as tall as this row's buttons
+        c.marker.requestLayout()
+        c.label.text = c.words[i]
+        for (k in 0 until c.pips.childCount) c.pips.getChildAt(k).background = pip(k == i)
+    }
+
+    /** The demo is acting out row [i]: light it in the list, or bring it into the caption. */
+    private fun lightRow(i: Int) {
+        val moving = WhatsNew.motionAllowed()
+        caption?.let { c ->
+            if (!moving) { setCaption(i); return }
+            val lift = px(CAPTION_LIFT_DP).toFloat()
+            c.box.animate().cancel()
+            c.box.animate().alpha(0f).translationY(-lift).setDuration(Design.MOTION_FADE / 2).setInterpolator(Design.EASE_IN).withEndAction {
+                setCaption(i)
+                c.box.translationY = lift
+                c.box.animate().alpha(1f).translationY(0f).setDuration(Design.MOTION_FADE).setInterpolator(Design.EASE_OUT).start()
+            }.start()
+            return
+        }
+        // The marked row is bright, the others step back to the quiet grey
+        rowCells.forEachIndexed { k, cell ->
+            val on = k == i
+            val marker = cell.findViewWithTag<View>(MARKER_TAG) ?: return@forEachIndexed
+            val label = (cell as ViewGroup).getChildAt(cell.childCount - 1) as? TextView ?: return@forEachIndexed
+            val ink = if (on) SettingsStyle.textPrimary else SettingsStyle.textSecondary
+            marker.animate().cancel()
+            if (!moving) { marker.alpha = if (on) 1f else 0f; label.setTextColor(ink); return@forEachIndexed }
+            marker.animate().alpha(if (on) 1f else 0f).setDuration(Design.MOTION_FADE).setInterpolator(Design.ease(arriving = on)).start()
+            if (label.currentTextColor != ink) android.animation.ValueAnimator.ofArgb(label.currentTextColor, ink).apply {
+                duration = Design.MOTION_FADE; interpolator = Design.EASE_OUT
+                addUpdateListener { label.setTextColor(it.animatedValue as Int) }
+            }.start()
+        }
+    }
+
+    /** Follows the demo: which row it's acting out (see [RowLight]). Set up for each page's demo. */
+    private var rowLight: RowLight? = null
+    private val rowTick = object : Runnable {
+        override fun run() {
+            val r = rowLight ?: return
+            val now = android.os.SystemClock.uptimeMillis()
+            r.tick(now)
+            // A still demo (animations off, or the endless welcome showcase): the rows take turns on their own
+            if (captionMode && !loop.running && r.allShownThisRun()) r.newRun()
+            handler.postDelayed(this, RowLight.TICK_MS)
+        }
+    }
+
+    private fun startRowLight() {
+        // A page that plays in beats leads with its own rows: the rows were just rebuilt, so light the current one again
+        if (beatList.isNotEmpty()) { showBeat(beatList[beatAt].row); return }
+        handler.removeCallbacks(rowTick)
+        rowLight = null
+        demo.spotlight = emptySet()
+        picture.hinted = emptySet()
+        rowCells.forEach { it.findViewWithTag<View>(MARKER_TAG)?.alpha = 0f }
+        if (shownRows.isEmpty()) return
+        val full = shownRows.map { HintText.parse(it.second) }
+        // The buttons each row presses (not the ones it holds first): the keys on the keyboard they point at
+        val pressed = full.map { parts -> parts.filterIsInstance<HintPart.Badge>().filter { !it.held }.map { it.button }.toSet() }
+        val r = RowLight(full, takeTurns = captionMode) { i, byDemo ->
+            lightRow(i)
+            demo.spotlight = pressed[i]
+            // A row having its turn while the demo does something else: its buttons show on the device as
+            // pointed at (the ring alone), so the caption, the device and the keyboard always agree
+            picture.hinted = if (byDemo) emptySet() else rowLight?.keysOf(i).orEmpty()
+        }
+        rowLight = r
+        loop.onRun = { r.newRun() }
+        picture.onLitChanged = {
+            handler.post { rowLight?.lit(picture.litNow(), picture.holding, android.os.SystemClock.uptimeMillis()) }
+        }
+        r.start(android.os.SystemClock.uptimeMillis())
+        handler.postDelayed(rowTick, RowLight.TICK_MS)
+    }
+
+    /** For the checks: every row the caption or the light has shown on this page so far. */
+    internal fun rowsShownForCheck(): Set<Int> = rowLight?.everShown?.toSet().orEmpty() + beatsShown
+    /** For the checks: the beat playing now (its row), and every beat's length in this run (ms). */
+    internal val beatRowForCheck get() = beatList.getOrNull(beatAt)?.row ?: -1
+    internal val beatLensForCheck get() = beatLens.toList()
+    internal val beatsForCheck get() = beatList.map { it.row }
+    internal val rowCountForCheck get() = shownRows.size
+    internal val captionModeForCheck get() = captionMode
+    internal val minFitForCheck get() = if (resources.configuration.screenHeightDp < StagePanel.TINY_DP) StagePanel.MIN_FIT_TINY else StagePanel.MIN_FIT
+    /** For the checks: whether every row of the page fits the caption's one line. */
+    internal fun captionOverflow(): List<String> {
+        if (!captionMode) return emptyList()
+        val c = caption ?: return emptyList()
+        val room = words.width - words.paddingLeft - words.paddingRight
+        val paint = android.text.TextPaint(c.label.paint)
+        // Each row on at most two lines, in the room beside its buttons
+        return shownRows.mapIndexedNotNull { i, (what, buttons) ->
+            val beside = room - badgeWidth(HintText.parse(buttons)) - px(ROW_TEXT_GAP_DP)
+            val layout = android.text.StaticLayout.Builder.obtain(what, 0, what.length, paint, beside.coerceAtLeast(1)).build()
+            if (layout.lineCount > 2) what else null
+        }
+    }
+
+    private val rowHeightDp get() = if (short) GRID_ROW_SHORT_DP else if (split) SPLIT_ROW_DP else if (wide) GRID_ROW_HEIGHT_DP else ROW_HEIGHT_DP
+
+    /**
+     * Small screens: the device column beside the words. As wide as your device's shape needs at the height of the
+     * words ([DEVICE_HEADER_HEIGHT_DP]), never more than [DEVICE_HEADER_MAX_SHARE] of the width. The same on every
+     * page (the welcome and devices pages fit the other devices into it).
+     */
+    private fun deviceColumnPx(demoKind: Demo? = null): Int {
+        if (columnRegular >= 0) return if (demoKind == Demo.WANDER || demoKind == Demo.DEVICES) columnShowcase else columnRegular
+        val content = resources.displayMetrics.widthPixels - 2 * px(Design.SPACE_XL)
+        val most = content * DEVICE_HEADER_MAX_SHARE
+        // The pages that show every device (welcome, devices) take the widest column, so a controller or a wide
+        // handheld shows at a good size there too
+        if (demoKind == Demo.WANDER || demoKind == Demo.DEVICES) return most.roundToInt()
+        return minOf(px(DEVICE_HEADER_HEIGHT_DP) * picture.aspectRatio, most).roundToInt()
+    }
+
+    /** Small screens: the device column for this page, and the room it leaves the words. */
+    private fun fitDeviceColumn(demoKind: Demo) {
+        if (header == null || deviceBesideKeyboard) return
+        val lp = pictureCol.layoutParams as LinearLayout.LayoutParams
+        val w = deviceColumnPx(demoKind)
+        pictureCol.visibility = if (w > 0) View.VISIBLE else View.GONE
+        val gap = if (w > 0) px(DEVICE_HEADER_GAP_DP) else 0
+        if (lp.width != w || lp.marginStart != gap) { lp.width = w; lp.marginStart = gap; pictureCol.layoutParams = lp }
+    }
+
+    /** A screen too short for the keyboard to use its whole width: the device sits beside the keyboard instead. */
+    private var deviceBesideKeyboard = false
+    /** Small screens: the device columns, once measured ([reserveWords]); -1 before. */
+    private var columnRegular = -1
+    private var columnShowcase = -1
+    /** While measuring a page for another width than the words have now. */
+    private var wordsWidthOverride: Int? = null
+
+    /** Small screens: how wide the words are on a page with [demoKind] (the screen less the device beside them). */
+    private fun wordsWidthFor(demoKind: Demo): Int {
+        if (header == null) return words.width
+        val w = deviceColumnPx(demoKind)
+        return words.width - words.paddingLeft - words.paddingRight - (if (w > 0) w + px(DEVICE_HEADER_GAP_DP) else 0)
+    }
+
+    /** The words' height for this screen: the tallest page's, so the stage below never moves. */
+    private var wordsHeight = 0
+
     private fun fitWhenLaidOut() {
         val host = wordsScroll ?: (words.parent as View)
-        if (host.height > 0 && words.width > 0) { fitWords(); return }
+        if (wordsHeight > 0 || wordsScroll != null) return
+        if (host.width > 0 && words.width > 0 && words.height > 0) { reserveWords(); return }
         host.viewTreeObserver.addOnGlobalLayoutListener(object : android.view.ViewTreeObserver.OnGlobalLayoutListener {
             override fun onGlobalLayout() {
-                if (host.height <= 0 || words.width <= 0) return
+                if (host.width <= 0 || words.width <= 0 || words.height <= 0) return
                 host.viewTreeObserver.removeOnGlobalLayoutListener(this)
-                fitWords()
+                reserveWords()
             }
         })
     }
 
-    private fun wordsRoom(): Int {
-        wordsScroll?.let { return it.height - it.paddingTop - it.paddingBottom }
-        val screen = words.parent as View
-        val avail = screen.height - screen.paddingTop - screen.paddingBottom - dots.height - controlBar.height
-        // The keyboard window keeps at least [StagePanel.MIN_FIT] of its size: the words give way first
-        val row = stageRow
-        val stageNeed = panel.heightAt(StagePanel.MIN_FIT) + (row?.paddingTop ?: 0) + (row?.paddingBottom ?: 0)
-        return maxOf((avail * MIN_HEADER_SHARE).roundToInt(), minOf((avail * HEADER_SHARE).roundToInt(), avail - stageNeed))
+    /**
+     * Measures every page's words at this screen's width, once. Split: if any page's button list doesn't fit
+     * the words column, every page shows its rows as the caption instead (one rule per screen, so pages never
+     * differ). Stacked: the words keep the room of the tallest page, so the stage never moves.
+     */
+    private fun reserveWords() {
+        val now = page
+        if (split) {
+            val room = words.height - words.paddingTop - words.paddingBottom
+            val tooTall = pages.any { p ->
+                title.text = p.title; body.text = p.body; buildRows(p.rows)
+                rowsPane.visibility = if (rows.childCount == 0) View.GONE else View.VISIBLE
+                // a row on two lines doesn't fit the list either
+                if (rowTexts.any { r -> r.paint.measureText(r.text.toString()) > rowRoom() }) return@any true
+                words.measure(View.MeasureSpec.makeMeasureSpec(words.width, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED))
+                words.measuredHeight - words.paddingTop > room
+            }
+            splitCaption = tooTall
+            reserveDebug = "room $room at height ${words.height}, caption $tooTall"
+            wordsHeight = words.height
+            val p = pages[now]
+            title.text = p.title; body.text = p.body; buildRows(p.rows)
+            rowsPane.visibility = if (rows.childCount == 0) View.GONE else View.VISIBLE
+            startRowLight()
+            return
+        }
+        // How tall page [p]'s words are in [width], and whether its title and sentence keep to their lines (beside the
+        // device the sentence may take three shorter lines; the comfortable line length is 45 to 75 letters)
+        fun measure(p: Page, width: Int, captionRoom: Int = width): Pair<Int, Boolean> {
+            wordsWidthOverride = captionRoom
+            title.text = p.title; body.text = p.body; buildRows(p.rows)
+            rowsPane.visibility = if (rows.childCount == 0) View.GONE else View.VISIBLE
+            words.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED))
+            wordsWidthOverride = null
+            // (a page without button rows has the caption's room for its sentence too)
+            val tidy = (title.layout?.lineCount ?: 1) <= titleLinesAllowed &&
+                (body.layout?.lineCount ?: 1) <= bodyLinesAllowed + (if (header != null && p.rows.isEmpty()) 1 else 0)
+            return words.measuredHeight to tidy
+        }
+        var tallest = 0
+        val h = header
+        if (h != null) {
+            // Small screens: the words keep the height they'd have across the whole width, so the keyboard keeps its
+            // room. Beside them the device gets the widest column (up to what its shape wants) that adds no line to any
+            // page, so the keyboard gets the screen's width and loses nothing in height
+            val full = words.width - words.paddingLeft - words.paddingRight
+            // Page [p] with a device column [col] wide beside its sentence and caption
+            fun measureWith(p: Page, col: Int): Pair<Int, Boolean> {
+                val lp = pictureCol.layoutParams as LinearLayout.LayoutParams
+                lp.width = col; lp.marginStart = if (col > 0) px(DEVICE_HEADER_GAP_DP) else 0
+                pictureCol.visibility = if (col > 0) View.VISIBLE else View.GONE
+                return measure(p, words.width, full - (if (col > 0) col + px(DEVICE_HEADER_GAP_DP) else 0))
+            }
+            tallest = pages.maxOf { measureWith(it, 0).first }
+            // The words may grow into the keyboard's height while the keyboard keeps [DEVICE_HEADER_KEEP_FIT] (letters about
+            // 12 dp): the device beside the words is worth a line, never the keyboard's legibility
+            val row = stageRow
+            val screen = words.parent as View
+            val avail = screen.height - screen.paddingTop - screen.paddingBottom - dots.height - controlBar.height
+            val keyboardNeeds = panel.heightAt(minOf(panel.fitForWidth(full), DEVICE_HEADER_KEEP_FIT)) + (row?.paddingTop ?: 0) + (row?.paddingBottom ?: 0)
+            val limit = maxOf(tallest, avail - keyboardNeeds)
+            // A screen so short that the keyboard can't use the whole width anyway: the spare width is beside the
+            // keyboard, so the device goes there and the words keep the whole width
+            val stageH = avail - tallest - (row?.paddingTop ?: 0) - (row?.paddingBottom ?: 0)
+            val spare = full - panel.widthAt(minOf(panel.fitForWidth(full), panel.fitForHeight(stageH))) - px(DEVICE_HEADER_GAP_DP)
+            if (panel.fitForHeight(stageH) < panel.fitForWidth(full) && spare >= px(DEVICE_HEADER_MIN_DP) && row != null) {
+                deviceBesideKeyboard = true
+                (pictureCol.parent as? ViewGroup)?.removeView(pictureCol)
+                row.addView(pictureCol, 0, LinearLayout.LayoutParams(spare, ViewGroup.LayoutParams.MATCH_PARENT).apply { marginEnd = px(DEVICE_HEADER_GAP_DP) })
+                pictureCol.visibility = View.VISIBLE
+                columnRegular = 0; columnShowcase = 0
+                pages.forEachIndexed { i, p -> measuredPages[i] = measure(p, words.width, full).first }
+                tallest = measuredPages.values.max()
+                reserveDebug = "device beside the keyboard, $spare px"
+            } else {
+            fun widest(start: Int, group: List<Page>): Int {
+                var w = maxOf(start, px(DEVICE_HEADER_MIN_DP))
+                while (w >= px(DEVICE_HEADER_MIN_DP)) {
+                    if (group.all { p -> measureWith(p, w).let { (height, tidy) -> height <= limit && tidy } }) return w
+                    w -= px(Design.SPACE_XS)
+                }
+                return 0                                   // no room at all: the words come first, the device steps out
+            }
+            val showcase = pages.filter { it.demo == Demo.WANDER || it.demo == Demo.DEVICES }
+            // What each column would like (asked before either is set: once set, deviceColumnPx answers with them)
+            val wantRegular = deviceColumnPx(null)
+            val wantShowcase = deviceColumnPx(Demo.WANDER)
+            columnRegular = widest(wantRegular, pages - showcase.toSet())
+            columnShowcase = if (showcase.isEmpty()) 0 else maxOf(columnRegular, widest(wantShowcase, showcase))
+            pages.forEachIndexed { i, p -> measuredPages[i] = measureWith(p, deviceColumnPx(p.demo)).first }
+            tallest = measuredPages.values.max()
+            fitDeviceColumn(pages[now].demo)
+            }
+        } else pages.forEachIndexed { i, p ->
+            val (height, _) = measure(p, words.width)
+            tallest = maxOf(tallest, height)
+            measuredPages[i] = height
+        }
+        val p = pages[now]
+        title.text = p.title; body.text = p.body; buildRows(p.rows)
+        rowsPane.visibility = if (rows.childCount == 0) View.GONE else View.VISIBLE
+        wordsHeight = tallest
+        (words.layoutParams as LinearLayout.LayoutParams).height = tallest
+        words.requestLayout()
+        startRowLight()
     }
 
-    private fun fitWords() {
-        if (tightRows > 0) { tightRows = 0; buildRows(shownRows) }
-        applyTextScale(1f)
-        body.visibility = View.VISIBLE
-        var scale = 1f
-        fun fits(): Boolean {
-            val room = wordsRoom()
-            if (room <= 0 || words.width <= 0) return true
-            words.measure(View.MeasureSpec.makeMeasureSpec(words.width, View.MeasureSpec.EXACTLY),
-                View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED))
-            return words.measuredHeight <= room
-        }
-        repeat(FIT_STEPS) { step ->
-            if (fits()) return
-            // Halfway, before the words get really small: the rows close up and the badges take
-            // the short screens' size, which costs less than smaller words
-            if (step == TIGHTEN_AT_STEP && wide && !short && rowCells.isNotEmpty()) {
-                tightRows = 1
-                buildRows(shownRows)
-                applyTextScale(scale)
-                if (fits()) return
-            }
-            scale -= FIT_STEP
-            applyTextScale(scale)
-        }
-        if (fits()) return
-        if (!wide || rows.childCount == 0) return
-        // Still too much: the rows say the same as the text above them, so the text steps aside
-        // and the keyboard keeps its room
-        body.visibility = View.GONE
-        applyTextScale(1f - FIT_STEP)
-        if (fits()) return
-        // And last, the rows pack as tight as they go (a page of HOLD capsules on a small 4:3 screen)
-        tightRows = 2
-        buildRows(shownRows)
-        applyTextScale(1f - FIT_STEP)
-        if (fits()) return
-        applyTextScale(1f - FIT_STEPS * FIT_STEP)
+    /** For the checks: where the keyboard window sits on screen, and how big its keys are drawn (1 = full size). */
+    internal fun stageForCheck(): Pair<android.graphics.Rect, Float> {
+        val loc = IntArray(2); panel.getLocationInWindow(loc)
+        return android.graphics.Rect(loc[0], loc[1], loc[0] + panel.width, loc[1] + panel.height) to demo.previewFit
     }
+
+    /** For the checks: the screen's height for words and stage together, and what the stage needs at [StagePanel.MIN_FIT] (px). */
+    internal fun budgetForCheck(): Pair<Int, Int> {
+        val screen = words.parent as View
+        val avail = screen.height - screen.paddingTop - screen.paddingBottom - dots.height - controlBar.height
+        val row = stageRow
+        return avail to (panel.heightAt(StagePanel.MIN_FIT) + (row?.paddingTop ?: 0) + (row?.paddingBottom ?: 0))
+    }
+
+    /** For the checks: the pieces whose placement TourMarkerTest measures. */
+    internal class LayoutCheck(val title: View, val words: View, val header: View?, val pictureCol: View, val picture: View, val side: Int)
+    /** For the checks: the device columns beside the words (small screens), and what the showcase column wanted. */
+    internal fun columnsForCheck() = Triple(columnRegular, columnShowcase, if (header != null && !deviceBesideKeyboard) run {
+        val content = resources.displayMetrics.widthPixels - 2 * px(Design.SPACE_XL); (content * DEVICE_HEADER_MAX_SHARE).roundToInt() } else 0)
+    internal fun layoutForCheck() = LayoutCheck(title, words, header, pictureCol, picture, px(if (short) Design.SPACE_XL else Design.SPACE_XXL))
+
+    /** For the checks: each page's own words height on this screen. */
+    internal val measuredPages = mutableMapOf<Int, Int>()
+    /** For the checks: the room every page's words get, and whether any row needed a second line. */
+    internal val wordsHeightForCheck get() = wordsHeight
+    internal fun rowsWrapped(): List<String> = rowTexts.filter { it.lineCount > 1 || (it.layout?.getEllipsisCount(0) ?: 0) > 0 }.map { it.text.toString() }
+    /** The template's limits: split screens have a narrower column, so the title may take two lines and the sentence four. */
+    internal val titleLinesAllowed get() = if (split) 2 else 1
+    internal val bodyLinesAllowed get() = if (split) 4 else if (header != null) 3 else 2   // beside the device the lines are shorter
+    internal fun titleWrapped() = title.lineCount > titleLinesAllowed
+    internal fun titleLines() = title.lineCount
+    internal fun bodyLines() = body.lineCount
 
     /**
      * For the checks: how far the device or the keyboard reaches past the room they're given, in pixels
      * (0 when everything shows). Side by side only; in portrait the words scroll instead.
      */
     internal fun stageOverflowPx(): Int {
-        val row = stageRow ?: return 0
-        val top = row.paddingTop
-        val bottom = row.height - row.paddingBottom
+        val box = (splitRight ?: stageRow ?: return 0)
+        fun win(v: View): android.graphics.Rect { val l = IntArray(2); v.getLocationInWindow(l); return android.graphics.Rect(l[0], l[1], l[0] + v.width, l[1] + v.height) }
+        val b = win(box).apply { top += box.paddingTop; bottom -= box.paddingBottom }
         var worst = 0
-        listOf(stage, pictureCol).forEach { col ->
-            if (col.visibility != View.VISIBLE) return@forEach
-            for (i in 0 until col.childCount) {
-                val c = col.getChildAt(i)
-                if (c.visibility == View.GONE) continue
-                worst = maxOf(worst, top - (col.top + c.top), (col.top + c.bottom) - bottom)
-            }
+        for (v in listOf(picture, panel)) {
+            if (v.visibility != View.VISIBLE || (v === picture && pictureCol.parent !== box)) continue   // beside the words: checked there
+            val r = win(v)
+            worst = maxOf(worst, b.top - r.top, r.bottom - b.bottom)
         }
+        // Split: the words must fit their column too
+        if (split) worst = maxOf(worst, wordsOverflowPx())
         return worst
     }
 
-    // Across the top (side by side) the words are a touch smaller, so the device and keyboard keep their room
+    internal fun wordsOverflowPx(): Int = if (!split) 0 else words.paddingTop + wordsContentHeight() - words.height
+
+    /** For the checks: which part runs past its room ("words" or "stage"). */
+    internal fun overflowWhat(): String {
+        val w = wordsOverflowPx()
+        return if (w > 0) "the words, by $w px" else "the device or keyboard"
+    }
+
+    private fun wordsContentHeight(): Int {
+        words.measure(View.MeasureSpec.makeMeasureSpec(words.width, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED))
+        return words.measuredHeight - words.paddingTop
+    }
+
+    // One size per screen for each part of the template (never shrunk to fit: the template makes room)
     private val titleSize get() = if (short) SHORT_TITLE_SP else if (wide) HEADER_TITLE_SP else Design.TYPE_DISPLAY
-    private val textSize get() = if (short) SHORT_TEXT_SP else if (wide) HEADER_TEXT_SP else Design.TYPE_ROW
-    private val badgeScale get() = when {
-        tightRows >= 2 -> BADGE_SCALE_TIGHT
-        short || tightRows == 1 -> BADGE_SCALE_SHORT
-        else -> BADGE_SCALE
-    }
+    private fun bodySp() = if (short) SHORT_TEXT_SP else if (wide) HEADER_TEXT_SP else Design.TYPE_ROW
+    private val badgeScale get() = if (short) BADGE_SCALE_SHORT else BADGE_SCALE
 
-    private fun applyTextScale(f: Float) {
-        title.textSize = titleSize * f
-        body.textSize = textSize * f
-        rowTexts.forEach { it.textSize = textSize * f }
-    }
-
-    /** Progress: one dot per page, the current one a wider accent pill. */
+    /** Progress: one dot per page, the current one a wider accent pill. On short screens they sit in the control bar. */
     private fun refreshDots() {
+        if (short) { dots.visibility = View.GONE; controlBar.dots = pages.size to page; return }
         dots.removeAllViews()
         pages.indices.forEach { i ->
             dots.addView(View(this).apply {
                 background = android.graphics.drawable.GradientDrawable().apply {
                     cornerRadius = Design.RADIUS_PILL
-                    setColor(if (i == page) SettingsStyle.accent else SettingsStyle.track)
+                    setColor(if (i == page) SettingsStyle.accent else Design.DOT_IDLE)
                 }
-            }, LinearLayout.LayoutParams(if (i == page) px(20f) else px(6f), px(6f)).apply {
-                marginStart = px(3f)
-                marginEnd = px(3f)
+            }, LinearLayout.LayoutParams(if (i == page) px(24f) else px(8f), px(8f)).apply {
+                marginStart = px(Design.SPACE_XS / 2)
+                marginEnd = px(Design.SPACE_XS / 2)
             })
         }
     }
@@ -876,6 +1272,8 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
 
     private fun startDemo(demoKind: Demo) {
         handler.removeCallbacksAndMessages(null)
+        beatList = emptyList(); beatHeld = false; beatsShown.clear()
+        demo.animate().cancel(); demo.translationY = 0f; demo.alpha = 1f
         feedback.update(settings)            // your own sound pack again (the sound showcase borrows others)
         field.tag = null
         picture.animate().cancel()
@@ -890,6 +1288,7 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
         val base = settings.copy(showHints = true, comboHints = true).forControls(controls).copy(sizeLevel = 0,
             numberRow = demoKind == Demo.NUMBER_ROW, wordSuggestions = true, holdAccents = true)
         demo.applySettings(base)
+        demoBase = base
         demo.setSuggestions(emptyList(), "")
         wordPrefix = ""
         picture.held = emptySet()
@@ -911,17 +1310,13 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
         // Android's "Remove animations" is on: one still moment per page, nothing moving
         val moving = WhatsNew.motionAllowed()
         prepareStage(demoKind)
+        fitDeviceColumn(demoKind)
         // The loop bar shows on every demo that plays in a loop. The welcome showcase never ends, so it
         // has none, and its devices get that room to be bigger. Elsewhere INVISIBLE when still, so the
         // picture keeps its size.
-        loopBar.accent = settings.accent
-        loopBar.restart()
-        loopBar.visibility = when {
-            demoKind == Demo.WANDER -> View.GONE
-            moving -> View.VISIBLE
-            else -> View.INVISIBLE
-        }
-        picture.roomBelowPx = if (demoKind == Demo.WANDER) 0 else loopBarRoom
+        loop.restart()
+        panel.loopAccent = settings.accent
+        panel.loopShown = demoKind != Demo.WANDER && moving
         picture.requestLayout()
         val path = listOf(1 to 0, 1 to 0, 0 to -1, -1 to 0, 0 to 1, 1 to 0)
         var step = 0
@@ -937,12 +1332,12 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
             // Steps keep to a fixed timetable (not "this long after the last one ran"), so a run
             // takes exactly as long as the loop bar was told, however busy the screen is
             var due = android.os.SystemClock.uptimeMillis()
-            firstRun?.let { loopBar.begin(it, due) }
+            firstRun?.let { loop.begin(it, due) }
             due += ms
             var first = true
             val tick = object : Runnable {
                 override fun run() {
-                    if (!first) runStart?.invoke()?.let { loopBar.begin(it, due) }
+                    if (!first) runStart?.invoke()?.let { loop.begin(it, due) }
                     first = false
                     due += action() ?: ms
                     handler.postAtTime(this, due)
@@ -966,7 +1361,9 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
                 }
             }
         }
-        when (demoKind) {
+        // Pages with button rows play one row at a time (see [Beat]); the others loop on their own
+        val beats = beatsFor(demoKind)
+        if (beats != null) runBeats(beats, moving) else when (demoKind) {
             Demo.WANDER -> {
                 // The highlight wanders while the picture shows every device Inlay knows, yours first
                 val all = listOf(DeviceKind.CONTROLLER to true, DeviceKind.WIDE to true, DeviceKind.VERTICAL to false,
@@ -981,97 +1378,6 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
                         showcase(kind, sticks)
                     }
                     null
-                }
-            }
-            Demo.TYPE -> {
-                // Types a real sentence key by key, pauses, clears, and goes again
-                val sentence = texts.search
-                if (!moving) showText(sentence)
-                typeLoop(sentence)
-            }
-            Demo.SHIFT_AND_SYMBOLS -> {
-                showText(texts.shiftLine)
-                // One button per step, so the picture only lights the one that's acting
-                every(1100, 1100L + 5 * 1100L, { if (step % 5 == 0) 5 * 1100L else null }) {
-                    when (step++ % 5) {
-                        0 -> demo.cycleShift()           // RT: shift
-                        1 -> demo.cycleShift()           // RT: caps lock
-                        2 -> demo.cycleShift()           // RT: off
-                        3 -> demo.toggleLayer()          // LT: symbols
-                        else -> demo.toggleLayer()       // LT: back to letters
-                    }; null
-                }
-            }
-            Demo.HOLD_RT -> {
-                // RT held: the tips show, and the cursor jumps a word at a time
-                val wordsOnScreen = wordsOf(texts.jump)
-                demo.setHeldShift(true)
-                showText("", "", wordsOnScreen.joinToString(""))
-                var at = 0
-                val run = 900L * wordsOnScreen.size + PAUSE_MS
-                every(900, run, { if (at == wordsOnScreen.size) run else null }) {
-                    at = (at + 1) % (wordsOnScreen.size + 1)
-                    if (at > 0) picture.flash("RB", 320)
-                    showText(wordsOnScreen.take(at).joinToString(""), "", wordsOnScreen.drop(at).joinToString(""))
-                    if (at == wordsOnScreen.size) PAUSE_MS else null
-                }
-            }
-            Demo.EDIT -> {
-                // The selection grows a word at a time, then the highlight goes up to Copy and presses it,
-                // then over to the clipboard clock, which opens with the copy on top
-                val wordsOnScreen = wordsOf(texts.copy)
-                val all = wordsOnScreen.joinToString("")
-                val earlier = listOf(texts.stick, "github.com/dakingeman/inlay", texts.search)
-                showText("", "", all)
-                if (!moving) {
-                    showText("", wordsOnScreen.take(3).joinToString(""), wordsOnScreen.drop(3).joinToString(""))
-                    demo.setSelecting(true, wordsOnScreen.take(3).joinToString("").length)
-                }
-                var at = 0
-                var phase = 0
-                // One run: the selection grows, up to Copy, over to the clock, the clipboard stays open, back
-                fun run(): Long {
-                    val (toCopy, toClock) = demo.dryRun {
-                        demo.setSelecting(true, all.length)
-                        var a = 0; while (demo.stepToTool(Tool.COPY) == false && a < MAX_WALK) a++
-                        demo.setSelecting(false, 0)
-                        var b = 0; while (demo.stepToTool(Tool.HISTORY) == false && b < MAX_WALK) b++
-                        a to b
-                    }
-                    return 800L * (wordsOnScreen.size - 1) + 900L + toCopy * TOOL_STEP_MS + 700L + toClock * TOOL_STEP_MS + CLIPS_MS + 900L
-                }
-                every(800, if (moving) 800L + run() else null, { if (phase == 0 && at == 0) run() else null }) {
-                    when (phase) {
-                        0 -> {                                   // grow the selection
-                            at++
-                            picture.flash(if (at == 1) "SELECT" else "RB", 320)
-                            showText("", wordsOnScreen.take(at).joinToString(""), wordsOnScreen.drop(at).joinToString(""))
-                            demo.setSelecting(true, wordsOnScreen.take(at).joinToString("").length)
-                            if (at == wordsOnScreen.size) { phase = 1; 900L } else null
-                        }
-                        1 -> when (demo.stepToTool(Tool.COPY)) { // up to Copy, then press it
-                            false -> TOOL_STEP_MS
-                            else -> {
-                                demo.pressSelected()
-                                demo.setSelecting(false, 0)
-                                showText(all)
-                                demo.setClips(listOf(all) + earlier)
-                                phase = 2; 700L
-                            }
-                        }
-                        2 -> when (demo.stepToTool(Tool.HISTORY)) { // over to the clock: the clipboard opens
-                            false -> TOOL_STEP_MS
-                            else -> { demo.pressSelected(); phase = 3; CLIPS_MS }
-                        }
-                        else -> {                                // back to the letters and start over
-                            at = 0; phase = 0
-                            demo.closeClips(focusOnHistoryButton = false)
-                            demo.setClips(emptyList())
-                            demo.focusKey(KeyType.SPACE)
-                            showText("", "", all)
-                            900L
-                        }
-                    }
                 }
             }
             Demo.DEVICES -> {
@@ -1090,10 +1396,6 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
                     null
                 }
             }
-            Demo.WORDS -> runSteps(wordSteps(), moving, still = 4)
-            Demo.ACCENTS -> runSteps(accentSteps(), moving, still = 2)
-            Demo.ACCENTS_AND_WORDS -> runSteps(accentSteps() + wordSteps(), moving, still = 2)
-            Demo.SHIFT_REMOTE -> runSteps(shiftSteps(), moving, still = 9)
             Demo.SMART -> {
                 // Types a short line the lazy way; the capital, the lone i and the stray space fix themselves
                 val sentence = SMART_LINE
@@ -1124,10 +1426,388 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
                         buttonStyle = styles[(settings.buttonStyle.ordinal + k) % styles.size])
                     demo.applySettings(shown)
                     picture.accent = shown.accent
-                    loopBar.accent = shown.accent
+                    panel.loopAccent = shown.accent
                     picture.show(controls.kind, shown.buttonStyle, controls.sticks)
                     null
                 }
+            }
+            else -> Unit                                     // played as beats, above
+        }
+        startRowLight()
+    }
+
+    // ---- Beats: the words lead, the demo follows ---------------------------
+    /*
+     * Every page with button rows plays as beats, one per row, in the rows' order. In a beat the row's words show
+     * (the caption on small screens, the lit row in the list on wide ones), the device rings the row's buttons
+     * and the keyboard tints its key. After a short lead (time to read) the demo acts out just that row; the
+     * typing and the lit buttons can be quick, the words never are. Then the result stays a moment.
+     *
+     * How long a beat lasts ([beatMs]): the lead, the acting and the tail, but never less than [BEAT_MIN_MS],
+     * nor less than it takes to read the row and look over at the device and the keyboard. Simple rows (Space)
+     * take 3 s, rows with typing 5 to 7 s; a page's run stays around 15 to 25 s. TourBeatTest checks every page
+     * on every device: one beat per row, each beat acts out its row's buttons, and the lengths stay in range.
+     *
+     * D-pad up and down step through the rows and stay on the one you picked; the loop line rests until the page
+     * changes. With "Remove animations" on, the rows still take turns, each showing its result at once.
+     */
+
+    /** A piece of a beat: [ms] walks it through without showing anything and says how long it takes; [play] does it. */
+    private class Act(val ms: () -> Long, val play: () -> (() -> Long?))
+
+    /**
+     * One row's turn. [setup] puts the text box (and anything a jump straight to this row needs) where the beat
+     * starts; in the normal order that's where the previous beat left it, so nothing visibly jumps.
+     */
+    private class Beat(val row: Int, val setup: () -> Unit, val acts: List<Act>)
+
+    /** Does [real] (and [both], which also runs in the dry walk-through: moves that change where the highlight is), then waits [ms]. */
+    private fun act(ms: Long, both: (() -> Unit)? = null, real: () -> Unit = {}) = Act({ both?.invoke(); ms }) {
+        var done = false
+        val p: () -> Long? = { if (done) null else { done = true; both?.invoke(); real(); ms } }
+        p
+    }
+
+    /** D-pad steps ([stepMs] each) until [step] says it's there, then a press if [press], then [wait]. */
+    private fun walk(press: Boolean, wait: Long, stepMs: Long = STEP_MS, step: () -> Boolean?) = Act({
+        var n = 0
+        while (n < MAX_WALK && step() == false) n++
+        if (press) demo.pressSelected()
+        n * stepMs + wait
+    }) {
+        var walked = 0
+        var arrived = false
+        val p: () -> Long? = {
+            if (arrived) null else when (if (walked >= MAX_WALK) null else step()) {
+                false -> { walked++; stepMs }
+                else -> { arrived = true; if (press) demo.pressSelected(); wait }
+            }
+        }
+        p
+    }
+
+    /** Types [text] key by key. */
+    private fun typeActs(text: String, after: (Int) -> Unit = {}) = text.mapIndexed { i, ch ->
+        listOf(walk(press = true, wait = PRESS_MS) { demo.stepTowards(ch.toString()) }, act(0L) { after(i) })
+    }.flatten()
+
+    private fun rowWords(row: Int) = shownRows.getOrNull(row)?.first.orEmpty()
+    private fun leadMs(row: Int) = (BEAT_LEAD_BASE_MS + rowWords(row).length * BEAT_LEAD_PER_LETTER_MS).coerceIn(BEAT_LEAD_MIN_MS, BEAT_LEAD_MAX_MS)
+
+    /** How long beat [b] lasts (see the top of this section). Inside a dry run, so the walks are counted from where the last beat left the highlight. */
+    private fun beatMs(b: Beat): Long {
+        val acting = b.acts.sumOf { it.ms() }
+        val read = BEAT_LOOK_MS + rowWords(b.row).length * 1000L / BEAT_CPS
+        return maxOf(BEAT_MIN_MS, read, leadMs(b.row) + acting + BEAT_TAIL_MS)
+    }
+
+    private val beatToken = Any()
+    private var beatList: List<Beat> = emptyList()
+    private var beatLens: LongArray = LongArray(0)
+    private var beatAt = 0
+    /** Stepped to by hand (D-pad up or down): the beat stays until the next step or page. */
+    private var beatHeld = false
+    /** The page has just opened: the first beat waits [PAGE_READ_MS] more, for the title and the words above. */
+    private var beatFirstRun = true
+    private val beatsShown = mutableSetOf<Int>()
+
+    private fun runBeats(list: List<Beat>, moving: Boolean) {
+        handler.removeCallbacks(rowTick)
+        rowLight = null; loop.onRun = null; picture.onLitChanged = null
+        beatList = list; beatAt = 0; beatHeld = false; beatFirstRun = true
+        if (list.isEmpty()) return
+        playBeat(0, android.os.SystemClock.uptimeMillis(), moving)
+    }
+
+    private fun playBeat(i: Int, start: Long, moving: Boolean) {
+        handler.removeCallbacksAndMessages(beatToken)
+        val b = beatList[i]
+        beatAt = i
+        val extra = if (i == 0 && beatFirstRun && !beatHeld) PAGE_READ_MS else 0L
+        if (i == 0 && !beatHeld || beatLens.size != beatList.size) {
+            // A run begins: every beat's length, walked through from where the highlight is now, so the loop
+            // line knows exactly how long this run takes
+            beatLens = demo.dryRun { beatList.map { beatMs(it) } }.toLongArray()
+            if (moving && !beatHeld) loop.begin(beatLens.sum() + extra, start)
+        }
+        b.setup()
+        showBeat(b.row)
+        if (i == 0) beatFirstRun = false
+        if (!moving) {
+            // Animations off: the row's result shows at once
+            b.acts.forEach { a -> val p = a.play(); while (p() != null) Unit }
+        } else {
+            var due = start + leadMs(b.row) + extra
+            var k = 0
+            var player: (() -> Long?)? = null
+            val step = object : Runnable {
+                override fun run() {
+                    while (k < b.acts.size) {
+                        val p = player ?: b.acts[k].play().also { player = it }
+                        val wait = p()
+                        if (wait != null) { due += wait; handler.postAtTime(this, beatToken, due); return }
+                        player = null; k++
+                    }
+                }
+            }
+            handler.postAtTime(step, beatToken, due)
+        }
+        if (!beatHeld) {
+            val end = start + beatLens[i] + extra
+            handler.postAtTime({ playBeat((i + 1) % beatList.size, end, moving) }, beatToken, end)
+        }
+    }
+
+    /** Row [row] has its turn: the words, the device's ring and the keyboard's tint all point at it. */
+    private fun showBeat(row: Int) {
+        lightRow(row)
+        beatsShown += row
+        val parts = HintText.parse(shownRows.getOrNull(row)?.second ?: return)
+        demo.spotlight = parts.filterIsInstance<HintPart.Badge>().filter { !it.held }.map { it.button }.toSet()
+        picture.hinted = RowLight(listOf(parts)) { _, _ -> }.keysOf(0)
+    }
+
+    /** Everything back to rest (a jump between rows): no buttons held, nothing open, the keyboard in place. */
+    private fun calmDemo() {
+        demo.animate().cancel(); demo.translationY = 0f; demo.alpha = 1f
+        demo.resetAccents()
+        demo.setHeldShift(false)
+        demo.resetShift(); demo.resetLayer()
+        demo.setSelecting(false, 0)
+        demo.closeClips(focusOnHistoryButton = false)
+        demo.applySettings(demoBase)
+        picture.held = emptySet(); picture.holding = emptySet()
+    }
+
+    /** D-pad up and down step through the rows and stay on the one you pick (the loop line rests). */
+    private fun stepBeat(dir: Int): Boolean {
+        if (beatList.size < 2 || wordsScroll != null) return false
+        beatHeld = true
+        loop.restart()
+        calmDemo()
+        playBeat((beatAt + dir + beatList.size) % beatList.size, android.os.SystemClock.uptimeMillis(), WhatsNew.motionAllowed())
+        return true
+    }
+
+    private fun setTyped(text: String) { typed = text; showText(text) }
+
+    /** The beats for this page's rows (each page's rows are known, so every row has its beat; TourBeatTest checks). */
+    private fun beatsFor(kind: Demo): List<Beat>? = when (kind) {
+        Demo.TYPE -> typeBeats()
+        Demo.SHIFT_AND_SYMBOLS -> shiftBeats()
+        Demo.SHIFT_REMOTE -> shiftRemoteBeats()
+        Demo.HOLD_RT -> holdRtBeats()
+        Demo.ACCENTS_AND_WORDS -> listOf(accentBeat(0), plainLetterBeat(1), wordBeat(2, another = false))
+        Demo.ACCENTS -> accentPageBeats()
+        Demo.WORDS -> shownRows.indices.map { wordBeat(it, another = it > 0) }
+        Demo.EDIT -> editBeats()
+        else -> null
+    }?.takeIf { shownRows.isNotEmpty() }
+
+    /** Which buttons row [i] presses, as the device picture names them (A, X, Dup…). */
+    private fun keysOfRow(i: Int) = RowLight(listOf(HintText.parse(shownRows[i].second))) { _, _ -> }.keysOf(0)
+
+    /** Move and type: Type adds the second word, Delete takes it away (a tap or two, then held), Space, Enter sends it, Close. */
+    private fun typeBeats(): List<Beat> {
+        val sentence = texts.search
+        val cut = sentence.indexOf(' ').let { if (it < 0) 0 else it + 1 }
+        val head = sentence.take(cut)
+        val first = head.trimEnd()
+        val tail = sentence.drop(cut)
+        return shownRows.indices.map { i ->
+            val keys = keysOfRow(i)
+            when {
+                "A" in keys -> Beat(i, { setTyped(head); demo.setSuggestions(emptyList(), "") }, typeActs(tail))
+                "X" in keys -> {
+                    val n = sentence.length - first.length
+                    val taps = minOf(2, n)
+                    Beat(i, { setTyped(sentence) },
+                        List(taps) { act(DELETE_TAP_MS) { demo.pressShortcut("X", KeyType.DELETE) } } +
+                            (if (n > taps) listOf(act(DELETE_HOLD_WAIT_MS) { demo.holdButton("X", true) }) +
+                                List(n - taps) { act(DELETE_REPEAT_MS) { demo.pressShortcut("X", KeyType.DELETE, lit = false) } } +
+                                act(0L) { demo.holdButton("X", false) } else emptyList()))
+                }
+                "Y" in keys -> Beat(i, { setTyped(first) }, listOf(act(0L) { demo.pressShortcut("Y", KeyType.SPACE) }))
+                // Sent: the box empties, as a search or a message would
+                "START" in keys -> Beat(i, { setTyped(head) }, listOf(act(SENT_MS) { demo.pressShortcut("START", KeyType.ENTER) }, act(0L) { setTyped("") }))
+                "B" in keys -> Beat(i, { setTyped("") }, closeActs())
+                else -> Beat(i, { setTyped(head) }, List(RING_STEPS) { k ->     // a remote's ring
+                    act(RING_STEP_MS, both = { val (dx, dy) = RING_PATH[k % RING_PATH.size]; demo.moveFocus(dx, dy) })
+                })
+            }
+        }
+    }
+
+    /** B: the keyboard slides away, stays away a moment, and comes back. */
+    private fun closeActs() = listOf(
+        act(CLOSED_MS) {
+            picture.flash("B")
+            demo.animate().translationY(demo.height.toFloat()).alpha(0f).setDuration(Design.MOTION_PANEL).setInterpolator(Design.EASE_IN).start()
+        },
+        act(0L) { demo.animate().translationY(0f).alpha(1f).setDuration(Design.MOTION_PANEL).setInterpolator(Design.EASE_OUT).start() })
+
+    /** Triggers: RT shift, then caps lock; LT the symbols and back; L3 each keyboard size and back. */
+    private fun shiftBeats(): List<Beat> = shownRows.indices.map { i ->
+        val keys = keysOfRow(i)
+        val reset = { demo.resetShift(); demo.resetLayer(); field.tag = null; showText(texts.shiftLine) }
+        when {
+            "RT" in keys -> Beat(i, reset, listOf(act(SHIFT_SEE_MS) { demo.cycleShift() }, act(0L) { demo.cycleShift() }))
+            "LT" in keys -> Beat(i, reset, listOf(act(SHIFT_SEE_MS + 400L) { demo.toggleLayer() }, act(0L) { demo.toggleLayer() }))
+            // Each press of L3 the next size; the text box names it, since the stage fits the keyboard to its room
+            else -> Beat(i, { reset(); demo.applySettings(demoBase); field.tag = SIZE_NAMES[0] }, (1..SIZE_NAMES.size).map { k ->
+                act(if (k < SIZE_NAMES.size) SHIFT_SEE_MS else 0L) {
+                    picture.flash("LS")
+                    demo.applySettings(demoBase.copy(sizeLevel = k % SIZE_NAMES.size))
+                    field.tag = SIZE_NAMES[k % SIZE_NAMES.size]
+                }
+            })
+        }
+    }
+
+    /** A remote: over to Shift, OK, "Dune" with its capital; then over to ?123, OK, a 2, and back to the letters. */
+    private fun shiftRemoteBeats(): List<Beat> {
+        val word = texts.shiftLine.substringBefore(':').substringBefore(' ').lowercase()
+        return shownRows.indices.map { i ->
+            if (i == 0) Beat(i, { demo.resetShift(); demo.resetLayer(); setTyped("") },
+                listOf(walk(press = true, wait = PRESS_MS + 300L, stepMs = TOOL_STEP_MS) { demo.stepToKey(KeyType.SHIFT) }) + typeActs(word))
+            else Beat(i, { demo.resetShift(); demo.resetLayer(); setTyped(word.replaceFirstChar { it.uppercase() } + " ") },
+                listOf(walk(press = true, wait = PRESS_MS + 300L, stepMs = TOOL_STEP_MS) { demo.stepToKey(KeyType.LAYER) }) +
+                    typeActs(texts.numbers.filter { it.isDigit() }.take(1).ifEmpty { "2" }) +
+                    walk(press = true, wait = 0L, stepMs = TOOL_STEP_MS) { demo.stepToKey(KeyType.LAYER) })
+        }
+    }
+
+    /** Hold RT: one capital; jump a word at a time; accent the last letter; undo. RT stays held through each. */
+    private fun holdRtBeats(): List<Beat> {
+        val line = texts.jump.replaceFirstChar { it.uppercase() }
+        val firstWord = texts.jump.substringBefore(' ')
+        val parts = wordsOf(line)
+        // Accent the last letter: the demo's own word when one press of Y gives its accent, otherwise "café"
+        val t = texts
+        val own = Accents.next(t.accentLetter, settings.language) == t.accentChoice
+        val before = if (own) t.accentBefore + t.accentLetter else "caf" + "e"
+        val accented = if (own) t.accentBefore + t.accentChoice else "caf" + Accents.next('e', settings.language).orEmpty()
+        val rest = if (own) t.accentAfter else ""
+        val rtOn = act(RT_FIRST_MS) { demo.setHeldShift(true) }
+        val rtOff = act(0L) { demo.setHeldShift(false) }
+        var cursor = parts.size
+        return shownRows.indices.map { i ->
+            val keys = keysOfRow(i)
+            when {
+                "A" in keys -> Beat(i, { demo.setHeldShift(false); setTyped("") },
+                    listOf(rtOn, walk(press = true, wait = PRESS_MS + 200L) { demo.stepTowards(firstWord.take(1)) }, act(RT_LET_GO_MS) { demo.setHeldShift(false) }) +
+                        typeActs(firstWord.drop(1)))
+                "LB" in keys || "RB" in keys -> Beat(i, { demo.setHeldShift(false); cursor = parts.size; showText(line) },
+                    listOf(rtOn) + (List(2) { -1 } + List(2) { 1 }).map { d ->
+                        act(JUMP_MS) {
+                            cursor += d
+                            picture.flash(if (d < 0) "LB" else "RB")
+                            showText(parts.take(cursor).joinToString(""), "", parts.drop(cursor).joinToString(""))
+                        }
+                    } + rtOff)
+                "Y" in keys -> Beat(i, { demo.setHeldShift(false); setTyped(before) },
+                    listOf(rtOn, act(RT_SEE_MS) { picture.flash("Y"); demo.feedback?.key(); setTyped(accented) }, act(RT_LET_GO_MS) { demo.setHeldShift(false) }) +
+                        typeActs(rest))
+                else -> Beat(i, { demo.setHeldShift(false); setTyped(accented + rest) },       // undo: back to before the last typing
+                    listOf(rtOn, act(RT_SEE_MS) { picture.flash("X"); demo.feedback?.off(); setTyped(accented) }, rtOff))
+            }
+        }
+    }
+
+    private fun accentTarget(): Pair<Int, Int> {
+        val list = Accents.variants(texts.accentLetter, settings.language).orEmpty()
+        val target = list.indexOf(texts.accentChoice).coerceAtLeast(1)
+        return list.size to target
+    }
+
+    /** Hold A on the letter: the accents rise, along to the one we want, let go: typed, and the rest of the word. */
+    private fun accentBeat(row: Int): Beat {
+        val t = texts
+        val (_, target) = accentTarget()
+        return Beat(row, { demo.resetAccents(); demo.setSuggestions(emptyList(), ""); setTyped(t.accentBefore) },
+            listOf(walk(press = false, wait = 0L) { demo.stepTowards(t.accentLetter.toString()) },
+                act(ACCENT_OPEN_MS) { demo.pressA() }) +
+                List(target - 1) { act(ACCENT_STEP_MS) { demo.moveFocus(1, 0) } } +
+                act(ACCENT_TYPED_MS) { demo.releaseA() } +
+                act(0L) { setTyped(typed + t.accentAfter) })
+    }
+
+    /** Hold A, let go: the accents stay open; B: the plain letter stays. */
+    private fun plainLetterBeat(row: Int): Beat {
+        val t = texts
+        return Beat(row, { demo.resetAccents(); setTyped(t.accentBefore) },
+            listOf(walk(press = false, wait = 0L) { demo.stepTowards(t.accentLetter.toString()) },
+                act(ACCENT_OPEN_MS) { demo.pressA() },
+                act(ACCENT_STEP_MS) { demo.releaseA() },
+                act(ACCENT_STEP_MS) { demo.moveFocus(1, 0) },
+                act(0L) { picture.flash("B"); demo.cancelAccents() }))
+    }
+
+    /** What's new, Hold A: show them (held), let go to type one, let go first and choose later, and B. */
+    private fun accentPageBeats(): List<Beat> {
+        val t = texts
+        val (_, target) = accentTarget()
+        val toLetter = walk(press = false, wait = 0L) { demo.stepTowards(t.accentLetter.toString()) }
+        val along = List(target - 1) { act(ACCENT_STEP_MS) { demo.moveFocus(1, 0) } }
+        return listOf(
+            Beat(0, { demo.resetAccents(); setTyped(t.accentBefore) }, listOf(toLetter, act(ACCENT_OPEN_MS) { demo.pressA() })),
+            // Straight on from the row before (A still held); reached by a jump, it holds A first
+            Beat(1, {}, listOf(Act({ 0L }) {
+                var done = false
+                val p: () -> Long? = { if (done) null else { done = true; if (demo.isAccentsOpen()) 0L else { setTyped(t.accentBefore); demo.pressA(); ACCENT_OPEN_MS } } }
+                p
+            }) + along + act(ACCENT_TYPED_MS) { demo.releaseA() } + act(0L) { setTyped(typed + t.accentAfter) }),
+            Beat(2, { demo.resetAccents(); setTyped(t.accentBefore) },
+                listOf(toLetter, act(ACCENT_OPEN_MS) { demo.pressA() }, act(ACCENT_STEP_MS) { demo.releaseA() }) + along +
+                    act(PRESS_MS) { demo.pressA() } + act(ACCENT_TYPED_MS) { demo.releaseA() } + act(0L) { setTyped(typed + t.accentAfter) }),
+            plainLetterBeat(3)
+        ).filter { it.row < shownRows.size }
+    }
+
+    /** Types the start of a word, the suggestions follow each letter; then takes one (the right stick, or up and A). */
+    private fun wordBeat(row: Int, another: Boolean): Beat {
+        val t = texts
+        val guesses = t.wordOthers + listOf(t.wordGuesses)
+        val keys = keysOfRow(row)
+        val take = if ("RS" in keys) listOf(act(0L) { picture.flash("RS", 420); demo.bestWord()?.let { onWord(it) } })
+        else listOf(act(WORD_UP_MS, both = { demo.focusBestWord() }) { picture.flash("Dup", 300) }) +
+            (if (another) listOf(act(WORD_UP_MS, both = { demo.moveFocus(1, 0) })) else emptyList()) +
+            act(0L) { demo.pressSelected() }
+        return Beat(row, { demo.resetAccents(); wordPrefix = ""; demo.setSuggestions(emptyList(), ""); setTyped(t.wordBefore) },
+            typeActs(t.wordTyped) { i ->
+                wordPrefix = typed.substringAfterLast(' ')
+                demo.setSuggestions(guesses.getOrElse(i) { t.wordGuesses }, wordPrefix)
+            } + take)
+    }
+
+    /** Select, copy and paste: the cursor, Select, the selection grows, Select twice for all, then Copy and the clock. */
+    private fun editBeats(): List<Beat> {
+        val parts = wordsOf(texts.copy)
+        val all = parts.joinToString("")
+        val earlier = listOf(texts.stick, "github.com/dakingeman/inlay", texts.search)
+        var at = all.length
+        var grown = 0
+        val rest = { demo.closeClips(focusOnHistoryButton = false); demo.setClips(emptyList()); demo.setSelecting(false, 0) }
+        return shownRows.indices.map { i ->
+            when (i) {
+                0 -> Beat(i, { rest(); at = all.length; showText(all) }, (List(3) { -1 } + List(2) { 1 }).map { d ->
+                    act(CURSOR_MS) { at += d; picture.flash(if (d < 0) "LB" else "RB"); showText(all.take(at), "", all.drop(at)) }
+                })
+                1 -> Beat(i, { rest(); showText("", "", all) },
+                    listOf(act(0L, both = { demo.setSelecting(true, 0) }) { picture.flash("SELECT") }))
+                2 -> Beat(i, { rest(); grown = 0; demo.setSelecting(true, 0); showText("", "", all) }, List(3) { k ->
+                    act(if (k < 2) GROW_MS else 0L, both = { demo.setSelecting(true, parts.take(k + 1).joinToString("").length) }) {
+                        grown = k + 1
+                        picture.flash("RB")
+                        showText("", parts.take(grown).joinToString(""), parts.drop(grown).joinToString(""))
+                    }
+                })
+                else -> Beat(i, { rest(); demo.focusKey(KeyType.SPACE); showText(all) }, listOf(
+                    act(SELECT_TWICE_MS) { picture.flash("SELECT") },
+                    act(GROW_MS, both = { demo.setSelecting(true, all.length) }) { picture.flash("SELECT"); showText("", all, "") },
+                    walk(press = false, wait = 0L, stepMs = TOOL_STEP_MS) { demo.stepToTool(Tool.COPY) },
+                    act(GROW_MS, both = { demo.pressSelected(); demo.setSelecting(false, 0) }) { showText(all); demo.setClips(listOf(all) + earlier) },
+                    walk(press = true, wait = CLIPS_MS, stepMs = TOOL_STEP_MS) { demo.stepToTool(Tool.HISTORY) }))
             }
         }
     }
@@ -1148,11 +1828,11 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
         }
         val run = steps.sumOf { it.ms }
         var due = android.os.SystemClock.uptimeMillis()
-        loopBar.begin(FIRST_STEP_MS + run, due)
+        loop.begin(FIRST_STEP_MS + run, due)
         due += FIRST_STEP_MS
         val tick = object : Runnable {
             override fun run() {
-                if (i > 0 && i % steps.size == 0) loopBar.begin(run, due)
+                if (i > 0 && i % steps.size == 0) loop.begin(run, due)
                 val step = steps[i % steps.size]
                 step.run()
                 i++
@@ -1191,57 +1871,11 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
      * the rest. The screen-in-screen page has no device; the devices page keeps the widest column,
      * so nothing moves while its picture changes.
      */
-    private fun prepareStage(demoKind: Demo) {
-        val kind = DevicePicture.resolve(this, settings.picture)
-        val share = when {
-            demoKind == Demo.DEVICES || demoKind == Demo.WANDER -> PICTURE_SHARE_SHOWCASE
-            kind == DeviceKind.WIDE -> PICTURE_SHARE_WIDE
-            kind == DeviceKind.CONTROLLER -> PICTURE_SHARE_CONTROLLER
-            kind == DeviceKind.VERTICAL -> PICTURE_SHARE_VERTICAL
-            else -> PICTURE_SHARE_REMOTE
-        }
-        if (stageRow != null) {
-            (pictureCol.layoutParams as LinearLayout.LayoutParams).weight = share
-            (stage.layoutParams as LinearLayout.LayoutParams).weight = 1f - share
-            pictureCol.requestLayout()
-        }
-    }
-
-    /** With a remote, Shift and ?123 are keys: over to Shift, OK, a capital, then ?123, OK, a number. */
-    private fun shiftSteps(): List<Step> {
-        fun key(label: String, then: Long = 380L) = Step(then) { focusOn(label); demo.pressSelected() }
-        return listOf(
-            Step(500L) { demo.resetShift(); demo.resetLayer(); typed = ""; showText("") },
-            Step(500L) { demo.focusKey(KeyType.SHIFT) }, Step(500L) { demo.pressSelected() },   // Shift, then OK
-            key("d"), key("u"), key("n"), key("e"), key(" "),
-            Step(500L) { focusOn("?123") }, Step(500L) { demo.pressSelected() },                 // ?123, then OK
-            key("2", 1800L)
-        )
-    }
+    @Suppress("UNUSED_PARAMETER")
+    private fun prepareStage(demoKind: Demo) = Unit
 
     private fun focusOn(label: String) {
         repeat(24) { if (demo.stepTowards(label) == true) return }
-    }
-
-    /**
-     * Hold A: e.g. "pok" → hold A on e → the accents rise → move past the one we want and back →
-     * let go → "poké" → "pokémon". The accents start on the first one after the plain letter.
-     */
-    private fun accentSteps(): List<Step> {
-        val t = texts
-        val list = Accents.variants(t.accentLetter, settings.language).orEmpty()
-        val target = list.indexOf(t.accentChoice).coerceAtLeast(1)
-        val furthest = maxOf(target + 1, 3).coerceAtMost((list.size - 1).coerceAtLeast(1))
-        val steps = mutableListOf(
-            Step(550L) { demo.resetAccents(); demo.setSuggestions(emptyList(), ""); typed = t.accentBefore; showText(typed); focusOn(t.accentLetter.toString()) },
-            Step(700L) { demo.pressA() }                    // types the letter; the accents rise after a moment
-        )
-        val walk = if (furthest > 3) 220L else 450L
-        repeat(furthest - 1) { steps += Step(walk) { demo.moveFocus(1, 0) } }     // look along them
-        repeat(furthest - target) { steps += Step(420L) { demo.moveFocus(-1, 0) } } // back to the one we want
-        steps += Step(700L) { demo.releaseA() }                                     // let go: it's typed
-        steps += Step(1300L) { typed += t.accentAfter; showText(typed) }           // and the rest of the word
-        return steps
     }
 
     /**
@@ -1265,28 +1899,6 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
         } + Step(SOUND_HOLD_MS) { feedback.showcaseConfirm() }
     }
 
-    /** E.g. "super mario " → types w, o, r with words appearing → right stick in: "super mario world ". */
-    private fun wordSteps(): List<Step> {
-        val t = texts
-        val guesses = t.wordOthers + listOf(t.wordGuesses)
-        fun typeLetter(i: Int) {
-            focusOn(t.wordTyped[i].toString())
-            demo.pressSelected()
-            wordPrefix = typed.substringAfterLast(' ')
-            demo.setSuggestions(guesses.getOrElse(i) { t.wordGuesses }, wordPrefix)
-        }
-        val steps = mutableListOf(
-            Step(600L) { demo.resetAccents(); typed = t.wordBefore; wordPrefix = ""; demo.setSuggestions(emptyList(), ""); showText(typed) }
-        )
-        t.wordTyped.indices.forEach { i -> steps += Step(520L + if (i == t.wordTyped.lastIndex) 500L else 0L) { typeLetter(i) } }
-        if (!controls.sticks) {
-            steps += Step(650L) { demo.focusBestWord(); picture.flash("Dup", 300) }               // up to the first word
-            steps += Step(1500L) { demo.pressSelected() }                                        // A (or OK): takes it, with a space
-        } else {
-            steps += Step(1500L) { picture.flash("RS", 420); demo.bestWord()?.let { onWord(it) } }   // press the right stick in: takes it, with a space
-        }
-        return steps
-    }
 
     private var wordPrefix = ""
 
@@ -1309,6 +1921,8 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
 
     /** The "Tidies up" demo: the same three fixes the keyboard makes, applied to the demo's text. */
     private var smartDemo = false
+    /** The demo keyboard's own settings on this page (your look, normal size, hints on). */
+    private var demoBase = KeyboardSettings()
     private fun smartFix(text: String): String {
         var t = text
         t = Regex("(^|[ ])i(?= )").replace(t) { it.groupValues[1] + "I" }           // a lone i
@@ -1330,8 +1944,8 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
             KeyEvent.KEYCODE_BUTTON_A, KeyEvent.KEYCODE_DPAD_RIGHT, KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> next()
             KeyEvent.KEYCODE_BUTTON_B, KeyEvent.KEYCODE_BACK, KeyEvent.KEYCODE_DPAD_LEFT -> back()
             KeyEvent.KEYCODE_BUTTON_START -> finishTour()
-            KeyEvent.KEYCODE_DPAD_UP -> wordsScroll?.smoothScrollBy(0, -px(SCROLL_DP))
-            KeyEvent.KEYCODE_DPAD_DOWN -> wordsScroll?.smoothScrollBy(0, px(SCROLL_DP))
+            KeyEvent.KEYCODE_DPAD_UP -> if (!stepBeat(-1)) wordsScroll?.smoothScrollBy(0, -px(SCROLL_DP))
+            KeyEvent.KEYCODE_DPAD_DOWN -> if (!stepBeat(1)) wordsScroll?.smoothScrollBy(0, px(SCROLL_DP))
             in UNUSED_PAD_KEYS -> Unit          // taken, so Android doesn't turn a stick click into "next"
             else -> return super.onKeyDown(keyCode, event)
         }
@@ -1372,6 +1986,20 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
     }
 
     companion object {
+        /** "WELCOME TOUR" or the "NEW IN" tag's words: the highlight colour, kept at 4.5:1 on the brightest backdrop behind them. */
+        /** The current-row marker: your colour, lifted where needed to 3:1 on the backdrop's light (a graphic, not text). */
+        fun markerColor(accent: Int, whatsNew: Boolean): Int = Contrast.accentText(accent, Backdrop.peak(accent, whatsNew), min = 3.1)
+
+        fun labelColor(accent: Int, whatsNew: Boolean): Int {
+            val peak = Backdrop.peak(accent, whatsNew)
+            // 4.6, a hair over 4.5: the light is measured on a small render, so leave room for its rounding
+            return Contrast.accentText(accent, if (whatsNew) Contrast.over(Contrast.withAlpha(accent, Design.ALPHA_TINT_TAG), peak) else peak, min = 4.6)
+        }
+
+        /** The sound pack's name tag in the text box: the highlight colour on its own tint, 4.5:1. */
+        fun fieldTagColor(accent: Int): Int =
+            Contrast.accentText(accent, Contrast.over(Contrast.withAlpha(accent, Design.ALPHA_TINT_TAG), SettingsStyle.surface))
+
         /** Open this screen as "What's new" instead of the tour. */
         const val EXTRA_WHATS_NEW = "whats_new"
         /** The sound showcase's pace: the name shows and the pack loads, each letter, then Enter and a breath. */
@@ -1380,60 +2008,96 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
         private const val SOUND_HOLD_MS = 760L
         /** The window around the text box and keyboard on the tour's background: corners, black fill and one solid edge (as in the GitHub kit). */
         private const val PANEL_RADIUS_DP = 18f
-        private const val KEYBOARD_RADIUS_DP = 10f
-        private val PANEL_FILL = 0xFF000000.toInt()
-        private val PANEL_EDGE = 0xFF2F323A.toInt()
-        private const val FIT_STEPS = 4
-        private const val FIT_STEP = 0.08f
-        private const val TIGHTEN_AT_STEP = 2   // after two steps of smaller words, the rows close up first
+        private const val KEYBOARD_RADIUS_DP = 10f   // = INNER_RADIUS_DP: nested inside the window (18 - 8)
+        private val PANEL_FILL = Design.SURFACE_BG
+        private val PANEL_EDGE = Design.TRACK
         private const val SCROLL_DP = 80f
         const val KEY_PAGE = "page"
         const val CLOSE_DELAY_MS = 140L
         const val TV_SAFE = 0.05f
-        const val BADGE_SCALE = 1.45f
-        const val BADGE_GAP = 6f            // between two badges in one group (dp, before scaling)
-        const val TEXT_GAP = 8f             // between a badge and a "+" (dp, before scaling)
+        const val BADGE_SCALE = Design.BADGE_ROW
+        const val BADGE_GAP = Design.BADGE_GAP
+        const val TEXT_GAP = Design.BADGE_TEXT_GAP
         const val ROW_HEIGHT_DP = 44f       // comfortable rows, like a list
-        const val GRID_ROW_HEIGHT_DP = 38f  // the grid across the top: a little tighter
+        const val GRID_ROW_HEIGHT_DP = 40f  // the grid across the top: a little tighter
         const val BODY_MAX_WIDTH_DP = 520f
         const val FIELD_HEIGHT_DP = 40f   // at the keyboard's full size; it scales with the keyboard
         const val STEP_MS = 85L             // one D-pad step
         const val PRESS_MS = 190L           // a breath after each letter
         const val PAUSE_MS = 1400L          // read the result before it starts over
+        // Beats (one row at a time), tuned to be just long enough: read the row, look at the device and the
+        // keyboard, see it happen, see the result. The typing and the lit buttons stay quick.
+        const val BEAT_MIN_MS = 3000L       // the least any row stays (one press, like Space)
+        const val BEAT_LOOK_MS = 1200L      // to look from the words to the device and the keyboard
+        const val BEAT_CPS = 15L            // letters read a second (subtitles allow 15 to 17)
+        const val BEAT_LEAD_BASE_MS = 500L  // the words show this long before the demo acts...
+        const val BEAT_LEAD_PER_LETTER_MS = 30L //  ...plus a little for each letter of the row...
+        const val BEAT_LEAD_MIN_MS = 800L   //  ...between these two
+        const val BEAT_LEAD_MAX_MS = 1400L
+        const val BEAT_TAIL_MS = 1000L      // the result stays this long before the next row
+        const val PAGE_READ_MS = 1200L      // a page's first row waits this much more, for the title above
+        const val DELETE_TAP_MS = 650L      // Delete: a tap, then another
+        const val DELETE_HOLD_WAIT_MS = 450L //  then held: it waits, as the real one does, then repeats
+        const val DELETE_REPEAT_MS = 110L
+        const val SENT_MS = 700L            // Enter: the text shows a moment, then it's sent
+        const val CLOSED_MS = 1400L         // Close: the keyboard stays away this long, then comes back
+        const val RING_STEPS = 6            // a remote's ring: the highlight takes six steps
+        const val RING_STEP_MS = 450L
+        val RING_PATH = listOf(1 to 0, 1 to 0, 0 to 1, -1 to 0, 0 to -1, -1 to 0)
+        const val SHIFT_SEE_MS = 1100L      // a trigger tap's result shows this long before the next
+        val SIZE_NAMES = listOf("Normal", "Large", "Largest")   // as Settings names them, and as L3 goes round
+        const val RT_FIRST_MS = 600L        // RT goes down (its tips fade in) this long before the other button
+        const val RT_SEE_MS = 1000L         // what the combo did shows this long before RT is let go
+        const val RT_LET_GO_MS = 400L
+        const val JUMP_MS = 650L            // the cursor jumping a word
+        const val ACCENT_OPEN_MS = 900L     // A held: the accents rise (after a moment) and show
+        const val ACCENT_STEP_MS = 450L     // along the accents
+        const val ACCENT_TYPED_MS = 700L    // let go: the accent shows typed before the rest of the word
+        const val WORD_UP_MS = 650L         // up to the words
+        const val CURSOR_MS = 380L          // the text cursor a letter at a time
+        const val GROW_MS = 700L            // the selection a word at a time
+        const val SELECT_TWICE_MS = 250L    // Select pressed twice
         const val CLIPS_MS = 2000L          // the clipboard stays open this long
         const val DEVICE_STEPS = 4             // the welcome page shows the next device every 4 steps (2.8 s)
         const val YOURS_STEPS = 6              // the "make it yours" page: five other looks, then yours again
         const val FIRST_STEP_MS = 400L      // acted-out steps begin this long after the page opens
         const val MAX_WALK = 40             // a demo walk never takes more D-pad steps than this
         const val TOOL_STEP_MS = 170L       // a calm D-pad step up to the top row
-        // Side by side: how much of the stage's width the device takes, by its shape
-        const val PICTURE_SHARE_WIDE = 0.36f
-        const val PICTURE_SHARE_SHOWCASE = 0.44f   // the pages that show every device: room for the widest at a good size
-        const val SHOWCASE_OUT_MS = 160L          // the device showcase: the old one fades back...
-        const val SHOWCASE_IN_MS = 340L           // ...and the new one settles in
+        const val SHOWCASE_OUT_MS = Design.MOTION_SHOWCASE_OUT   // the device showcase: the old one fades back...
+        const val SHOWCASE_IN_MS = Design.MOTION_SHOWCASE_IN     // ...and the new one settles in
         const val SHOWCASE_SCALE = 0.94f
-        const val SHOWCASE_MORPH_MS = 560L        // a near-identical device changes in place instead
-        const val PICTURE_SHARE_CONTROLLER = 0.32f
-        const val PICTURE_SHARE_VERTICAL = 0.2f
-        const val PICTURE_SHARE_REMOTE = 0.13f
+        const val SHOWCASE_MORPH_MS = Design.MOTION_MORPH        // a near-identical device changes in place instead
         const val PICTURE_NARROW_DP = 150f  // portrait: the device's height above the keyboard
-        const val HEADER_SHARE = 0.5f       // the most of the height the words take, side by side
-        const val MIN_HEADER_SHARE = 0.3f   // ...and the least, even when the keyboard would like more
-        const val PANEL_PAD_DP = 10f        // inside the window around the text box and keyboard
-        const val PANEL_GAP_DP = 10f        // between the text box and the keyboard
-        const val HEADER_TITLE_SP = 24f
-        const val HEADER_TEXT_SP = 15f
+        const val ROW_TEXT_GAP_DP = Design.SPACE_S   // between a row's buttons and its words
+        const val ROW_GAP_DP = 2f                    // between rows in the list
+        const val MARKER_WIDTH_DP = Design.SPACE_XS  // the current-row marker: 4 dp wide...
+        const val MARKER_GAP_DP = Design.SPACE_S     // ...8 dp before the row's buttons (so it reaches 12 dp into the margin)
+        const val MARKER_TAG = "row-marker"
+        const val DEVICE_HEADER_GAP_DP = Design.SPACE_L   // small screens: between the words and the device beside them
+        const val DEVICE_HEADER_HEIGHT_DP = 96f            //   the device's height there (about the words' own)
+        const val DEVICE_HEADER_MAX_SHARE = 0.3f           //   and never more of the width than this
+        const val DEVICE_HEADER_MIN_DP = 44f               //   nor less (below that it steps out, so the words fit)
+        const val DEVICE_HEADER_KEEP_FIT = 0.66f           //   the keyboard keeps at least this scale for it (letters about 12 dp)
+        const val PIP_DP = 6f                        // the caption's row markers
+        const val PIP_GAP_DP = 5f
+        const val CAPTION_LIFT_DP = 4f               // the caption rises this far as it changes
+        const val SPLIT_MIN_DP = 760        // split layout from this width (the words column needs about 300 dp); narrower landscape screens stack
+        const val SPLIT_WORDS = 0.4f        // the words' share of the width in the split layout
+        const val SPLIT_ROW_DP = 36f        // a button row in the split's list
+        const val PANEL_PAD_DP = 8f         // inside the window around the text box and keyboard
+        /** Corners nested inside the window: its radius minus its padding (18 - 8), for the keyboard and the text box. */
+        const val INNER_RADIUS_DP = 10f
+        const val PANEL_GAP_DP = 8f         // between the text box and the keyboard
+        const val HEADER_TITLE_SP = Design.TYPE_HEADER
+        const val HEADER_TEXT_SP = Design.TYPE_ROW
         const val SMART_LINE = "i think i beat it . what a game"
         // Short landscape screens (small 4:3 and squarish handhelds)
         const val SHORT_MAX_DP = 400
-        const val SHORT_TITLE_SP = 19f
-        const val SHORT_TEXT_SP = 13f
-        const val BADGE_SCALE_SHORT = 1.1f
+        const val SHORT_TITLE_SP = Design.TYPE_TITLE
+        const val SHORT_TEXT_SP = Design.TYPE_CAPTION
+        const val BADGE_SCALE_SHORT = Design.BADGE_COMPACT
         const val GRID_ROW_SHORT_DP = 28f
-        const val GRID_ROW_TIGHT_DP = 24f     // the last step when the words still don't fit
-        const val BADGE_SCALE_TIGHT = 0.95f
-        const val FIELD_HEIGHT_SHORT_DP = 34f
-        const val MIN_ROW_TEXT_DP = 72f       // the least room a row's words get beside its buttons
+        const val FIELD_HEIGHT_SHORT_DP = 36f
         const val HEADER_BODY_MAX_DP = 760f // two comfortable lines across the top
     }
 }
@@ -1442,6 +2106,9 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
  * A text box for the tour: shows what the demo keyboard types, with a blinking cursor
  * and the selection in your highlight colour, drawn the same way as the TV preview line.
  */
+/** The demo apps' own text: Android's font, as a real app's text box would show (docs/visuals-src/VISUAL_SYSTEM.md §6b). */
+private val DEMO_APP_FONT: android.graphics.Typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL)
+
 class DemoFieldView(context: android.content.Context) : View(context) {
 
     var placeholder = "Type with your controller"
@@ -1460,7 +2127,7 @@ class DemoFieldView(context: android.content.Context) : View(context) {
     }
     private val text = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         textSize = android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_SP, Design.TYPE_ROW, resources.displayMetrics)
-        typeface = SettingsStyle.medium
+        typeface = DEMO_APP_FONT                     // the demo app's own text box: Android's font, like a real app
     }
     private var before = ""
     private var selected = ""
@@ -1482,7 +2149,7 @@ class DemoFieldView(context: android.content.Context) : View(context) {
 
     override fun onDraw(canvas: Canvas) {
         val box = RectF(0f, 0f, width.toFloat(), height.toFloat())
-        val r = Design.RADIUS_ROW * dp * scale
+        val r = TutorialActivity.INNER_RADIUS_DP * dp   // nested inside the window, like the keyboard
         fill.color = SettingsStyle.surface
         canvas.drawRoundRect(box, r, r, fill)
         canvas.drawRoundRect(box, r, r, edge)
@@ -1500,7 +2167,7 @@ class DemoFieldView(context: android.content.Context) : View(context) {
         val inset = (height - (text.descent() - text.ascent())) / 2f - 4 * dp
         if (selected.isNotEmpty()) {
             val w = text.measureText(selected)
-            fill.color = Contrast.withAlpha(accent, 0x59)
+            fill.color = Contrast.withAlpha(accent, Design.ALPHA_TINT_GLOW)
             canvas.drawRoundRect(x - 2 * dp, box.top + inset, x + w + 2 * dp, box.bottom - inset, 4 * dp, 4 * dp, fill)
             canvas.drawText(selected, x, baseline, text)
             x += w
@@ -1509,11 +2176,12 @@ class DemoFieldView(context: android.content.Context) : View(context) {
             val since = android.os.SystemClock.uptimeMillis() - shownAt
             // With "Remove animations" on it stays lit; otherwise it redraws only when it turns on or off
             val moving = WhatsNew.motionAllowed()
-            if (!moving || since < 400 || (since / 530) % 2 == 0L) {
+            val blink = Design.MOTION_BLINK; val hold = Design.MOTION_BLINK_HOLD
+            if (!moving || since < hold || (since / blink) % 2 == 0L) {
                 fill.color = accent
                 canvas.drawRoundRect(x - 1 * dp, box.top + inset, x + 1 * dp, box.bottom - inset, 1 * dp, 1 * dp, fill)
             }
-            if (moving) postInvalidateDelayed(minOf(if (since < 400) 400 - since else Long.MAX_VALUE, 530 - since % 530).coerceAtLeast(16))
+            if (moving) postInvalidateDelayed(minOf(if (since < hold) hold - since else Long.MAX_VALUE, blink - since % blink).coerceAtLeast(16))
         }
         // Text after the cursor is ordinary text, the same as before it: the cursor only sits between letters
         text.color = SettingsStyle.textPrimary
@@ -1521,13 +2189,13 @@ class DemoFieldView(context: android.content.Context) : View(context) {
         drawTag(canvas, box)
     }
 
-    private val tagText = Paint(Paint.ANTI_ALIAS_FLAG).apply { typeface = SettingsStyle.medium; textAlign = Paint.Align.CENTER }
+    private val tagText = Paint(Paint.ANTI_ALIAS_FLAG).apply { typeface = DEMO_APP_FONT; textAlign = Paint.Align.CENTER }
 
     /** The name tag: a pill in the highlight colour, like the "NEW IN" tag, popping in over 180 ms. */
     private fun drawTag(canvas: Canvas, box: RectF) {
         val label = tag ?: return
-        val t = if (WhatsNew.motionAllowed()) ((android.os.SystemClock.uptimeMillis() - tagAt) / 180f).coerceIn(0f, 1f) else 1f
-        val e = 1f - (1f - t) * (1f - t)                                   // eases out
+        val t = if (WhatsNew.motionAllowed()) ((android.os.SystemClock.uptimeMillis() - tagAt) / Design.MOTION_POP.toFloat()).coerceIn(0f, 1f) else 1f
+        val e = Design.EASE_OUT.getInterpolation(t)
         tagText.textSize = text.textSize * 0.82f
         val padX = 12f * dp * scale; val h = box.height() * 0.58f
         val w = tagText.measureText(label) + 2 * padX
@@ -1536,12 +2204,10 @@ class DemoFieldView(context: android.content.Context) : View(context) {
         canvas.save()
         canvas.scale(0.9f + 0.1f * e, 0.9f + 0.1f * e, right - w / 2, cy)
         val a = (255 * e).toInt()
-        fill.color = Contrast.withAlpha(accent, (0x26 * e).toInt())
+        // a tag: the accent as a soft tint, never a ring (tags say "this is yours", rings say "you are here")
+        fill.color = Contrast.withAlpha(accent, (Design.ALPHA_TINT_TAG * e).toInt())
         canvas.drawRoundRect(right - w, cy - h / 2, right, cy + h / 2, h / 2, h / 2, fill)
-        edge.color = Contrast.withAlpha(accent, (0x99 * e).toInt()); val ew = edge.strokeWidth; edge.strokeWidth = 1.5f * dp
-        canvas.drawRoundRect(right - w, cy - h / 2, right, cy + h / 2, h / 2, h / 2, edge)
-        edge.strokeWidth = ew; edge.color = Design.EDGE_CARD
-        tagText.color = accent; tagText.alpha = a
+        tagText.color = TutorialActivity.fieldTagColor(accent); tagText.alpha = a
         canvas.drawText(label, right - w / 2, cy - (tagText.descent() + tagText.ascent()) / 2f, tagText)
         canvas.restore()
         if (t < 1f) postInvalidateOnAnimation()
@@ -1588,7 +2254,7 @@ class RoundClipFrame(context: android.content.Context, private val radius: Float
  *  2. The keyboard is always [KeyGridView.PREVIEW_ASPECT] times as wide as its letters are tall, so keys keep
  *     one shape on every page; the window gets narrower rather than the keys flatter, and sits centred.
  *  3. The text box is [fieldUnit] tall at scale 1 and shrinks with the keyboard, its words too.
- *  4. The words above give way first, so the scale stays at least [MIN_FIT] (TutorialActivity.wordsRoom).
+ *  4. The words above take the room of their tallest page (TutorialActivity.reserveWords); TourTemplateTest keeps the scale at least [MIN_FIT].
  */
 class StagePanel(context: android.content.Context, private val field: DemoFieldView, private val clip: View,
                  private val demo: KeyGridView, private val framed: Boolean,
@@ -1601,6 +2267,61 @@ class StagePanel(context: android.content.Context, private val field: DemoFieldV
     }
 
     private val fieldShown get() = field.visibility != View.GONE
+
+    /**
+     * The loop indicator: the window's own bottom edge fills with your colour as the demo runs, and is full
+     * the moment it starts over (then fades while the next run begins). No extra element on screen. On a TV
+     * (no window) it runs along the bottom of the floating keyboard panel instead. Drawn on the straight part
+     * of the edge only, so it never bends into the corners.
+     */
+    var loop: LoopClock? = null
+    var loopShown = false
+        set(v) { field = v; invalidate() }
+    var loopAccent = 0
+    private val edgePaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { strokeCap = android.graphics.Paint.Cap.BUTT }
+
+    override fun dispatchDraw(canvas: android.graphics.Canvas) {
+        super.dispatchDraw(canvas)
+        val clock = loop ?: return
+        if (!loopShown || !clock.running) return
+        val d = resources.displayMetrics.density
+        val now = android.os.SystemClock.uptimeMillis()
+        // The edge: the window's bottom border, or the TV panel's bottom
+        val left: Float; val right: Float; val y: Float
+        if (framed) {
+            val r = EDGE_CORNER_DP * d
+            left = r; right = width - r; y = height - LOOP_LINE_DP * d / 2f
+        } else {
+            val p = demo.tvPanelForTest()
+            val ox = (clip.left + demo.left).toFloat(); val oy = (clip.top + demo.top).toFloat()
+            val r = 20f * demo.unitForCheck()
+            left = ox + p.left + r; right = ox + p.right - r; y = oy + p.bottom - LOOP_LINE_DP * d / 2f
+        }
+        edgePaint.strokeWidth = LOOP_LINE_DP * d
+        val fade = clock.fade(now)
+        if (fade > 0f) {
+            edgePaint.color = Contrast.withAlpha(loopAccent, (255 * fade).toInt())
+            canvas.drawLine(left, y, right, y, edgePaint)
+        }
+        val p = clock.progress(now)
+        if (p > 0f) {
+            edgePaint.color = loopAccent
+            canvas.drawLine(left, y, left + (right - left) * p, y, edgePaint)
+        }
+        if (isShown && WhatsNew.motionAllowed() && (p < 1f || fade > 0f)) postInvalidateDelayed(LoopClock.FRAME_MS)
+    }
+
+    /** The scale the keyboard is drawn at in a window [h] tall (when the width allows it). */
+    fun fitForHeight(h: Int): Float {
+        val g = if (fieldShown) gap else 0
+        return minOf(1f, (h - (if (framed) 2f * pad else 0f) - g) / (demo.previewUnitHeightPx() + if (fieldShown) fieldUnit else 0))
+    }
+
+    /** The window's width at scale [fit]. */
+    fun widthAt(fit: Float): Int = (demo.previewUnitWidthPx() * fit + (if (framed) 2 * pad else 0)).toInt()
+
+    /** The scale the keyboard is drawn at in a window [w] wide (when the height allows it). */
+    fun fitForWidth(w: Int): Float = minOf(1f, (w - (if (framed) 2f * pad else 0f)) / demo.previewUnitWidthPx())
 
     /** The window's height at scale [fit]. */
     fun heightAt(fit: Float): Int {
@@ -1626,7 +2347,15 @@ class StagePanel(context: android.content.Context, private val field: DemoFieldV
     }
 
     companion object {
+        /** The loop line's thickness: twice the window's edge, so it reads as the edge lighting up. */
+        const val LOOP_LINE_DP = 2f
+        /** The window's corner radius (TutorialActivity.PANEL_RADIUS_DP): the line stays on the straight part. */
+        const val EDGE_CORNER_DP = 18f
         /** The smallest the keyboard gets in the tour, as a share of its full size: letters stay readable from arm's length. */
-        const val MIN_FIT = 0.72f
+        const val MIN_FIT = 0.6f            // letters at least 11 dp, on every screen (TourTemplateTest)...
+        const val MIN_FIT_TINY = 0.5f       // ...except screens under [TINY_DP] tall, where the words need the room
+        const val TINY_DP = 340
+        /** What the stacked layout aims for, taking width from the device picture if it must. */
+        const val FIT_GOAL = 0.7f
     }
 }

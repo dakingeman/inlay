@@ -1,10 +1,19 @@
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark) and (prefers-reduced-motion: reduce)" srcset="docs/brand/readme/header-dark-still.png">
+    <source media="(prefers-color-scheme: light) and (prefers-reduced-motion: reduce)" srcset="docs/brand/readme/header-light-still.png">
+    <source media="(prefers-color-scheme: dark)" srcset="docs/brand/readme/header-dark.gif">
+    <img src="docs/brand/readme/header-light.gif" alt="inlay: a keyboard for your controller" width="606">
+  </picture>
+</p>
+
 <p align="center"><img src="docs/images/hero.gif" alt="Inlay: type with your controller. The keyboard suggests words, shows hold-RT tips, selects text and works in TV mode, on a controller, a handheld, a vertical handheld and a TV remote"></p>
 
 <p align="center">
-  <a href="../../releases/latest"><img src="https://img.shields.io/github/v/release/dakingeman/inlay?style=flat-square&color=72D6E8&labelColor=16171D&label=release" alt="Latest release"></a>
-  <img src="https://img.shields.io/badge/Android-10%2B-72D6E8?style=flat-square&labelColor=16171D" alt="Android 10 or newer">
-  <a href="LICENSE"><img src="https://img.shields.io/github/license/dakingeman/inlay?style=flat-square&color=72D6E8&labelColor=16171D" alt="Licence: GPL-3.0"></a>
-  <img src="https://img.shields.io/badge/internet%20permission-none-72D6E8?style=flat-square&labelColor=16171D" alt="No internet permission">
+  <a href="../../releases/latest"><img src="https://img.shields.io/github/v/release/dakingeman/inlay?style=flat-square&color=2A2C35&labelColor=16171D&label=release" alt="Latest release"></a>
+  <img src="https://img.shields.io/badge/Android-10%2B-2A2C35?style=flat-square&labelColor=16171D" alt="Android 10 or newer">
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/dakingeman/inlay?style=flat-square&color=2A2C35&labelColor=16171D" alt="Licence: GPL-3.0"></a>
+  <img src="https://img.shields.io/badge/internet%20permission-none-2A2C35?style=flat-square&labelColor=16171D" alt="No internet permission">
 </p>
 
 <p align="center">

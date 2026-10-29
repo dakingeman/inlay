@@ -86,6 +86,7 @@ class SettingsActivity : Activity() {
         @Suppress("DEPRECATION")
         window.navigationBarColor = SettingsStyle.background
         Palette.init(this)
+        SettingsStyle.init(this)
         settings = KeyboardSettings.load(this).copy(showPreview = false)    // opens with the keyboard put away
         SettingsStyle.accent = settings.accent
         // The volume buttons change the same volume the sounds play at (media),
@@ -95,7 +96,7 @@ class SettingsActivity : Activity() {
         SettingRow.buttonStyle = settings.buttonStyle
         SettingRow.sounds = feedback
         setupState = currentSetupState()
-        setContentView(buildScreen().also { muteSystemSounds(it) })
+        setContentView(buildScreen().also { muteSystemSounds(it); SettingsStyle.useFont(it) })
         showPage(0, focusIndex = 0, animate = false)
         // First time ever: the one-minute tour (skippable). Settings is right behind it.
         if (!settings.tutorialDone && savedInstanceState == null) {
@@ -336,7 +337,7 @@ class SettingsActivity : Activity() {
             addView(guidePicture, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
             // Under the picture: on the Device tab, what Inlay is set up for (plain words, nothing to press)
             pictureTitle = android.widget.TextView(context).apply {
-                textSize = 15f
+                textSize = Design.TYPE_ROW
                 typeface = SettingsStyle.medium
                 setTextColor(SettingsStyle.textPrimary)
                 gravity = Gravity.CENTER
@@ -348,7 +349,7 @@ class SettingsActivity : Activity() {
                 textSize = Design.TYPE_CAPTION
                 setTextColor(SettingsStyle.textSecondary)
                 gravity = Gravity.CENTER
-                setLineSpacing(0f, 1.2f)
+                setLineSpacing(0f, Design.LINE_CAPTION)
             }
             addView(pictureCaption, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = px(Design.SPACE_S) })
         }

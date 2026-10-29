@@ -1,14 +1,7 @@
 package com.example.gridime
 
 import android.animation.ValueAnimator
-import android.content.Context
-import android.graphics.Canvas
-import android.graphics.Paint
-import android.graphics.RectF
 import android.os.SystemClock
-import android.view.View
-import kotlin.math.max
-import kotlin.math.min
 
 /**
  * "What's new": a short screen that shows the highlights of an update, once.
@@ -23,8 +16,8 @@ import kotlin.math.min
  *
  * Every update with something new: bump [VERSION], write a page per highlight (keep it to the few that matter), and make the matching
  * card and short clip for GitHub from the same storyboard (see docs/UPDATING.md).
- * Each page's demo loops, and every looping demo shows the [LoopBarView] (the demo reports its
- * progress; see TutorialActivity.every and runSteps). No new page goes without it.
+ * Each page's demo loops, and every looping demo shows its loop on the keyboard window's edge ([LoopClock]:
+ * the demo reports its runs; see TutorialActivity.every and runSteps). No new page goes without it.
  *
  * The look comes for free: a new page is only its Page entry (title, one sentence, button rows, demo).
  * The background ([Backdrop], lit from the top right for What's new, top left for the tour), the
@@ -47,146 +40,51 @@ object WhatsNew {
 }
 
 /**
- * The loop bar: a small loop sign and a thin bar under the device picture, on every page whose
- * demo plays in a loop. It fills as the demo plays and starts again with it, so you can see how
- * much is left before the demo repeats.
+ * The loop clock: the timing behind the loop indicator (the keyboard window's bottom edge filling, drawn by
+ * StagePanel). Every looping demo tells it when each run begins and how long it takes, worked out from the
+ * demo's own timetable before it plays (TutorialActivity.every and runSteps), so the edge is exactly full the
+ * moment the demo starts over. It reads the clock on every frame, so it never drifts or stutters.
  *
- * Each run of a demo says how long it takes ([begin]), worked out before it plays, so the bar
- * fills at one even pace from empty to full, never in jumps. When the demo starts over, the full
- * bar fades while the new one begins from empty.
- *
- * The rule for new pages (tour and What's new): every looping demo gives the length of its runs,
- * and the bar shows by itself (see TutorialActivity.every and runSteps). Only the welcome page's
- * device showcase, which has no beginning or end, goes without.
- * With animations turned off in Android, the demos stand still and the bar is hidden.
+ * The rule for new pages: every looping demo gives the length of its runs, and the indicator shows by itself.
+ * ConsistencyTest checks every page: each run takes exactly as long as it said. Only the welcome page's
+ * device showcase, which has no beginning or end, goes without. With animations turned off, nothing moves.
  */
-class LoopBarView(context: Context) : View(context) {
-
-    private val dp = resources.displayMetrics.density
-    private val fill = Paint(Paint.ANTI_ALIAS_FLAG)
-    private val icon = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        style = Paint.Style.STROKE
-        strokeCap = Paint.Cap.ROUND
-        strokeJoin = Paint.Join.ROUND
-    }
-    private val arrow = android.graphics.Path()
-    private val ring = android.graphics.Path()
-    var accent: Int = SettingsStyle.accent
-        set(value) { field = value; invalidate() }
-
-    private var shown = 0f             // how far the bar is drawn
-    private var loopStart = 0L         // when this run of the demo began
-    private var loopMs = 0L            // how long this run takes (0: no run yet, the bar is empty)
-    private var fadeStart = -1L        // the previous run's bar, fading out
-    private var fadeWidth = 0f
+class LoopClock {
+    private var loopStart = 0L
+    private var loopMs = 0L            // 0: no run yet
+    /** When the previous run ended, so its full edge can fade as the next begins (-1: nothing fading). */
+    var fadeFrom = -1L
+        private set
 
     /** For the checks: when each run began and how long it said it would take. */
     internal val runsForCheck = mutableListOf<Pair<Long, Long>>()
 
-    /** A new page: an empty bar until its demo begins its first run. */
-    fun restart() {
-        shown = 0f; loopMs = 0L; fadeStart = -1L
-        runsForCheck.clear()
-        invalidate()
-    }
+    /** A new page: nothing until its demo begins its first run. */
+    fun restart() { loopMs = 0L; fadeFrom = -1L; runsForCheck.clear() }
 
-    /** A run of the demo begins [at] (its timetable) and takes [runMs]: the bar fills from empty to full over that time. */
+    /** A run of the demo begins [at] (its timetable) and takes [runMs]. */
+    /** Told when each run begins (the live caption starts its round of rows again). */
+    var onRun: (() -> Unit)? = null
+
     fun begin(runMs: Long, at: Long = SystemClock.uptimeMillis()) {
-        val now = SystemClock.uptimeMillis()
-        if (shown > 0.02f) { fadeStart = now; fadeWidth = shown }
+        onRun?.invoke()
+        if (loopMs > 0L) fadeFrom = at
         loopStart = at
         loopMs = runMs.coerceAtLeast(1L)
         if (runsForCheck.size < 64) runsForCheck += at to loopMs
-        shown = 0f
-        invalidate()
     }
 
-    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
-        setMeasuredDimension(MeasureSpec.getSize(widthMeasureSpec), (HEIGHT_DP * dp).toInt())
-    }
+    val running get() = loopMs > 0L
 
-    override fun onDraw(canvas: Canvas) {
-        val now = SystemClock.uptimeMillis()
-        shown = if (loopMs > 0L) min(1f, (now - loopStart) / loopMs.toFloat()) else 0f
+    /** This run's progress now, 0 to 1. */
+    fun progress(now: Long = SystemClock.uptimeMillis()): Float = if (loopMs > 0L) ((now - loopStart) / loopMs.toFloat()).coerceIn(0f, 1f) else 0f
 
-        // The loop sign and the bar sit together, centred. In a narrow column the bar gets shorter,
-        // and where even that won't do (a tall handheld on a small screen) the bar shows alone.
-        val r = ICON_R_DP * dp
-        val sign = 2 * r + GAP_DP * dp
-        val room = width - 2 * r                             // a little air at both ends
-        val withSign = room - sign >= MIN_BAR_DP * dp
-        val barW = if (withSign) min(BAR_DP * dp, room - sign) else min(BAR_DP * dp, room)
-        val left = (width - ((if (withSign) sign else 0f) + barW)) / 2f
-        val cy = height / 2f
-
-        // Loop sign: a circle with a gap, an arrowhead at its end
-        if (withSign) drawSign(canvas, left + r, cy, r)
-
-        // The bar: a track, the previous run fading, this run filling
-        val bx = left + if (withSign) sign else 0f
-        val bh = BAR_H_DP * dp
-        val bar = RectF(bx, cy - bh / 2, bx + barW, cy + bh / 2)
-        fill.color = SettingsStyle.track
-        canvas.drawRoundRect(bar, bh / 2, bh / 2, fill)
-        if (fadeStart >= 0L) {
-            val f = 1f - (now - fadeStart) / FADE_MS
-            if (f > 0f) {
-                fill.color = Contrast.withAlpha(accent, (0xFF * f).toInt())
-                canvas.drawRoundRect(RectF(bx, bar.top, bx + barW * fadeWidth, bar.bottom), bh / 2, bh / 2, fill)
-            } else fadeStart = -1L
-        }
-        if (shown > 0.002f) {
-            fill.color = accent
-            canvas.drawRoundRect(RectF(bx, bar.top, bx + max(bh, barW * shown), bar.bottom), bh / 2, bh / 2, fill)
-        }
-        // Redraw only while the bar fills or the last run fades; a full or empty bar stands still
-        // 30 times a second is plenty for a bar that fills over seconds (it moves a pixel or two per frame),
-        // and spares the screen redrawing up to 120 times a second for it
-        if (isShown && WhatsNew.motionAllowed() && ((loopMs > 0L && shown < 1f) || fadeStart >= 0L)) postInvalidateDelayed(BAR_FRAME_MS)
-    }
-
-    private fun drawSign(canvas: Canvas, cx: Float, cy: Float, r: Float) {
-        icon.strokeWidth = ICON_STROKE_DP * dp
-        icon.color = SettingsStyle.textSecondary
-        val oval = RectF(cx - r, cy - r, cx + r, cy + r)
-        ring.reset()                                     // traced point by point, so every renderer draws it the same
-        for (i in 0..ARC_POINTS) {
-            val t = Math.toRadians((ARC_START + ARC_SWEEP * i / ARC_POINTS).toDouble())
-            val px = oval.centerX() + r * kotlin.math.cos(t).toFloat()
-            val py = oval.centerY() + r * kotlin.math.sin(t).toFloat()
-            if (i == 0) ring.moveTo(px, py) else ring.lineTo(px, py)
-        }
-        canvas.drawPath(ring, icon)
-        val end = Math.toRadians((ARC_START + ARC_SWEEP).toDouble())
-        val ex = cx + r * kotlin.math.cos(end).toFloat()
-        val ey = cy + r * kotlin.math.sin(end).toFloat()
-        val tx = -kotlin.math.sin(end).toFloat()         // the way the arc runs at its end (clockwise)
-        val ty = kotlin.math.cos(end).toFloat()
-        val a = ARROW_DP * dp
-        arrow.reset()
-        arrow.moveTo(ex + tx * a, ey + ty * a)
-        arrow.lineTo(ex - ty * a * 0.9f, ey + tx * a * 0.9f)
-        arrow.lineTo(ex + ty * a * 0.9f, ey - tx * a * 0.9f)
-        arrow.close()
-        fill.color = SettingsStyle.textSecondary
-        canvas.drawPath(arrow, fill)
-    }
+    /** How strongly the previous run's full edge still shows (1 fading to 0 over [Design.MOTION_LOOP_RESET]). */
+    fun fade(now: Long = SystemClock.uptimeMillis()): Float =
+        if (fadeFrom < 0L) 0f else (1f - (now - fadeFrom) / Design.MOTION_LOOP_RESET.toFloat()).coerceIn(0f, 1f)
 
     companion object {
-        /** How often the bar redraws while it fills (about 30 times a second). */
-        const val BAR_FRAME_MS = 33L
-        /** The bar's own height; the picture above leaves this much room (plus the gap) for it. */
-        const val HEIGHT_DP = 16f
-        private const val BAR_DP = 88f
-        private const val MIN_BAR_DP = 40f
-        private const val BAR_H_DP = 3f
-        private const val GAP_DP = 8f
-        private const val ICON_R_DP = 5f
-        private const val ICON_STROKE_DP = 1.6f
-        private const val ARROW_DP = 2.8f
-        private const val ARC_START = -70f
-        private const val ARC_SWEEP = 290f
-        private const val ARC_POINTS = 48
-        private const val FADE_MS = 260f
+        /** How often the edge redraws while it fills: about 30 times a second is smooth for something that moves over seconds. */
+        const val FRAME_MS = 33L
     }
 }

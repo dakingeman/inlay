@@ -35,7 +35,7 @@ const FEATURES={
     pic:'pic-tidy',screen:{kb:'renders/kb-tidy.png',kbAspect:1920/534,title:'Notes',noField:true,field:{},results:[],count:'',
       note:{meta:'Today, 21:40',heading:'Playthrough log',lines:['Day 3, still on the water temple'],typing:'Finally beat the last boss. I think I\u2019ll replay it on hard'}}},
   'tv-mode':{layout:'stage',textY:140,title:'TV mode',body:'A compact keyboard with a big line showing what you type, easy to read from the sofa. It turns on by itself on a TV.',
-    pic:'pic-tv',picX:300,picW:118,screen:{kb:'renders/kb-tv.png',kbAspect:1560/732,title:'Search',noField:true,field:{},results:[TV[0]],count:''}},
+    pic:'pic-tv',picX:300,picW:118,screen:{kb:'renders/kb-tv.png',kbAspect:1560/762,title:'Search',noField:true,field:{},results:[TV[0]],count:''}},
   devices:{layout:'top',title:'Made for what you hold',body:'Pick a controller, a handheld, a vertical handheld or a TV remote. The buttons, the tips and the tour follow it.',
     content:()=>devRow([['dev-controller','Controller',300],['dev-wide','Handheld',400],['dev-vertical','Vertical handheld',165],['dev-vertical-sticks','Vertical, with sticks',165],['dev-remote','TV remote',92]],340,300)},
   icons:{layout:'top',title:'Icons for your controller',body:'Xbox, PlayStation or Switch. Every hint follows, on the keys and in Settings.',

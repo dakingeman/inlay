@@ -12,7 +12,9 @@
 //   corner of the colour whisper, its strength and spread, tiles or dots, how far the motif reaches, how many lit tiles and where.
 // What never varies: the base colours, the grid size, the tile style, the lit-tile style, the accent colour.
 
-const INLAY = { accent: '#72D6E8', rgb: '114,214,232', P: 46, G: 8 };
+// The accent comes from the app (design/tokens.js, written from Design.kt): load tokens.js before this file
+const INLAY = (() => { const a = TOKENS.brandAccent, n = parseInt(a.slice(1), 16);
+  return { accent: a, rgb: [n >> 16 & 255, n >> 8 & 255, n & 255].join(','), P: 46, G: 8 }; })();
 
 function inlayHash(str) { let h = 2166136261; for (const ch of String(str)) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; }
 function inlayRng(seed) { let s = seed || 1; return () => { s ^= s << 13; s ^= s >>> 17; s ^= s << 5; return ((s >>> 0) % 100000) / 100000; }; }

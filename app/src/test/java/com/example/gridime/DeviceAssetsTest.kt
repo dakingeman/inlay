@@ -36,6 +36,9 @@ class DeviceAssetsTest {
                 if ((key == "LS" || key == "RS") && !g.has("stick")) problems += "${f.name}: $key has no stick data"
                 if (!g.has("stick") && !g.has("room")) problems += "${f.name}: $key has no room measured (run room.py)"
             }
+            // a colour the kit couldn't find (a missing token) shows up as "undefined" or "NaN": never ship that
+            val svgText = File(dir, f.name.replace(".json", ".svg")).takeIf { it.exists() }?.readText().orEmpty()
+            for (bad in listOf("undefined", "NaN", "null")) if (bad in svgText || "\"$bad\"" in f.readText() || ":$bad" in f.readText()) problems += "${f.name}: contains $bad (a colour or size the kit couldn't find)"
             // every picture file has its drawing next to it
             if (!File(dir, f.name.replace(".json", ".svg")).exists()) problems += "${f.name}: no matching .svg"
         }

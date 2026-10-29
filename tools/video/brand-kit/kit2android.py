@@ -6,7 +6,9 @@ import json, re, sys, copy, difflib, os
 import xml.etree.ElementTree as ET
 NS = 'http://www.w3.org/2000/svg'
 ET.register_namespace('', NS)
-ACC = '#72D6E8'
+import json as _json, os as _os
+# The brand accent marks what lights up; read from design/tokens.json (written from the app's Design.kt)
+ACC = _json.load(open(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), '../../../design/tokens.json')))['brandAccent']
 src, outdir = sys.argv[1], sys.argv[2]
 os.makedirs(outdir, exist_ok=True)
 data = json.load(open(src))
@@ -97,7 +99,6 @@ for name, dev in data['devices'].items():
     base.insert(0, copy.deepcopy(shared_defs))
     clean(base)
     svg = ET.tostring(base, encoding='unicode')
-    svg = svg.replace(ACC, '#72D6E8')
     open(os.path.join(outdir, f"{name}.svg"), 'w').write(svg)
     json.dump(css, open(os.path.join(outdir, f"{name}.json"), 'w'))
     summary[name] = (len(svg) // 1024, {k: v.count('{') for k, v in css.items()})

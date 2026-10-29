@@ -16,7 +16,7 @@ const HH={
 // between Select and Start. Draw it with Object.assign(HH.vertical, HH_VERTICAL_STICKS); the spacing check applies too.
 const HH_VERTICAL_STICKS={VH:496,body:[205,20,368,548,16,44],dpad:[305,400,47.5,15.5],face:[472,398,47.5,19.5],ls:[346,510],rs:[432,510],stickR:20,sel:[258,510],start:[520,510]};
 function handheld2(kind, w, opt){
-  opt=opt||{}; const G=HH[kind], on=opt.on||{}, style=opt.style||'xbox', ACC='#72D6E8', line='#5a5e6a', detail='#33363f';
+  opt=opt||{}; const G=HH[kind], on=opt.on||{}, style=opt.style||'xbox', ACC=TOKENS.brandAccent, line='#5a5e6a', detail='#33363f';
   const v=k=>on[k]||0, lit=k=>v(k)>0?`fill="${ACC}" fill-opacity=".9" stroke="${ACC}" filter="url(#hg2)"`:`fill="#0f1014" stroke="${line}"`;
   // map photo coordinates into the frame, centred
   const k=G.k, bw=G.body[2]*k, bh=G.body[3]*k, x0=(G.VW-bw)/2, y0=(G.VH-bh)/2;
@@ -29,8 +29,8 @@ function handheld2(kind, w, opt){
   { const [dx0,dy0,L0,t0]=G.dpad; s+=dpadCross(X(dx0),Y(dy0),L0*k,t0*k,on); }
   { const [fx0,fy0,g0,r0]=G.face, fx=X(fx0), fy=Y(fy0), g=g0*k, r=r0*k*1.05;
     s+=[['Y',0,-g],['X',-g,0],['B',g,0],['A',0,g]].map(([kk,ddx,ddy])=>{const x=fx+ddx,y=fy+ddy;let gl;
-      if(style==='ps'){const col=v(kk)>0.5?'#0B0F17':{A:'#8FB4FF',B:'#FF6B6B',X:'#F59BD5',Y:'#4DD6B5'}[kk];gl=psGlyph(kk,x,y,r*0.47,col);}
-      else{const lab=style==='switch'?{A:'B',B:'A',X:'Y',Y:'X'}[kk]:kk;const col=v(kk)>0.5?'#0B0F17':style==='switch'?'#E6E8EC':{A:'#6CC24A',B:'#F0503C',X:'#3E9BFF',Y:'#F5C518'}[kk];gl=`<text x="${x}" y="${y}" fill="${col}" font-family="I" font-weight="700" font-size="${r*LETTER}" text-anchor="middle" dominant-baseline="central">${lab}</text>`;}
+      if(style==='ps'){const col=v(kk)>0.5?TOKENS.inkDark:TOKENS.face.ps[kk];gl=psGlyph(kk,x,y,r*0.47,col);}
+      else{const lab=style==='switch'?{A:'B',B:'A',X:'Y',Y:'X'}[kk]:kk;const col=v(kk)>0.5?TOKENS.inkDark:style==='switch'?TOKENS.inkLight:TOKENS.face.xbox[kk];gl=`<text x="${x}" y="${y}" fill="${col}" font-family="I" font-weight="700" font-size="${r*LETTER}" text-anchor="middle" dominant-baseline="central">${lab}</text>`;}
       return `<circle cx="${x}" cy="${y}" r="${r}" ${lit(kk)} stroke-width="2"/>${gl}`;}).join(''); }
   const [pw,ph]=G.pill||[22,12]; const pill=([x,y],kk)=>`<rect x="${X(x)-pw/2}" y="${Y(y)-ph/2}" width="${pw}" height="${ph}" rx="${ph/2}" ${lit(kk)} stroke-width="2"/>`;
   s+=pill(G.sel,'SELECT')+pill(G.start,'START');
@@ -45,9 +45,9 @@ function handheld2(kind, w, opt){
 // C "fill bars": like A, but the trigger is a bar that fills up as it's pressed (how input overlays show triggers)
 let _tc=0;
 function shoulderKeys(variant, anchors, style, on, scale){
-  scale=scale||1; const ACC='#72D6E8', line='#5a5e6a', v=k=>on[k]||0;
+  scale=scale||1; const ACC=TOKENS.brandAccent, line='#5a5e6a', v=k=>on[k]||0;
   const lit=k=>v(k)>0?`fill="${ACC}" fill-opacity=".9" stroke="${ACC}" filter="url(#hg2)"`:`fill="#0f1014" stroke="${line}"`;
-  const ink=k=>v(k)>0.5?'#0B0F17':'#C9CCD3';
+  const ink=k=>v(k)>0.5?TOKENS.inkDark:'#C9CCD3';
   const N={xbox:['LT','LB','RT','RB'],ps:['L2','L1','R2','R1'],switch:['ZL','L','ZR','R']}[style];
   const bw=96*scale, bh=30*scale, tw=72*scale, th=(variant==='C'?50:40)*scale, gap=10*scale, lift=14*scale;
   let s='';
@@ -60,7 +60,7 @@ function shoulderKeys(variant, anchors, style, on, scale){
       s+=`<rect x="${cx-tw/2}" y="${ty}" width="${tw}" height="${th}" rx="${r}" fill="#0f1014" stroke="${fill>0?ACC:line}" stroke-width="2.2" ${fill>0?'filter="url(#hg2)"':''}/>`+
          (fill>0?`<clipPath id="${id}"><rect x="${cx-tw/2}" y="${ty}" width="${tw}" height="${th}" rx="${r}"/></clipPath><rect x="${cx-tw/2}" y="${ty+th*(1-fill)}" width="${tw}" height="${th*fill}" fill="${ACC}" fill-opacity=".9" clip-path="url(#${id})"/>`:'')+
          `<text x="${cx}" y="${ty+th/2+1}" fill="#C9CCD3" font-family="I" font-weight="700" font-size="${14*scale}" text-anchor="middle" dominant-baseline="central">${nT}</text>`+
-         (fill>0?`<clipPath id="${id}f"><rect x="${cx-tw/2}" y="${ty+th*(1-fill)}" width="${tw}" height="${th*fill}"/></clipPath><text x="${cx}" y="${ty+th/2+1}" fill="#0B0F17" clip-path="url(#${id}f)" font-family="I" font-weight="700" font-size="${14*scale}" text-anchor="middle" dominant-baseline="central">${nT}</text>`:'');
+         (fill>0?`<clipPath id="${id}f"><rect x="${cx-tw/2}" y="${ty+th*(1-fill)}" width="${tw}" height="${th*fill}"/></clipPath><text x="${cx}" y="${ty+th/2+1}" fill="${TOKENS.inkDark}" clip-path="url(#${id}f)" font-family="I" font-weight="700" font-size="${14*scale}" text-anchor="middle" dominant-baseline="central">${nT}</text>`:'');
     } else {
       // a trigger keycap: rounded top, flatter bottom, like the real thing seen from the front
       const r=th*0.5, x1=cx-tw/2, x2=cx+tw/2, yb=ty+th;
@@ -71,8 +71,8 @@ function shoulderKeys(variant, anchors, style, on, scale){
 }
 // B: the device's top edge, seen from above, with the shoulder buttons where they really are
 function topView(W, anchors, style, on, y, S){ S=S||1;
-  const ACC='#72D6E8', line='#5a5e6a', v=k=>on[k]||0, lit=k=>v(k)>0?`fill="${ACC}" fill-opacity=".9" stroke="${ACC}" filter="url(#hg2)"`:`fill="#0f1014" stroke="${line}"`;
-  const ink=k=>v(k)>0.5?'#0B0F17':'#C9CCD3', N={xbox:['LT','LB','RT','RB'],ps:['L2','L1','R2','R1'],switch:['ZL','L','ZR','R']}[style];
+  const ACC=TOKENS.brandAccent, line='#5a5e6a', v=k=>on[k]||0, lit=k=>v(k)>0?`fill="${ACC}" fill-opacity=".9" stroke="${ACC}" filter="url(#hg2)"`:`fill="#0f1014" stroke="${line}"`;
+  const ink=k=>v(k)>0.5?TOKENS.inkDark:'#C9CCD3', N={xbox:['LT','LB','RT','RB'],ps:['L2','L1','R2','R1'],switch:['ZL','L','ZR','R']}[style];
   const x0=anchors.left-70*S, x1=anchors.right+70*S, h=34*S;
   let s=`<rect x="${x0}" y="${y}" width="${x1-x0}" height="${h}" rx="${h/2}" fill="#101116" stroke="${line}" stroke-width="2.2"/>`;
   [[anchors.left,0],[anchors.right,1]].forEach(([cx,i])=>{const kT=i?'RT':'LT',kB=i?'RB':'LB';const dir=i?1:-1;
@@ -87,9 +87,9 @@ function topView(W, anchors, style, on, y, S){ S=S||1;
 // read as one pair that belongs to the shoulder, clearly apart from the body; both leave room for the lit rings.
 const KEY_GAP=0.6, KEY_AIR=0.9;
 function shoulderKeysA(anchors, style, on, scale){
-  scale=scale||1; const ACC='#72D6E8', line='#5a5e6a', v=k=>on[k]||0;
+  scale=scale||1; const ACC=TOKENS.brandAccent, line='#5a5e6a', v=k=>on[k]||0;
   const lit=k=>v(k)>0?`fill="${ACC}" fill-opacity=".9" stroke="${ACC}" filter="url(#hg2)"`:`fill="#0f1014" stroke="${line}"`;
-  const ink=k=>v(k)>0.5?'#0B0F17':'#C9CCD3';
+  const ink=k=>v(k)>0.5?TOKENS.inkDark:'#C9CCD3';
   const N={xbox:['LT','LB','RT','RB'],ps:['L2','L1','R2','R1'],switch:['ZL','L','ZR','R']}[style];
   const txt=(x,y,t,k,fs)=>`<text x="${x}" y="${y}" fill="${ink(k)}" font-family="I" font-weight="700" font-size="${fs*scale}" text-anchor="middle" dominant-baseline="central">${t}</text>`;
   let s='';

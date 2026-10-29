@@ -22,23 +22,48 @@ import kotlin.math.abs
 import kotlin.math.min
 import kotlin.math.roundToInt
 
-/** Shared look for the Settings app: black, calm, one white focus ring. */
+/** Shared look for the Settings app: black, calm, one focus ring in the highlight colour. */
 object SettingsStyle {
     val background: Int = Design.SURFACE_BG
     val surface: Int = Design.SURFACE_CARD
     val surfaceFocused: Int = Design.SURFACE_RAISED
-    val track: Int = Color.parseColor("#2E2E35")
+    val track: Int = Design.TRACK
     val textPrimary: Int = Design.TEXT_PRIMARY
     val textSecondary: Int = Design.TEXT_SECONDARY
     val divider: Int = Design.EDGE_DIVIDER
-    val medium: Typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+    /**
+     * The interface's typeface: Atkinson Hyperlegible Next, the family of the logo's wordmark and the keyboard's
+     * letters (one voice everywhere, made so similar letters never look alike). [regular] for reading, [medium] for
+     * titles, labels and values at 600, two steps (200) above the text so the difference shows. Loaded by [init];
+     * Android's own font stands in until then. To try another family, change [Design.UI_FONT].
+     */
+    var regular: Typeface = Typeface.DEFAULT
+        private set
+    var medium: Typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+        private set
+
+    fun init(context: Context) {
+        val base = runCatching { context.resources.getFont(Design.UI_FONT) }.getOrNull() ?: return
+        regular = Typeface.create(base, Design.WEIGHT_TEXT, false)
+        medium = Typeface.create(base, Design.WEIGHT_STRONG, false)
+    }
+
+    /** Every text view under [root] that hasn't chosen its own typeface reads in [regular]. Runs after each layout. */
+    fun useFont(root: View) {
+        fun walk(v: View) {
+            if (v is TextView && (v.typeface == null || v.typeface == Typeface.DEFAULT)) v.typeface = regular
+            if (v is android.view.ViewGroup) for (i in 0 until v.childCount) walk(v.getChildAt(i))
+        }
+        walk(root)
+        root.viewTreeObserver.addOnGlobalLayoutListener { walk(root) }
+    }
 
     /**
      * Your highlight colour. Settings uses it for everything that shows "you are here" or
      * "this is on": the active tab, the focus ring, chosen options, switches and sliders.
      * Text stays white, so the colour only appears where it means something.
      */
-    var accent: Int = Color.parseColor("#8AB4F8")
+    var accent: Int = Design.BRAND_ACCENT   // Inlay teal, the app's default, until settings load
         set(value) {
             field = value
             focusRings.forEach { it.setStroke(ringWidth, value) }
@@ -59,7 +84,7 @@ object SettingsStyle {
     private val argb = ArgbEvaluator()
     fun blend(from: Int, to: Int, t: Float): Int = argb.evaluate(t.coerceIn(0f, 1f), from, to) as Int
 
-    /** Rounded background: filled + white ring when focused, soft fill when pressed. */
+    /** Rounded background: filled + accent ring when focused, soft fill when pressed. */
     fun focusBackground(context: Context, radiusDp: Float): Drawable {
         val dp = context.resources.displayMetrics.density
         ringWidth = (Design.STROKE_FOCUS * dp).roundToInt()
@@ -113,6 +138,16 @@ abstract class SettingRow(
     private var subtitleView: View? = null
     private var control: View? = null
 
+    /** "Action · detail": the detail after the dot in the quieter subtitle colour and weight. */
+    protected fun qualifyTitle() {
+        val t = titleView.text.toString(); val i = t.indexOf(" · ")
+        if (i < 0) return
+        titleView.text = android.text.SpannableString(t).apply {
+            setSpan(android.text.style.ForegroundColorSpan(SettingsStyle.textSecondary), i, t.length, 0)
+            setSpan(android.text.style.TypefaceSpan("sans-serif"), i, t.length, 0)
+        }
+    }
+
     /** Changes the row's words in place (for rows that change state, like "Cleared · Undo"). */
     protected fun setTexts(title: String, subtitle: String) {
         titleView.text = title
@@ -141,7 +176,7 @@ abstract class SettingRow(
             subtitle?.let {
                 addView(subtitleView(context, it).also { v -> subtitleView = v },
                     LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT)
-                    .apply { topMargin = px(Design.SPACE_XS / 2) })
+                    .apply { topMargin = px(Design.SPACE_XS) })
             }
         }
         addView(texts, if (stacked) LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
@@ -151,15 +186,15 @@ abstract class SettingRow(
 
     private fun subtitleView(context: Context, subtitle: String): View {
         val parts = HintText.parse(subtitle)
-        return if (parts.none { it is HintPart.Badge }) {
+        return if (parts.none { it is HintPart.Badge || it is HintPart.Dpad }) {
             TextView(context).apply {
                 text = subtitle
                 textSize = Design.TYPE_CAPTION
                 setTextColor(SettingsStyle.textSecondary)
-                setLineSpacing(0f, 1.15f)
+                setLineSpacing(0f, Design.LINE_CAPTION)
             }
         } else {
-            BadgeLineView(context, parts, buttonStyle, Design.TYPE_CAPTION, SettingsStyle.textSecondary, badgeScale = 1.25f)
+            BadgeLineView(context, parts, buttonStyle, Design.TYPE_CAPTION, SettingsStyle.textSecondary, badgeScale = Design.BADGE_INLINE)
         }
     }
 
@@ -341,7 +376,8 @@ class SliderRow(
 ) : SettingRow(context, title, subtitle, stacked = SettingsStyle.isNarrow(context)) {
 
     private val valueText = TextView(context).apply {
-        textSize = 15f
+        fontFeatureSettings = Design.NUMBERS_TABULAR         // even-width digits: the value doesn't wobble while sliding
+        textSize = Design.TYPE_ROW
         typeface = SettingsStyle.medium
         setTextColor(SettingsStyle.textPrimary)
         gravity = Gravity.END
@@ -357,8 +393,11 @@ class SliderRow(
             // Under its title (narrow screens) the slider spans the row and the value sits at its end,
             // instead of floating in the middle (audit, 28 Oct 2026)
             if (narrow) addView(slider, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f)) else addView(slider)
-            addView(valueText, LayoutParams(if (narrow) LayoutParams.WRAP_CONTENT else px(72f), LayoutParams.WRAP_CONTENT)
-                .apply { if (narrow) marginStart = px(Design.SPACE_L) })
+            // The value sits 16 dp after the track, in a column just wide enough for its widest value,
+            // so it never floats far from the slider (audit, 29 Oct 2026)
+            val widest = (min..max).maxOf { valueText.paint.measureText(label(it)) }
+            addView(valueText, LayoutParams(if (narrow) LayoutParams.WRAP_CONTENT else widest.toInt() + 1, LayoutParams.WRAP_CONTENT)
+                .apply { marginStart = px(Design.SPACE_L) })
         }
         setControl(control)
         if (narrow) control.layoutParams = (control.layoutParams as LayoutParams).apply { width = LayoutParams.MATCH_PARENT }
@@ -426,11 +465,7 @@ class ActionRow(
     private val onPress: () -> Unit
 ) : SettingRow(context, title, subtitle) {
     init {
-        setControl(TextView(context).apply {
-            text = "›"
-            textSize = 26f
-            setTextColor(SettingsStyle.textSecondary)
-        })
+        setControl(ChevronView(context))
     }
 
     override fun activate() {
@@ -489,13 +524,28 @@ class InfoRow(context: Context, title: String, value: String) : SettingRow(conte
     init {
         setControl(TextView(context).apply {
             text = value
-            textSize = 15f
+            textSize = Design.TYPE_ROW
             setTextColor(SettingsStyle.textSecondary)
         })
     }
 }
 
 /** One line of the button guide: what it does, and the buttons that do it. */
+private const val PICKER_MIN_DP = 192f
+
+/** The chevron at the end of a row that opens something: the same drawn chevron as the option pickers. */
+class ChevronView(context: Context) : View(context) {
+    private val dp = resources.displayMetrics.density
+    private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE; strokeWidth = Design.STROKE_ICON * dp
+        strokeCap = Paint.Cap.ROUND; strokeJoin = Paint.Join.ROUND; color = SettingsStyle.textSecondary
+    }
+    override fun onMeasure(w: Int, h: Int) = setMeasuredDimension((24 * dp).toInt(), (24 * dp).toInt())
+    override fun onDraw(canvas: Canvas) {
+        Icons.chevron(canvas, width / 2f, height / 2f, Design.ICON_CHEVRON * dp, paint)
+    }
+}
+
 class GuideRow(
     context: Context,
     val title: String,
@@ -505,8 +555,10 @@ class GuideRow(
     override val interactive get() = false
 
     init {
-        minimumHeight = px(52f)
-        setControl(BadgeLineView(context, HintText.parse(buttons), buttonStyle, 14f, SettingsStyle.textSecondary, badgeScale = 1.45f))
+        minimumHeight = px(56f)       // a hint list is denser than a settings row (64), still on the grid
+        // "Delete · hold to speed up": the action stands out, the detail after the dot is quieter
+        qualifyTitle()
+        setControl(BadgeLineView(context, HintText.parse(buttons), buttonStyle, Design.TYPE_CAPTION, SettingsStyle.textSecondary, badgeScale = Design.BADGE_ROW))
     }
 }
 
@@ -531,7 +583,7 @@ class SegmentedView(
     private val fill = Paint(Paint.ANTI_ALIAS_FLAG)
     private val text = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         textAlign = Paint.Align.CENTER
-        textSize = android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_SP, 14f, resources.displayMetrics)
+        textSize = android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_SP, Design.TYPE_CAPTION, resources.displayMetrics)
         typeface = SettingsStyle.medium
     }
     private val pad = 4f * dp
@@ -563,7 +615,7 @@ class SegmentedView(
         anim?.cancel()
         anim = ValueAnimator.ofFloat(indicator, index.toFloat()).apply {
             duration = Design.MOTION_CONTROL
-            interpolator = Design.EASE_OUT
+            interpolator = Design.EASE_STANDARD          // moving across: eases in and out
             addUpdateListener {
                 indicator = it.animatedValue as Float
                 invalidate()
@@ -620,7 +672,7 @@ class SwitchView(context: Context, initial: Boolean) : View(context) {
         anim?.cancel()
         anim = ValueAnimator.ofFloat(position, if (on) 1f else 0f).apply {
             duration = Design.MOTION_CONTROL
-            interpolator = Design.EASE_OUT
+            interpolator = Design.EASE_STANDARD          // the thumb moves across: eases in and out
             addUpdateListener {
                 position = it.animatedValue as Float
                 invalidate()
@@ -632,11 +684,11 @@ class SwitchView(context: Context, initial: Boolean) : View(context) {
     override fun onDraw(canvas: Canvas) {
         val h = height.toFloat()
         val r = h / 2f
-        paint.color = SettingsStyle.blend(Color.parseColor("#3A3A42"), SettingsStyle.accent, position)
+        paint.color = SettingsStyle.blend(Design.SWITCH_OFF_TRACK, SettingsStyle.accent, position)
         canvas.drawRoundRect(0f, 0f, width.toFloat(), h, r, r, paint)
         val knobR = r - 4f * dp
         val x = r + (width - 2 * r) * position
-        paint.color = SettingsStyle.blend(Color.parseColor("#C8C8CE"), SettingsStyle.onAccent, position)
+        paint.color = SettingsStyle.blend(Design.SWITCH_OFF_KNOB, SettingsStyle.onAccent, position)
         canvas.drawCircle(x, r, knobR, paint)
     }
 }
@@ -652,7 +704,7 @@ class SliderView(
 
     private val dp = resources.displayMetrics.density
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-    private val thumbR = 9f * dp
+    private val thumbR = 10f * dp
 
     var value = initial.coerceIn(min, max)
         set(v) {
@@ -726,8 +778,9 @@ class StepperView(
         strokeJoin = Paint.Join.ROUND
     }
     private val text = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        fontFeatureSettings = Design.NUMBERS_TABULAR     // even-width digits: the value doesn't wobble as it changes
         textAlign = Paint.Align.CENTER
-        textSize = android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_SP, 14f, resources.displayMetrics)
+        textSize = android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_SP, Design.TYPE_CAPTION, resources.displayMetrics)
         typeface = SettingsStyle.medium
         color = SettingsStyle.textPrimary
     }
@@ -736,7 +789,8 @@ class StepperView(
     private var anim: ValueAnimator? = null
 
     override fun onMeasure(widthSpec: Int, heightSpec: Int) {
-        val natural = (options.maxOf { text.measureText(it) } + 2 * arrowZone + 16f * dp).roundToInt()
+        // Every option picker is at least the same width, so pickers line up down a page
+        val natural = maxOf(options.maxOf { text.measureText(it) } + 2 * arrowZone + 16f * dp, PICKER_MIN_DP * dp).roundToInt()
         setMeasuredDimension(resolveSize(natural, widthSpec), (40f * dp).roundToInt())
     }
 
@@ -746,7 +800,7 @@ class StepperView(
         anim?.cancel()
         anim = ValueAnimator.ofFloat(dir, 0f).apply {
             duration = Design.MOTION_CONTROL
-            interpolator = Design.EASE_OUT
+            interpolator = Design.EASE_STANDARD          // the value slides across: eases in and out
             addUpdateListener {
                 slide = it.animatedValue as Float
                 invalidate()
@@ -763,24 +817,17 @@ class StepperView(
         canvas.drawRoundRect(0f, 0f, w, h, r, r, fill)
 
         // Label: slides a little and fades in from the side you moved towards
-        val shift = slide * 10f * dp
+        val shift = slide * 8f * dp
         text.alpha = ((1f - abs(slide)) * 255).roundToInt()
         val baseline = h / 2f - (text.descent() + text.ascent()) / 2f
         canvas.drawText(options[selectedIndex], w / 2f + shift, baseline, text)
         text.alpha = 255
 
         // Arrows: bright when focused, dim otherwise, gone at the ends of the list
-        val s = 5f * dp
         val bright = if (focused) SettingsStyle.accent else SettingsStyle.textSecondary
         fun chevron(cx: Float, left: Boolean, visible: Boolean) {
-            arrow.color = if (visible) bright else Contrast.withAlpha(SettingsStyle.textSecondary, 0x40)
-            val d = if (left) 1f else -1f
-            val path = Path().apply {
-                moveTo(cx + d * s * 0.5f, r - s)
-                lineTo(cx - d * s * 0.5f, r)
-                lineTo(cx + d * s * 0.5f, r + s)
-            }
-            canvas.drawPath(path, arrow)
+            arrow.color = if (visible) bright else Contrast.withAlpha(SettingsStyle.textSecondary, Design.ALPHA_TINT_SOFT)
+            Icons.chevron(canvas, cx, r, Design.ICON_CHEVRON * dp, arrow, left)
         }
         chevron(arrowZone / 2f + 4f * dp, left = true, visible = selectedIndex > 0)
         chevron(w - arrowZone / 2f - 4f * dp, left = false, visible = selectedIndex < options.lastIndex)
@@ -845,7 +892,7 @@ class SwatchGridView(
     }
 
     override fun onDraw(canvas: Canvas) {
-        val r = 13f * dp
+        val r = 12f * dp
         colours.forEachIndexed { i, colour ->
             val cx = cell * (i % columns) + cell / 2f
             val cy = cell * (i / columns) + cell / 2f
@@ -854,18 +901,12 @@ class SwatchGridView(
             canvas.drawCircle(cx, cy, r, paint)
             if (i == selectedIndex) {
                 paint.style = Paint.Style.STROKE
-                paint.strokeWidth = 2.5f * dp
-                paint.color = Contrast.inkFor(colour)
-                val g = r * 0.45f
-                canvas.drawPath(Path().apply {
-                    moveTo(cx - g, cy)
-                    lineTo(cx - g * 0.25f, cy + g * 0.7f)
-                    lineTo(cx + g, cy - g * 0.6f)
-                }, paint)
+                Icons.line(paint, dp * Design.ICON_CHECK_WEIGHT, Contrast.inkFor(colour))
+                Icons.check(canvas, cx, cy, r, paint)
                 if (showCursor) {
-                    paint.strokeWidth = 2f * dp
+                    paint.strokeWidth = Design.STROKE_FOCUS * dp
                     paint.color = Color.WHITE
-                    canvas.drawCircle(cx, cy, r + 4.5f * dp, paint)
+                    canvas.drawCircle(cx, cy, r + 4f * dp, paint)   // a colour dot's focus ring is neutral (white): an accent ring would vanish on the accent swatch
                 }
             }
         }
@@ -892,8 +933,8 @@ class BadgeLineView(
     textSizeSp: Float,
     colour: Int,
     badgeScale: Float,
-    gapBadgeToBadge: Float = 2f,
-    gapBadgeToText: Float = 4f
+    gapBadgeToBadge: Float = Design.BADGE_GAP,
+    gapBadgeToText: Float = Design.BADGE_TEXT_GAP
 ) : View(context) {
 
     private val painter = BadgePainter(resources.displayMetrics.density).apply {
@@ -903,6 +944,7 @@ class BadgeLineView(
         this.gapBadgeToText = gapBadgeToText
     }
     private val text = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        typeface = SettingsStyle.regular
         textAlign = Paint.Align.LEFT
         textSize = android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_SP, textSizeSp, resources.displayMetrics)
         color = colour
@@ -912,13 +954,17 @@ class BadgeLineView(
         val textHeight = text.descent() - text.ascent()
         // Honour a fixed width from the layout (the tour lines badges up in a column), otherwise wrap
         setMeasuredDimension(
-            resolveSize(painter.measureLine(parts, text).roundToInt() + 2, widthSpec),
-            resolveSize((maxOf(painter.lineHeight(parts), textHeight) + 4).roundToInt(), heightSpec)
+            resolveSize((painter.measureLine(parts, text) + 2 * resources.displayMetrics.density).roundToInt(), widthSpec),
+            resolveSize((maxOf(painter.lineHeight(parts), textHeight) + 4 * resources.displayMetrics.density).roundToInt(), heightSpec)
         )
     }
 
+    /** In a column wider than this line, sit at its end (next to the words that follow), not at its start. */
+    var alignEnd = false
+
     override fun onDraw(canvas: Canvas) {
-        painter.drawLine(canvas, parts, 1f, height / 2f, text)
+        val w = painter.measureLine(parts, text)
+        painter.drawLine(canvas, parts, if (alignEnd) width - 1f - w else 1f, height / 2f, text)
     }
 }
 
@@ -936,7 +982,7 @@ class ColourSliderView(
     private val dp = resources.displayMetrics.density
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val ring = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE }
-    private val thumbR = 11f * dp
+    private val thumbR = 12f * dp
     private val trackH = 6f * dp
 
     var value = initial.coerceIn(0, max)
@@ -965,8 +1011,8 @@ class ColourSliderView(
         val x = left + (right - left) * value / max.toFloat()
         paint.color = colourAt(value)
         canvas.drawCircle(x, cy, thumbR, paint)
-        ring.color = if (active) Color.WHITE else Contrast.withAlpha(Color.WHITE, 90)
-        ring.strokeWidth = 2f * dp
+        ring.color = if (active) Color.WHITE else Contrast.withAlpha(Color.WHITE, Design.ALPHA_INACTIVE)
+        ring.strokeWidth = Design.STROKE_FOCUS * dp
         canvas.drawCircle(x, cy, thumbR, ring)
     }
 
@@ -1028,15 +1074,15 @@ class SetupRow(
         LinearLayout(context).apply {
             orientation = HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            alpha = if (done) 0.6f else 1f
+            // A finished step steps back with a grey title and its tick, never by fading (faded words fall under 4.5:1)
             addView(StepDot(context, n, done, current), LayoutParams(px(28f), px(28f)))
             addView(LinearLayout(context).apply {
                 orientation = VERTICAL
                 addView(TextView(context).apply {
                     text = title
-                    textSize = 15f
+                    textSize = Design.TYPE_ROW
                     typeface = SettingsStyle.medium
-                    setTextColor(SettingsStyle.textPrimary)
+                    setTextColor(if (done) SettingsStyle.textSecondary else SettingsStyle.textPrimary)
                 })
                 addView(TextView(context).apply {
                     text = subtitle
@@ -1058,7 +1104,7 @@ class StepDot(context: Context, private val n: Int, private val done: Boolean, p
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val text = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         textAlign = Paint.Align.CENTER
-        textSize = android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_SP, 13f, resources.displayMetrics)
+        textSize = android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_SP, Design.TYPE_CAPTION, resources.displayMetrics)
         typeface = SettingsStyle.medium
     }
 
@@ -1070,21 +1116,12 @@ class StepDot(context: Context, private val n: Int, private val done: Boolean, p
             paint.style = Paint.Style.FILL
             paint.color = SettingsStyle.accent
             canvas.drawCircle(cx, cy, r, paint)
-            paint.style = Paint.Style.STROKE
-            paint.strokeWidth = 2f * dp
-            paint.strokeCap = Paint.Cap.ROUND
-            paint.strokeJoin = Paint.Join.ROUND
-            paint.color = SettingsStyle.onAccent
-            val g = r * 0.42f
-            canvas.drawPath(Path().apply {
-                moveTo(cx - g, cy)
-                lineTo(cx - g * 0.25f, cy + g * 0.7f)
-                lineTo(cx + g, cy - g * 0.6f)
-            }, paint)
+            Icons.line(paint, dp * Design.ICON_CHECK_WEIGHT, SettingsStyle.onAccent)
+            Icons.check(canvas, cx, cy, r, paint)
         } else {
             val colour = if (current) SettingsStyle.accent else SettingsStyle.textSecondary
             paint.style = Paint.Style.STROKE
-            paint.strokeWidth = 1.8f * dp
+            paint.strokeWidth = Design.STROKE_ICON * dp
             paint.color = colour
             canvas.drawCircle(cx, cy, r, paint)
             text.color = colour
@@ -1115,18 +1152,14 @@ class UndoActionRow(
 
     private fun showReady() {
         setTexts(title, subtitle)
-        setControl(TextView(context).apply {
-            text = "›"
-            textSize = 26f
-            setTextColor(SettingsStyle.textSecondary)
-        })
+        setControl(ChevronView(context))
     }
 
     private fun showDone() {
         setTexts(doneTitle, doneSubtitle)
         setControl(BadgeLineView(context,
             listOf(HintPart.Badge(ControllerButton.A), HintPart.Text("Undo")),
-            buttonStyle, 15f, SettingsStyle.accent, badgeScale = 1.35f))
+            buttonStyle, Design.TYPE_ROW, SettingsStyle.accent, badgeScale = Design.BADGE_INLINE))
     }
 
     override fun activate() {

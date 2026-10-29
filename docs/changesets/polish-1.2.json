@@ -1,0 +1,713 @@
+{
+ "name": "polish-1.2",
+ "title": "Polish 1.2 (29-30 Oct): foundations and shared parts, the tour, Atkinson interface font, clipboard undo, design-note tips, new logo inlay| with its typing animation, README header",
+ "recorded": "2026-10-30",
+ "base": "8318571",
+ "files": [
+  {
+   "path": "DESIGN_GUIDE.md",
+   "before": "6d0dae96fdf3302bbbf95b8616e586838dacafbe",
+   "after": "893fd000b1d379d72da33d231a6e7a5566a80e04"
+  },
+  {
+   "path": "README.md",
+   "before": "8d8eb0febb010ed744b64479e90abe3474aca1af",
+   "after": "a343aec9cc842fc4c7cec99a6e049df36885b2cb"
+  },
+  {
+   "path": "app/src/main/assets/devices/controller-ps.json",
+   "before": "be930d829b59952be2f629607c4f593b54287d25",
+   "after": "7be2c0f4b134385a7e872e9f8f8d614d782623a4"
+  },
+  {
+   "path": "app/src/main/assets/devices/controller-ps.svg",
+   "before": "152f1884b30167f281e102e9346f049cbff87740",
+   "after": "4cefe3ede5909aeb31777f6d1940fdf3d7308d80"
+  },
+  {
+   "path": "app/src/main/assets/devices/controller-switch.json",
+   "before": "f2d432f528f28c583d4ab37f85af74fa05b77eef",
+   "after": "5bf8182e001cad9ab97269895bbe52d1f26af010"
+  },
+  {
+   "path": "app/src/main/assets/devices/controller-switch.svg",
+   "before": "d6f507a9a083a8903e1bc12f240ec592ea981e7a",
+   "after": "2c016d8a2453957d254d05786ffb859b2d55b94b"
+  },
+  {
+   "path": "app/src/main/assets/devices/controller-xbox.json",
+   "before": "d93d95bf5002b7eea0b707f80a4584fdadf60a84",
+   "after": "3080b64b68add3491861a40e1eba02f7a455e58d"
+  },
+  {
+   "path": "app/src/main/assets/devices/controller-xbox.svg",
+   "before": "15def9a63b8717721fd6cc240f55b6b5f71a347c",
+   "after": "b33a3ca9d53bd5ccd13e68c6b750e32ce62f28c8"
+  },
+  {
+   "path": "app/src/main/assets/devices/remote.json",
+   "before": "f079b7bfb0b5f7a8764f44d956606a83070c7e95",
+   "after": "72f337c27202adb99756c029ffa8542c3dab4fea"
+  },
+  {
+   "path": "app/src/main/assets/devices/vertical-ps.json",
+   "before": "07a9ee079a79bcb118686dca981b44fed4beb2f0",
+   "after": "3b57830c5cfda3e17d21c135b9cc3505ad3d3abd"
+  },
+  {
+   "path": "app/src/main/assets/devices/vertical-ps.svg",
+   "before": "e2c1c095080813d713300658ee9398b5acb83c23",
+   "after": "c3ad808283c1d3a8d464384885a435b12cc8491b"
+  },
+  {
+   "path": "app/src/main/assets/devices/vertical-sticks-ps.json",
+   "before": "7749e8714dcc6d99dbe220e484703c343be02fc8",
+   "after": "fb1caa26942e45a0b059b43295f568229cff278e"
+  },
+  {
+   "path": "app/src/main/assets/devices/vertical-sticks-ps.svg",
+   "before": "056e57fbf204d3bb9707b4c716247beb789f2dd1",
+   "after": "52e173ff380284d202037e6e62a78989ec7dbe27"
+  },
+  {
+   "path": "app/src/main/assets/devices/vertical-sticks-switch.json",
+   "before": "b188c7e42ffc0bd0df40996d22465e5c824f123f",
+   "after": "74e554d761b1ba3c1d8d86d69a722dac2f29f997"
+  },
+  {
+   "path": "app/src/main/assets/devices/vertical-sticks-switch.svg",
+   "before": "618bf805954d42eb1aeae981a8facb2f733d7b5c",
+   "after": "1b8817d6c1b12bf452acb5d64b3d5e7f3d12c85e"
+  },
+  {
+   "path": "app/src/main/assets/devices/vertical-sticks-xbox.json",
+   "before": "b188c7e42ffc0bd0df40996d22465e5c824f123f",
+   "after": "74e554d761b1ba3c1d8d86d69a722dac2f29f997"
+  },
+  {
+   "path": "app/src/main/assets/devices/vertical-sticks-xbox.svg",
+   "before": "5d01a6617cda110e8d1b99c1e158acd269588202",
+   "after": "406fda2e3fbc4399d5b7c38c11f4a8242615773e"
+  },
+  {
+   "path": "app/src/main/assets/devices/vertical-switch.json",
+   "before": "b9e4f177990079fe7030a5086b00f0e1d0b1bdfb",
+   "after": "8e1153e97c4fc368da2f445398e4af80dbb56802"
+  },
+  {
+   "path": "app/src/main/assets/devices/vertical-switch.svg",
+   "before": "678a8178b933ddb57e58a03d6bb0713bc5fe075d",
+   "after": "dd55045a45ce4e212eb2ed2bad96e9a2693e866c"
+  },
+  {
+   "path": "app/src/main/assets/devices/vertical-xbox.json",
+   "before": "b9e4f177990079fe7030a5086b00f0e1d0b1bdfb",
+   "after": "8e1153e97c4fc368da2f445398e4af80dbb56802"
+  },
+  {
+   "path": "app/src/main/assets/devices/vertical-xbox.svg",
+   "before": "4bd139cc54c329075b108a57be6e7ef777b94ae5",
+   "after": "5086ea666b3db2718177b3ce7464b19c937987e7"
+  },
+  {
+   "path": "app/src/main/assets/devices/wide-ps.json",
+   "before": "27b0bca1870f221096ba1abace2437c135d54d1d",
+   "after": "f3c5edba05ad902f6bfcc5bc4761725d0dd77714"
+  },
+  {
+   "path": "app/src/main/assets/devices/wide-ps.svg",
+   "before": "8d36ef3940695babbccdd850a2d29d11564dfd16",
+   "after": "65c63e2820b46c8a3e86fd096bfe689e67cdde0e"
+  },
+  {
+   "path": "app/src/main/assets/devices/wide-switch.json",
+   "before": "cca7e47a31b9513b79470926db9089eb63fca0a0",
+   "after": "1f34ab3b33b1addbca8b8c138d58480d9c3a3ef2"
+  },
+  {
+   "path": "app/src/main/assets/devices/wide-switch.svg",
+   "before": "6e6cdc56df28a141010174a2abc95a171d0028d6",
+   "after": "5881d2f1db227a961b2a1dbd8601c48fef7b635a"
+  },
+  {
+   "path": "app/src/main/assets/devices/wide-xbox.json",
+   "before": "cca7e47a31b9513b79470926db9089eb63fca0a0",
+   "after": "1f34ab3b33b1addbca8b8c138d58480d9c3a3ef2"
+  },
+  {
+   "path": "app/src/main/assets/devices/wide-xbox.svg",
+   "before": "e64b41406dcfd8412902fe99040d92d2e4ef6a0d",
+   "after": "8643715442ae01fe40567e9ded3a865e86a6eb7f"
+  },
+  {
+   "path": "app/src/main/java/com/example/gridime/Backdrop.kt",
+   "before": "d7dbde059b9791df2026e20b294203299355606f",
+   "after": "3a7c8379d17c4a62da49b760c2ce7fec3f26b105"
+  },
+  {
+   "path": "app/src/main/java/com/example/gridime/BadgePainter.kt",
+   "before": "debb3f472207b5c5f93fa953cb2abf1f5b70189d",
+   "after": "1e7078c4eb445c8db19e242f7aa63054b2fde7ec"
+  },
+  {
+   "path": "app/src/main/java/com/example/gridime/ClipRemoval.kt",
+   "before": null,
+   "after": "72ab8d9a0b8240acd603a0c5212a48c94b60398a"
+  },
+  {
+   "path": "app/src/main/java/com/example/gridime/Design.kt",
+   "before": "2e6f24774bfc9759ad1c65213d52c514b363d827",
+   "after": "5d3f3bb81b05871527d5548062602ccd7931fa3b"
+  },
+  {
+   "path": "app/src/main/java/com/example/gridime/DevicePicture.kt",
+   "before": "5c147a18c3c08c1321e232576fc9fd8adaf82fac",
+   "after": "5b383118988a8a1c100d74d8d0215b8de282489a"
+  },
+  {
+   "path": "app/src/main/java/com/example/gridime/GridKeyboardService.kt",
+   "before": "7e7e19f6fca57275b4c36675f9d768d9c109f7d9",
+   "after": "1507736b377e3a03d1aff9afcff8f84b1290b8bf"
+  },
+  {
+   "path": "app/src/main/java/com/example/gridime/Icons.kt",
+   "before": null,
+   "after": "f592b2412ea697be86f48a69b320afba8b8cf725"
+  },
+  {
+   "path": "app/src/main/java/com/example/gridime/KeyGridView.kt",
+   "before": "a6fa9080f42dc5c5bc4ec3ac3ae1cbd1792e8e1a",
+   "after": "635e5fb414a6793e3a72b8656366060ed96081ee"
+  },
+  {
+   "path": "app/src/main/java/com/example/gridime/KeyboardSettings.kt",
+   "before": "befb059acfa168f0ed23a5230ded03fb05146ee2",
+   "after": "b853b2648959da275275e747dd8342cccac125cc"
+  },
+  {
+   "path": "app/src/main/java/com/example/gridime/RowLight.kt",
+   "before": null,
+   "after": "740771bc72921672c4fff648a0ff1cefa6d84d75"
+  },
+  {
+   "path": "app/src/main/java/com/example/gridime/SettingsActivity.kt",
+   "before": "5244d711dd943da9e5c389a0d5557d2da4f303e4",
+   "after": "724884f40bd5ff9fe862973c97163715a12bd8b3"
+  },
+  {
+   "path": "app/src/main/java/com/example/gridime/SettingsChrome.kt",
+   "before": "571ecdf56d2f568bf1bba3d616299931cdaf1599",
+   "after": "e8237aafe1bd697b421558d046eefd292c40a53b"
+  },
+  {
+   "path": "app/src/main/java/com/example/gridime/SettingsViews.kt",
+   "before": "ef4519ef0bc8af4bfef7b185b4a7fff1189417a0",
+   "after": "87cc726d140424b64858ab8b73f09801cbabdf8f"
+  },
+  {
+   "path": "app/src/main/java/com/example/gridime/TutorialActivity.kt",
+   "before": "1fd1450eb274d3332cf6742a246ef33da423fec8",
+   "after": "19f1990326a363d8bf6a03a0c74b0dc7722ed328"
+  },
+  {
+   "path": "app/src/main/java/com/example/gridime/WhatsNew.kt",
+   "before": "2ef6636363eb399cda8e3b0bfc0ba3836bcaa65f",
+   "after": "e2a5466bf0f677466a27e40ee9c48eca21e8ffdd"
+  },
+  {
+   "path": "app/src/main/res/drawable/tv_banner.xml",
+   "before": "dc7b7963bb8ed79334916bd4592648b01c64cd09",
+   "after": "5029ceadffd35c866406ae14540fc30f89a10073"
+  },
+  {
+   "path": "app/src/test/java/com/example/gridime/AccentResetTest.kt",
+   "before": null,
+   "after": "14840c67f8780fd891c7541e97e0753b891faca2"
+  },
+  {
+   "path": "app/src/test/java/com/example/gridime/AuditShots.kt",
+   "before": "ade723605a9e9c5bf20935f9b5da9cb741952055",
+   "after": "11bcd126c9a1d0e12a1522828b7584764dde5554"
+  },
+  {
+   "path": "app/src/test/java/com/example/gridime/BackdropExport.kt",
+   "before": null,
+   "after": "a4ba43e74483f8257a8938cbb1a5c186556dcd14"
+  },
+  {
+   "path": "app/src/test/java/com/example/gridime/ClearThemeTest.kt",
+   "before": null,
+   "after": "fd3c19e9d30218cfbd061189264056036d80738a"
+  },
+  {
+   "path": "app/src/test/java/com/example/gridime/ClipRemovalTest.kt",
+   "before": null,
+   "after": "c3039927bda99d8015b325c3d4ae99a6f2bec8ec"
+  },
+  {
+   "path": "app/src/test/java/com/example/gridime/CombinationsTest.kt",
+   "before": null,
+   "after": "6b59f55bc6e62c3145709e0095ce286670bf9ee4"
+  },
+  {
+   "path": "app/src/test/java/com/example/gridime/DesignTokensTest.kt",
+   "before": null,
+   "after": "75625001a3ee18687b23636f1dea666a4b7d29dc"
+  },
+  {
+   "path": "app/src/test/java/com/example/gridime/DeviceAssetsTest.kt",
+   "before": "6189368ccb4e08ad90025c19e0cdae8a2f5f0761",
+   "after": "e273a6f88af4412104a413661d20f13aed1f5e23"
+  },
+  {
+   "path": "app/src/test/java/com/example/gridime/HoldOptionsExport.kt",
+   "before": "cc4f6d0d2d8a461aa12f6948bb8639a9667ecb6f",
+   "after": "09ba81731c54c181e5757452da0912e3387f4127"
+  },
+  {
+   "path": "app/src/test/java/com/example/gridime/IconSheetTest.kt",
+   "before": null,
+   "after": "3133272b4d15987a0f0bb9680af6d4f4a57f16a1"
+  },
+  {
+   "path": "app/src/test/java/com/example/gridime/KeyboardInkTest.kt",
+   "before": null,
+   "after": "ad38ed076af7c8e2cac1f8d508c275ea63c497a3"
+  },
+  {
+   "path": "app/src/test/java/com/example/gridime/LegibilityRenderTest.kt",
+   "before": null,
+   "after": "6b49067c90b9006b001a9da3e28443791b8a9e70"
+  },
+  {
+   "path": "app/src/test/java/com/example/gridime/RemovedClipViewTest.kt",
+   "before": null,
+   "after": "50845245c66314afe6349537d796b3d90930d8da"
+  },
+  {
+   "path": "app/src/test/java/com/example/gridime/SettingsContrastTest.kt",
+   "before": null,
+   "after": "891115da853451b383d5cc7f546884efcea2765f"
+  },
+  {
+   "path": "app/src/test/java/com/example/gridime/TestTones.kt",
+   "before": null,
+   "after": "339b632d3a2f80fbb7ab723a01764b6d809c31af"
+  },
+  {
+   "path": "app/src/test/java/com/example/gridime/ThemeAccentTest.kt",
+   "before": null,
+   "after": "4d0c04ff5c07528794ef0f35c9debe841b479994"
+  },
+  {
+   "path": "app/src/test/java/com/example/gridime/TokenExportTest.kt",
+   "before": null,
+   "after": "cef8670c17e708fa8c81e35b2ca443c51431924f"
+  },
+  {
+   "path": "app/src/test/java/com/example/gridime/TokenSyncTest.kt",
+   "before": null,
+   "after": "80aa53b0e0c54f1841aeb5b6558703d1f47a8cac"
+  },
+  {
+   "path": "app/src/test/java/com/example/gridime/TourBeatTest.kt",
+   "before": null,
+   "after": "b94908a1dca6ea2c425ca17fd8de3adb5abba5a9"
+  },
+  {
+   "path": "app/src/test/java/com/example/gridime/TourBudgetProbe.kt",
+   "before": null,
+   "after": "2b5711e924d98edc51d8b5dcd52aa70554dd8f60"
+  },
+  {
+   "path": "app/src/test/java/com/example/gridime/TourCaptionTest.kt",
+   "before": null,
+   "after": "5c687a828c948406ca1098ed24f792a46d22f622"
+  },
+  {
+   "path": "app/src/test/java/com/example/gridime/TourContrastTest.kt",
+   "before": null,
+   "after": "782e0404fb4fd0e4c497ddab0cc7f204b216d4f2"
+  },
+  {
+   "path": "app/src/test/java/com/example/gridime/TourFilmExport.kt",
+   "before": null,
+   "after": "b012a6cf5ebaeefa8c21ff766d94bb8c7465eb9f"
+  },
+  {
+   "path": "app/src/test/java/com/example/gridime/TourMarkerTest.kt",
+   "before": null,
+   "after": "b74125e6cadc44996f4f8641ad59092092c3b2b0"
+  },
+  {
+   "path": "app/src/test/java/com/example/gridime/TourPreviewExport.kt",
+   "before": null,
+   "after": "8680dcbd4f3cbe8ec329db1f223eeb3ae29d8f3f"
+  },
+  {
+   "path": "app/src/test/java/com/example/gridime/TourTemplateTest.kt",
+   "before": null,
+   "after": "7d68c1bc566e00e8368b9339398f9f5a4688f693"
+  },
+  {
+   "path": "app/src/test/java/com/example/gridime/TvPanelTest.kt",
+   "before": null,
+   "after": "78063ff2db85c2e072b34c9e9aac1fb1a26f1b85"
+  },
+  {
+   "path": "design/tokens.css",
+   "before": null,
+   "after": "6dd26031bb9923b78520006f5c1c7b189398ee7f"
+  },
+  {
+   "path": "design/tokens.js",
+   "before": null,
+   "after": "cd1fe6afb57d06b158206ea4b539a0ff01a80432"
+  },
+  {
+   "path": "design/tokens.json",
+   "before": null,
+   "after": "d21543d98de7efff30d3f97558c1ff7276147084"
+  },
+  {
+   "path": "docs/brand/BRAND.md",
+   "before": "63212bffecc59eb313d0db16897b5a20e5804ce9",
+   "after": "b7077e089a73f083c75321d12946ad4faf535da2"
+  },
+  {
+   "path": "docs/brand/inlay-lockup-clear-dark.svg",
+   "before": null,
+   "after": "aa5db5cc7b7f68f94c1e3c4545cb3b7bb05f45e5"
+  },
+  {
+   "path": "docs/brand/inlay-lockup-clear-light.svg",
+   "before": null,
+   "after": "aa92da35a4aa725803489896ed425e8646b4195a"
+  },
+  {
+   "path": "docs/brand/inlay-lockup-dark.svg",
+   "before": "532b1840143b106720b0df3848c2f49db1846fca",
+   "after": "6a34d245af9336f140750be98a6ddc203a37589c"
+  },
+  {
+   "path": "docs/brand/inlay-lockup-light.svg",
+   "before": "4e9a191c14d16115b2a4e587ae82fe3c0d94f8a0",
+   "after": "61a0fad3d74d4c639c126522553bc5b44bd0536d"
+  },
+  {
+   "path": "docs/brand/inlay-tv-banner.svg",
+   "before": "0716b9cbdbb0c1098d9dc9973a4b7e0b03c7f552",
+   "after": "2ac7b95282f5b4d133a4349ae6daaf06a63d2d73"
+  },
+  {
+   "path": "docs/brand/inlay-wordmark-black.svg",
+   "before": null,
+   "after": "6456eb53892929d105a02054ee05c4a1f49cb0a9"
+  },
+  {
+   "path": "docs/brand/inlay-wordmark-light.svg",
+   "before": null,
+   "after": "caf1589309c84ad9aa6a02b10b7545bc686cd8da"
+  },
+  {
+   "path": "docs/brand/inlay-wordmark-white.svg",
+   "before": null,
+   "after": "f07b19461403800b554c11ab308cb7749e4702db"
+  },
+  {
+   "path": "docs/brand/inlay-wordmark.svg",
+   "before": "82e3051f72ac9fef606b54139b9cebb29503c079",
+   "after": "a04fbbfa9ef6b5bbcef67c27f81e58544c85c09f"
+  },
+  {
+   "path": "docs/brand/motion/inlay-logo-typing-dark.gif",
+   "before": null,
+   "after": "0e2c519d8221ad3949a59a24b5104f12f515bf65"
+  },
+  {
+   "path": "docs/brand/motion/inlay-logo-typing-dark.mp4",
+   "before": null,
+   "after": "8633c22366f2cd61c6792ddbd5373fb013c35fc8"
+  },
+  {
+   "path": "docs/brand/motion/inlay-logo-typing-light.gif",
+   "before": null,
+   "after": "b2c3e57069e56614e7321ec6179da70ae691781e"
+  },
+  {
+   "path": "docs/brand/motion/inlay-logo-typing-light.mp4",
+   "before": null,
+   "after": "d44a3d7c7b6aa07d9db72d97984af91bfc9d7656"
+  },
+  {
+   "path": "docs/brand/png/inlay-lockup-clear-dark-1600.png",
+   "before": null,
+   "after": "f9f93d4c26fb2a5c311a045a876cd8a8bdab5aa8"
+  },
+  {
+   "path": "docs/brand/png/inlay-lockup-clear-light-1600.png",
+   "before": null,
+   "after": "a6e16244c3bcd3dbc6058be6745edcf90997b723"
+  },
+  {
+   "path": "docs/brand/png/inlay-lockup-dark-1600.png",
+   "before": "bd7ecb0b9e3f90161c1363874d4eee2875b9eb77",
+   "after": "bc7ef9f440c2a20ff145864e48e208e8f232e4cc"
+  },
+  {
+   "path": "docs/brand/png/inlay-lockup-light-1600.png",
+   "before": "abd483a13b762c9e7b7229aea33017aeb335e740",
+   "after": "3466d19af866e280526fe66dd25aecfc3fd60096"
+  },
+  {
+   "path": "docs/brand/png/inlay-tv-banner-640.png",
+   "before": "f6a3afe92f8b878e70a3f6a01c4432b5a684650b",
+   "after": "4c58f33481205c5f782e026ca2cda97a28530e62"
+  },
+  {
+   "path": "docs/brand/readme/header-dark-still.png",
+   "before": null,
+   "after": "2656d6dc22388871588fa21367841c9e46304ff1"
+  },
+  {
+   "path": "docs/brand/readme/header-dark.gif",
+   "before": null,
+   "after": "6dc1d4023a7aa29904c514a835490188601329c5"
+  },
+  {
+   "path": "docs/brand/readme/header-light-still.png",
+   "before": null,
+   "after": "43860e7ae297dd9d11b06402ca8b024480868b87"
+  },
+  {
+   "path": "docs/brand/readme/header-light.gif",
+   "before": null,
+   "after": "28712b9a01ae03d5c4058cf92f17fac7e1d117e1"
+  },
+  {
+   "path": "docs/visuals-src/VISUAL_SYSTEM.md",
+   "before": "b8a2b02594b0497df519801db6758c32c807f14d",
+   "after": "006e5f228b1f134c31ae48abbd8e27151744a8c0"
+  },
+  {
+   "path": "docs/visuals-src/backdrop.js",
+   "before": "2c80f6170567df0ce3e2d2cafb785b40ff429931",
+   "after": "6287faaf62e2185e953dbd24500cd4b60e99fdae"
+  },
+  {
+   "path": "docs/visuals-src/feature.html",
+   "before": "d5aaf8347655cf14266c3a024912fa0196ec945a",
+   "after": "ba9e890af31f41ac326742f51cd4cf372d73119d"
+  },
+  {
+   "path": "docs/visuals-src/features.js",
+   "before": "9a17ba0d2469e51d00d01aa226e1acac2084329f",
+   "after": "9c9ec2e806b262d35965b8dcf3529c628e38c69b"
+  },
+  {
+   "path": "docs/visuals-src/hero-devices.js",
+   "before": "9c662662a78bb1dc8eedde74cecf0cc021cdf43c",
+   "after": "8d42b9ce50e915873c919eef4201c70aebf13904"
+  },
+  {
+   "path": "docs/visuals-src/hero-parts/lockup-clear.svg",
+   "before": "497ccf528bfde90972639b1de0ba052243440745",
+   "after": "aa5db5cc7b7f68f94c1e3c4545cb3b7bb05f45e5"
+  },
+  {
+   "path": "docs/visuals-src/hero.html",
+   "before": "656b62ec020fae5660556b8e7a20cdea8525ac9b",
+   "after": "89ff164e9a8898afbf94ab2cbf6c01423f5f1ead"
+  },
+  {
+   "path": "docs/visuals-src/inlay.css",
+   "before": "73254c49741b043908890dc1be0460bee456f863",
+   "after": "54de4840b89dd9489de3046d077758aafd3b6b4c"
+  },
+  {
+   "path": "docs/visuals-src/parts.js",
+   "before": "071926314f9e2649d9cdcc46a3a5502375aff9cb",
+   "after": "1573649c76365d6034124be9003a2b03c8a897be"
+  },
+  {
+   "path": "docs/visuals-src/video.html",
+   "before": "9a82446a155589f36abb3a6107ca20a6dcda8222",
+   "after": "407df33f3437c1c52b37c58b0f8fe6ac3da8802b"
+  },
+  {
+   "path": "tools/audit/layout_audit.py",
+   "before": "5842c116af0a7c72536f23fe996ad45bc6716c56",
+   "after": "e9bf00c119df8b7bc4ca80a80b7793ecdf22e1af"
+  },
+  {
+   "path": "tools/brand/README.md",
+   "before": "28a4805d06f433a09c7f67ed9d7e2efd817e5be3",
+   "after": "1cc8ae222fbf77e0df250d9035b0c858518cc679"
+  },
+  {
+   "path": "tools/brand/archive/wordmark-2026-10/NOTES.md",
+   "before": null,
+   "after": "2301b56be6abc58dcf1f1d3880cf7b7778b812a5"
+  },
+  {
+   "path": "tools/brand/archive/wordmark-2026-10/anim.py",
+   "before": null,
+   "after": "d72b7c65fc6ea80b436b494b9a94831bb1f55444"
+  },
+  {
+   "path": "tools/brand/archive/wordmark-2026-10/anim2.py",
+   "before": null,
+   "after": "8e33305de7f1c2dcc7bf303c292f97b050ea8af7"
+  },
+  {
+   "path": "tools/brand/archive/wordmark-2026-10/proposal/board.html",
+   "before": null,
+   "after": "0f62110b926db7b1d4dabc36efda08d456ba3cb2"
+  },
+  {
+   "path": "tools/brand/archive/wordmark-2026-10/proposal/board.png",
+   "before": null,
+   "after": "6680d471a3112b9454ab3107313e1aa912e11c81"
+  },
+  {
+   "path": "tools/brand/archive/wordmark-2026-10/proposal/inlay-lockup-dark.svg",
+   "before": null,
+   "after": "2bdc08b17e31c1781514b8c8c96f9eba46426687"
+  },
+  {
+   "path": "tools/brand/archive/wordmark-2026-10/proposal/inlay-lockup-light.svg",
+   "before": null,
+   "after": "610d842e5a9d3d1a644a682cc581c949f622d00e"
+  },
+  {
+   "path": "tools/brand/archive/wordmark-2026-10/proposal/inlay-lockup-typing-dark.svg",
+   "before": null,
+   "after": "d408ba151977ec32e9567c4816c402126bcf99cb"
+  },
+  {
+   "path": "tools/brand/archive/wordmark-2026-10/proposal/inlay-lockup-typing-light.svg",
+   "before": null,
+   "after": "593f3d25d84b026e2ad66524db2e9765fee19ba0"
+  },
+  {
+   "path": "tools/brand/archive/wordmark-2026-10/proposal/inlay-wordmark-black.svg",
+   "before": null,
+   "after": "6456eb53892929d105a02054ee05c4a1f49cb0a9"
+  },
+  {
+   "path": "tools/brand/archive/wordmark-2026-10/proposal/inlay-wordmark-dark.svg",
+   "before": null,
+   "after": "a04fbbfa9ef6b5bbcef67c27f81e58544c85c09f"
+  },
+  {
+   "path": "tools/brand/archive/wordmark-2026-10/proposal/inlay-wordmark-light.svg",
+   "before": null,
+   "after": "caf1589309c84ad9aa6a02b10b7545bc686cd8da"
+  },
+  {
+   "path": "tools/brand/archive/wordmark-2026-10/proposal/inlay-wordmark-typing-dark.svg",
+   "before": null,
+   "after": "0c9b14ef20f739d2a9b17d90b58986c67ea245bf"
+  },
+  {
+   "path": "tools/brand/archive/wordmark-2026-10/proposal/inlay-wordmark-typing-light.svg",
+   "before": null,
+   "after": "b190f4945d3bdf2a005a55df76544fdbf5852dd3"
+  },
+  {
+   "path": "tools/brand/archive/wordmark-2026-10/proposal/inlay-wordmark-white.svg",
+   "before": null,
+   "after": "f07b19461403800b554c11ab308cb7749e4702db"
+  },
+  {
+   "path": "tools/brand/archive/wordmark-2026-10/wordmark2.py",
+   "before": null,
+   "after": "9791d703a241fc7d7acdb78f4028823557fa2e35"
+  },
+  {
+   "path": "tools/brand/archive/wordmark-2026-10/wordmark_raw.txt",
+   "before": null,
+   "after": "da27151e11a3b19258783ad0fc0057559cff8f9f"
+  },
+  {
+   "path": "tools/brand/kit.py",
+   "before": "23d102e9d33c1f05ea19abcb0af95c2b999a5e12",
+   "after": "76ca4403a6d208618e67cda1c73ea83f3cc7ed64"
+  },
+  {
+   "path": "tools/brand/logo_motion.py",
+   "before": null,
+   "after": "08bd1e403198c451a35da8c789e5fa7630997942"
+  },
+  {
+   "path": "tools/brand/png.js",
+   "before": null,
+   "after": "2462cca44b939a614d88c052e7a6a5d297a11e36"
+  },
+  {
+   "path": "tools/brand/readme_header.py",
+   "before": null,
+   "after": "a3f16954fd95b500a40a165c455365fab438f71f"
+  },
+  {
+   "path": "tools/brand/render_motion.js",
+   "before": null,
+   "after": "4ae2abe6fa89e27ef4ae8e0181f98a1e164eec73"
+  },
+  {
+   "path": "tools/brand/wordmark.py",
+   "before": null,
+   "after": "3e9d7bfd6d11a2c8b6fa4619e63eb6b8ff1a5e52"
+  },
+  {
+   "path": "tools/brand/wordmark_raw.txt",
+   "before": "da27151e11a3b19258783ad0fc0057559cff8f9f",
+   "after": null
+  },
+  {
+   "path": "tools/video/brand-kit/controller.prem.js",
+   "before": "5b93963384aaea288c7f8bb2cd8bcd14cb77ff9c",
+   "after": "0059e255f482af9d3f36116756ee27b655eab354"
+  },
+  {
+   "path": "tools/video/brand-kit/device-kit.html",
+   "before": "139ba845d501de651b6693bd458a788b112b4755",
+   "after": "3f49afeefdeed5bbe2dbeee9c8ce9fd5ab0053e3"
+  },
+  {
+   "path": "tools/video/brand-kit/devices2.js",
+   "before": "b5b22191ffe688f475f40fda8a4f631ef5f2bff0",
+   "after": "dd11ce3e5b1980bd01bb04a8526db668e97336d2"
+  },
+  {
+   "path": "tools/video/brand-kit/handhelds2.js",
+   "before": "cbcedc6590be4060b0edf71585333c7c5103254c",
+   "after": "1ec91ba0e1882eec87d8d022e1be78f44e35c664"
+  },
+  {
+   "path": "tools/video/brand-kit/in-use.html",
+   "before": "ddc1ceed98eb8405284a31bf4e0dc6af74e48cfe",
+   "after": "8d2728ecd8051a87a56db63e970f183f8b862cd3"
+  },
+  {
+   "path": "tools/video/brand-kit/kit.js",
+   "before": "b8bdd94ed40ad93a03137f662d6dbe77f3129372",
+   "after": "1fc19e297a3fb3b4164c40c7b95afc83923614de"
+  },
+  {
+   "path": "tools/video/brand-kit/kit2android.py",
+   "before": "8933c39858388ff6b536c2ad7437522803ef9f8f",
+   "after": "d727d2574f5c475d09bfc1fe0a7125bb72a98f64"
+  },
+  {
+   "path": "tools/video/brand-kit/kitgen.js",
+   "before": "911c8f8292c7289e93f2af1987d5e71941bde0f1",
+   "after": "e93d6543fe52177b18a6caaf20d00bda96b94998"
+  },
+  {
+   "path": "tools/video/brand-kit/premium.js",
+   "before": "6bdd422a000d8021cd4a14145da949f255c33670",
+   "after": "090e501edfd762fa38cfaa61550b669825ba1001"
+  }
+ ]
+}

@@ -4,6 +4,7 @@ const dir=process.argv[2];
 const ctx={console, Math, JSON, Object, Array, String, Number, parseFloat, parseInt, isNaN, RegExp};
 ctx.window=ctx; ctx.document={fonts:{load:()=>Promise.resolve()}, getElementById:()=>({})};
 vm.createContext(ctx);
+vm.runInContext(fs.readFileSync(path.join(dir,'../../../design/tokens.js'),'utf8'),ctx,{filename:'tokens.js'});   // the app's colours (Design.kt)
 for(const f of ['controller.prem.js','controller.merged.js','handhelds2.js','devices2.js','premium.js','kit.js'])
   vm.runInContext(fs.readFileSync(path.join(dir,f),'utf8'),ctx,{filename:f});
 const keys=['OK','BACK','HOME','A','B','X','Y','LB','RB','LT','RT','LS','RS','Dup','Ddown','Dleft','Dright','START','SELECT','MENU','VIEW','HOME','L3','R3','OPTIONS','SHARE','PLUS','MINUS'];

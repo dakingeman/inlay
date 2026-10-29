@@ -23,14 +23,14 @@ function genericShape(i,w,h,tint){const k=i%6,m=Math.min(w,h);
   if(k===4) return `<path d="M${w*.15} ${h*.62} A${w*.35} ${w*.35} 0 0 1 ${w*.85} ${h*.62} Z" fill="${tint}"/>`;
   return `<circle cx="${w*.3}" cy="${h*.3}" r="${m*.16}" fill="${tint}"/><circle cx="${w*.66}" cy="${h*.42}" r="${m*.24}" fill="${tint}"/>`;}
 function coverArt(tone,i){const [base,tint]=GENERIC[i%GENERIC.length];
-  return `<svg class="art" viewBox="0 0 100 140" preserveAspectRatio="none"><rect width="100" height="140" fill="${base}"/>${genericShape(i,100,140,tint)}<rect y="96" width="100" height="44" fill="#000" opacity=".28"/></svg>`;}
+  return `<svg class="art" viewBox="0 0 100 140" preserveAspectRatio="none"><rect width="100" height="140" fill="${base}"/>${genericShape(i,100,140,tint)}<rect y="82" width="100" height="58" fill="#000" opacity=".55"/></svg>`;}
 function thumbArt(i){const [base,tint]=GENERIC[i%GENERIC.length];
   return `<svg viewBox="0 0 160 90" width="100%" height="100%" preserveAspectRatio="none" style="display:block"><rect width="160" height="90" fill="${base}"/>${genericShape(i+2,160,90,tint)}</svg>`;}
 const COVER_DEFS=`<svg width="0" height="0" style="position:absolute"><defs><linearGradient id="coverfade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".6"/></linearGradient></defs></svg>`;
 function covers(list,{w,gap,title,plat,max}){
   const shown=list.slice(0,max||5);
   return `<div class="covers" style="gap:${gap}px;grid-auto-columns:${w}px">${shown.map(c=>`<div class="cover m" style="width:${w}px;height:${Math.round(w*1.4)}px">${coverArt(c.tone,c.i)}
-  <div class="p" style="font-size:${plat}px">${c.plat}</div><div class="t" style="font-size:${title}px">${c.short||c.name}</div></div>`).join('')}</div>`;
+  <div class="cap"><div class="p" style="font-size:${plat}px">${c.plat}</div><div class="t" style="font-size:${title}px">${c.short||c.name}</div></div></div>`).join('')}</div>`;
 }
 // The text box: text before the cursor, the selection, text after
 function field({before='',sel='',after='',placeholder='Search your games',count=''},{h,fs,pad}){
@@ -65,8 +65,8 @@ function libScreen(o){
 }
 
 // A note being written (used where the typing happens in a notes app, not a game library)
-function noteBody(n,s){const cur=`<span style="display:inline-block;width:${Math.max(2,Math.round(2.5*s))}px;margin-left:2px;background:#72D6E8;border-radius:1px;height:${Math.round(22*s)}px;vertical-align:-${Math.round(4*s)}px"></span>`;
+function noteBody(n,s){const cur=`<span style="display:inline-block;width:${Math.max(2,Math.round(2.5*s))}px;margin-left:2px;background:var(--teal);border-radius:1px;height:${Math.round(22*s)}px;vertical-align:-${Math.round(4*s)}px"></span>`;
   return `<div class="m" style="height:100%;box-sizing:border-box;background:var(--card);border-radius:${Math.round(16*s)}px;box-shadow:inset 0 0 0 1px var(--edge);padding:${Math.round(20*s)}px ${Math.round(24*s)}px">
-   <div style="font-family:A;font-weight:700;color:var(--paper);font-size:${Math.round(20*s)}px;margin-bottom:${Math.round(12*s)}px">${n.heading}</div>
+   <div style="font-family:R;font-weight:700;color:var(--paper);font-size:${Math.round(20*s)}px;margin-bottom:${Math.round(12*s)}px">${n.heading}</div>
    ${(n.lines||[]).map(l=>`<div style="font-family:R;font-weight:500;color:var(--text2);font-size:${Math.round(18*s)}px;line-height:1.5">${l}</div>`).join('')}
    <div style="font-family:R;font-weight:500;color:var(--paper);font-size:${Math.round(18*s)}px;line-height:1.5">${n.typing}${cur}</div></div>`;}

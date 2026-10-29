@@ -84,11 +84,24 @@ object AccentLight {
         return (h + Math.signum(d) * min(abs(d), deg) + 360) % 360
     }
 
-    /** The soft wash of the highlight colour: low lightness and chroma, its hue turned 14° towards blue. */
-    fun whisper(accent: Int): Int { val (_, c, h) = oklch(accent).toList(); return color(0.30, min(0.045, c), turn(h, 14.0)) }
+    /**
+     * How much colour a dark wash of hue [h] can carry before it looks muddy. Dark yellows and oranges
+     * turn olive and brown, so around yellow (95°) the wash keeps only a warm hint; cool hues keep it all.
+     */
+    fun washStrength(h: Double): Double {
+        val d = abs(((h - 95 + 540) % 360) - 180)          // how far from yellow, in degrees
+        return if (d >= 60) 1.0 else 1.0 - 0.6 * (0.5 + 0.5 * cos(Math.PI * d / 60))
+    }
+
+    /** Hues near yellow turn towards orange, never through green; all others turn towards blue. */
+    private fun washHue(h: Double, deg: Double): Double =
+        if (abs(((h - 95 + 540) % 360) - 180) < 50) (h - min(deg, 20.0) + 360) % 360 else turn(h, deg)
+
+    /** The soft wash of the highlight colour: low lightness and chroma, its hue turned 14° towards blue (yellows: a warm hint). */
+    fun whisper(accent: Int): Int { val (_, c, h) = oklch(accent).toList(); return color(0.30, min(0.045, c) * washStrength(h), washHue(h, 14.0)) }
 
     /** The deeper second wash used by What's new, turned further towards blue. */
-    fun deepWash(accent: Int): Int { val (_, c, h) = oklch(accent).toList(); return color(0.26, min(0.04, c), turn(h, 38.0)) }
+    fun deepWash(accent: Int): Int { val (_, c, h) = oklch(accent).toList(); return color(0.26, min(0.04, c) * washStrength(h), washHue(h, 38.0)) }
 }
 
 /**
@@ -115,21 +128,33 @@ class Backdrop(private val accent: Int, private val whatsNew: Boolean) : Drawabl
             cache?.recycle(); cache = it; paintLight(Canvas(it), cw.toFloat(), ch.toFloat())
         }
         canvas.drawBitmap(c, null, b, blit)
+        // Fine grain on top, at the screen's own resolution: dark gradients on OLED otherwise show faint
+        // rings where one shade steps to the next (the soft light is painted at half size, which smooths
+        // its own dithering away). A small random tile, repeated: one more texture, no extra memory to speak of.
+        canvas.drawRect(b, grain)
+    }
+
+    private val grain = Paint().apply {
+        shader = android.graphics.BitmapShader(grainTile, Shader.TileMode.REPEAT, Shader.TileMode.REPEAT)
     }
 
     private fun paintLight(canvas: Canvas, w: Float, h: Float) {
         // 1. graphite base, Ink at the bottom
-        paint.shader = LinearGradient(0f, 0f, 0f, h, intArrayOf(0xFF16171C.toInt(), 0xFF101115.toInt(), 0xFF0B0B0E.toInt()),
+        paint.shader = LinearGradient(0f, 0f, 0f, h, intArrayOf(Design.BACKDROP_TOP, Design.BACKDROP_MID, Design.BACKDROP_BOTTOM),
             floatArrayOf(0f, .5f, 1f), Shader.TileMode.CLAMP)
         canvas.drawRect(0f, 0f, w, h, paint)
+        // The lights keep one shape on every screen: sized by the screen's long and short sides, always
+        // wider than tall. Upright (a phone) the light spreads across the top as it does on a landscape
+        // screen, instead of turning into a narrow beam down one side.
+        val long = max(w, h); val short = min(w, h)
         // 2. second wash (What's new only): bottom left, deeper and bluer
-        if (whatsNew) wash(canvas, AccentLight.deepWash(accent), .55f, w * .12f, h * 1.08f, w * .55f, h * .75f)
+        if (whatsNew) wash(canvas, AccentLight.deepWash(accent), .55f, w * .12f, h + short * .08f, long * .55f, short * .75f)
         // 3. the whisper of the highlight colour in a top corner
-        wash(canvas, AccentLight.whisper(accent), .78f, if (whatsNew) w * .86f else w * .14f, -h * .06f, w * .66f, h * .85f)
+        wash(canvas, AccentLight.whisper(accent), .78f, if (whatsNew) w * .86f else w * .14f, -short * .06f, long * .66f, short * .85f)
         // 4. one soft neutral light from above
-        wash(canvas, Color.WHITE, .04f, w * .5f, -h * .2f, w * .9f, h * .9f)
+        wash(canvas, Color.WHITE, .04f, w * .5f, -short * .2f, long * .9f, short * .9f)
         // 5. a light vignette
-        paint.shader = RadialGradient(w / 2, h * .46f, hypot(w, h) * .55f, intArrayOf(Color.TRANSPARENT, Color.TRANSPARENT, 0x3D000000),
+        paint.shader = RadialGradient(w / 2, h * .46f, hypot(w, h) * .55f, intArrayOf(Color.TRANSPARENT, Color.TRANSPARENT, Design.BACKDROP_VIGNETTE shl 24),
             floatArrayOf(0f, .62f, 1f), Shader.TileMode.CLAMP)
         canvas.drawRect(0f, 0f, w, h, paint)
         paint.shader = null
@@ -144,6 +169,33 @@ class Backdrop(private val accent: Int, private val whatsNew: Boolean) : Drawabl
         canvas.save(); canvas.scale(1f, max(.01f, ry / rx), cx, cy)
         canvas.drawCircle(cx, cy, rx, paint)
         canvas.restore()
+    }
+
+    companion object {
+        /**
+         * The grain: white at 0 to [Design.BACKDROP_GRAIN] alpha, random per pixel (a fixed seed, so it's the same
+         * every time). It lifts each pixel by at most a step or two of brightness, enough to break up banding,
+         * never enough to see as noise.
+         */
+        private val grainTile: android.graphics.Bitmap by lazy {
+            val n = 128; val rnd = java.util.Random(7)
+            val px = IntArray(n * n) { val a = (rnd.nextInt(Design.BACKDROP_GRAIN + 1) + rnd.nextInt(Design.BACKDROP_GRAIN + 1)) / 2; (a shl 24) or 0xFFFFFF }
+            android.graphics.Bitmap.createBitmap(px, n, n, android.graphics.Bitmap.Config.ARGB_8888)
+        }
+
+        /**
+         * The brightest point of the top half, where the words sit: what words in the highlight colour are
+         * measured against (TutorialActivity.labelColor). A tiny render, once per screen.
+         */
+        fun peak(accent: Int, whatsNew: Boolean): Int {
+            val w = 96; val h = 54
+            val b = android.graphics.Bitmap.createBitmap(w, h, android.graphics.Bitmap.Config.ARGB_8888)
+            Backdrop(accent, whatsNew).apply { setBounds(0, 0, w, h) }.draw(Canvas(b))
+            var top = Color.BLACK
+            for (y in 0 until h / 2) for (x in 0 until w) { val c = b.getPixel(x, y); if (Color.luminance(c) > Color.luminance(top)) top = c }
+            b.recycle()
+            return top or 0xFF000000.toInt()
+        }
     }
 
     override fun setAlpha(alpha: Int) {}

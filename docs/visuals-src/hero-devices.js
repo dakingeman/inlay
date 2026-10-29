@@ -1,6 +1,6 @@
 // Makes the hero device pictures from app/src/main/assets/devices: lighter tones, shoulder keys removed, fitted viewBox, A (or OK) lit. Run: node hero-devices.js
 // Makes hero-only device pictures: lighter tones, shoulder keys removed, viewBox fitted to the drawing
-const {chromium}=require('playwright'),fs=require('fs');
+const {chromium}=require('playwright'),fs=require('fs'),TOKENS=require('../../design/tokens.js');
 const A=require('path').join(__dirname,'../../app/src/main/assets/devices')+'/';   // the app's device kit, wherever the project lives
 const TONE={'#1B1D23':'#2C303B','#121318':'#1D2028','#4E525C':'#8C93A3','#0A0B0E':'#14161C','#666A75':'#A3AAB8','#D5D8DE':'#F2F3F5','#07080a':'#0C0D11','#0D0E12':'#101218'};
 (async()=>{const b=await chromium.launch();const p=await b.newPage();
@@ -8,7 +8,7 @@ for(const [n,lit] of [['wide-ps',['A']],['controller-ps',['A']],['vertical-ps',[
   let s=fs.readFileSync(A+n+'.svg','utf8');for(const[k,v] of Object.entries(TONE)) s=s.split(k).join(v).split(k.toUpperCase()).join(v);
   s=s.replace('stop-opacity=".16"','stop-opacity=".28"');
   const j=JSON.parse(fs.readFileSync(A+n+'.json','utf8'));
-  const css=lit.map(k=>j[k]).join('\n').split('ACC').join('#72D6E8');
+  const css=lit.map(k=>j[k]).join('\n').split('ACC').join(TOKENS.brandAccent);
   if(css) s=s.replace('<defs>','<style>'+css+'</style><defs>');
   const keys=['LB','RB','LT','RT'].map(k=>j._geo&&j._geo[k]).filter(Boolean);
   await p.setContent('<html><body style="margin:0">'+s.replace(/width="[0-9.]+" height="[0-9.]+"/,'width="1300"')+'</body></html>');

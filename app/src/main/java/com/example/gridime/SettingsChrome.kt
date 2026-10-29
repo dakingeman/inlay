@@ -19,7 +19,7 @@ import kotlin.math.roundToInt
 
 /** Turns "Hold {R2} and press {X}" into words and button badges. */
 object HintText {
-    /** {X} = a button, {SELECTx2} = press it twice quickly. */
+    /** {X} = a button, {SELECTx2} = press it twice quickly, {DUP}/{DDOWN}/{DLEFT}/{DRIGHT} = a D-pad direction. */
     private val token = Regex("""\{([A-Z0-9]+?)(?:x(\d))?\}""")
 
     fun parse(text: String): List<HintPart> {
@@ -27,9 +27,11 @@ object HintText {
         var last = 0
         token.findAll(text).forEach { match ->
             text.substring(last, match.range.first).trim().takeIf { it.isNotEmpty() }?.let { parts += HintPart.Text(it) }
-            val button = ControllerButton.values().firstOrNull { it.name == match.groupValues[1] }
+            val name = match.groupValues[1]
+            val button = ControllerButton.values().firstOrNull { it.name == name }
             val presses = match.groupValues[2].toIntOrNull() ?: 1
-            parts += if (button != null) HintPart.Badge(button, presses) else HintPart.Text(match.value)
+            val dpad = mapOf("DUP" to 'U', "DDOWN" to 'D', "DLEFT" to 'L', "DRIGHT" to 'R')[name]
+            parts += when { button != null -> HintPart.Badge(button, presses); dpad != null -> HintPart.Dpad(dpad); else -> HintPart.Text(match.value) }
             last = match.range.last + 1
         }
         text.substring(last).trim().takeIf { it.isNotEmpty() }?.let { parts += HintPart.Text(it) }
@@ -85,7 +87,8 @@ class SectionHeader(context: Context, title: String) : TextView(context) {
         letterSpacing = 0.12f
         typeface = SettingsStyle.medium
         setTextColor(SettingsStyle.textSecondary)
-        setPadding((Design.SPACE_XL * dp).roundToInt(), (Design.SPACE_XXL * dp).roundToInt(), 0, (Design.SPACE_S * dp).roundToInt())
+        // starts where the row titles start (card inset + row padding), so text lines up down the page
+        setPadding(((Design.CARD_INSET + Design.SPACE_L) * dp).roundToInt(), (Design.SPACE_XXL * dp).roundToInt(), 0, (Design.SPACE_S * dp).roundToInt())
     }
 }
 
@@ -108,7 +111,7 @@ class SettingsCard(context: Context) : LinearLayout(context) {
     fun addRow(row: View) {
         if (rows > 0) {
             addView(View(context).apply { setBackgroundColor(SettingsStyle.divider) },
-                LayoutParams(LayoutParams.MATCH_PARENT, max(1, dp.roundToInt() / 2)).apply {
+                LayoutParams(LayoutParams.MATCH_PARENT, max(1, (Design.STROKE_HAIRLINE * dp).roundToInt())).apply {
                     marginStart = (Design.SPACE_L * dp).roundToInt()
                     marginEnd = (Design.SPACE_L * dp).roundToInt()
                 })
@@ -120,9 +123,9 @@ class SettingsCard(context: Context) : LinearLayout(context) {
 
 /**
  * Section tabs across the top, switched with the shoulder buttons.
- * Every tab is a pill; a white indicator slides to the one you're on.
+ * Every tab is a pill; an indicator in the highlight colour slides to the one you're on.
  */
-private const val TAB_MOTION_MS = 120L
+private const val TAB_MOTION_MS = Design.MOTION_CONTROL
 
 class TabBar(
     context: Context,
@@ -176,12 +179,12 @@ class TabBar(
     private val fill = Paint(Paint.ANTI_ALIAS_FLAG)
     private val text = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         textAlign = Paint.Align.CENTER
-        textSize = android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_SP, 14f, resources.displayMetrics)
+        textSize = android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_SP, Design.TYPE_CAPTION, resources.displayMetrics)
         typeface = SettingsStyle.medium
     }
     private val tabHeight = 36f * dp
     private val tabGap = Design.SPACE_S * dp
-    private val tabPad = 18f * dp
+    private val tabPad = 16f * dp
 
     var style: ButtonStyle = ButtonStyle.XBOX
         set(value) {
@@ -219,7 +222,7 @@ class TabBar(
         anim = ValueAnimator.ofFloat(indicator, index.toFloat()).apply {
             // Quick, so the fill keeps up with fast presses; the ring and the slide ride on the same value
             duration = TAB_MOTION_MS
-            interpolator = Design.EASE_OUT
+            interpolator = Design.EASE_STANDARD          // the fill moves across: eases in and out
             addUpdateListener {
                 indicator = it.animatedValue as Float
                 invalidate()
@@ -319,15 +322,15 @@ class TabBar(
             // On the chosen (accent-filled) tab the ring is drawn in the text colour, a little inside the edge
             val onChosen = focusSlot == selected
             ring.color = if (onChosen) SettingsStyle.onAccent else SettingsStyle.accent
-            ring.strokeWidth = 2.5f * dp
-            val g = ring.strokeWidth / 2f + if (onChosen) 2.5f * dp else 0f
+            ring.strokeWidth = Design.STROKE_FOCUS * dp
+            val g = ring.strokeWidth / 2f + if (onChosen) 2f * dp else 0f
             canvas.drawRoundRect(f.left + g, f.top + g, f.right - g, f.bottom - g, r - g, r - g, ring)
         }
         canvas.restore()
 
         // Tabs that run past the ends fade out softly instead of being cut
         val first = tabRects.first(); val last = tabRects.last()
-        val fw = 18f * dp
+        val fw = 16f * dp
         val bg = SettingsStyle.background
         val clear = bg and 0x00FFFFFF
         if (first.left < clipLeft - 1f) {
@@ -351,14 +354,7 @@ class TabBar(
             keyRect.set(right - tabHeight * 1.3f, tabRects[0].top, right, tabRects[0].bottom)
             fill.color = SettingsStyle.surface
             canvas.drawRoundRect(keyRect, tabHeight / 2f, tabHeight / 2f, fill)
-            ring.color = SettingsStyle.textSecondary
-            ring.strokeWidth = 1.5f * dp
-            val kw = 16f * dp; val kh = 11f * dp
-            val k = RectF(keyRect.centerX() - kw / 2, cy - kh / 2, keyRect.centerX() + kw / 2, cy + kh / 2)
-            canvas.drawRoundRect(k, 2.5f * dp, 2.5f * dp, ring)
-            fill.color = SettingsStyle.textSecondary
-            for (row in 0..1) for (col in 0..3) canvas.drawCircle(k.left + kw * (col + 1) / 5f, k.top + kh * (row + 1) / 3.6f, 0.9f * dp, fill)
-            canvas.drawLine(k.left + kw * 0.3f, k.bottom - kh * 0.25f, k.right - kw * 0.3f, k.bottom - kh * 0.25f, ring)
+            Icons.keyboard(canvas, keyRect.centerX(), cy, 8f * dp, Icons.line(ring, dp, SettingsStyle.textSecondary), fill)
         } else {
             // Shoulder button badges at each end
             painter.draw(canvas, ControllerButton.L1, Design.SPACE_L * dp, cy)
@@ -368,7 +364,7 @@ class TabBar(
         if (hasFocus() && focusSlot >= titles.size) {
             val f = keyRect
             ring.color = SettingsStyle.accent
-            ring.strokeWidth = 2.5f * dp
+            ring.strokeWidth = Design.STROKE_FOCUS * dp
             val g = ring.strokeWidth / 2f
             canvas.drawRoundRect(f.left + g, f.top + g, f.right - g, f.bottom - g, tabHeight / 2f - g, tabHeight / 2f - g, ring)
         }
@@ -378,7 +374,7 @@ class TabBar(
     companion object {
         const val FOLDED_DP = 16f       // the folded line: what still shows of the tabs with the keyboard up
         const val FOLD_BAR_DP = 4f      // each bar's thickness when folded
-        const val FOLD_INSET_DP = 6f    // each bar is this much shorter than its tab at both ends
+        const val FOLD_INSET_DP = 8f    // each bar is this much shorter than its tab at both ends
     }
 
     override fun onTouchEvent(e: MotionEvent): Boolean {
@@ -393,7 +389,7 @@ class TabBar(
 class ControlBar(context: Context) : View(context) {
 
     private val dp = resources.displayMetrics.density
-    private val painter = BadgePainter(dp).apply { scale = 1.35f; gapBadgeToBadge = 3f; gapBadgeToText = 6f }
+    private val painter = BadgePainter(dp).apply { scale = Design.BADGE_INLINE }
     private val text = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         textAlign = Paint.Align.LEFT
         textSize = android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_SP, Design.TYPE_CAPTION, resources.displayMetrics)
@@ -401,6 +397,14 @@ class ControlBar(context: Context) : View(context) {
         color = SettingsStyle.textSecondary
     }
     private var groups: List<List<HintPart>> = emptyList()
+    private val dotPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+
+    /**
+     * The tour's page dots, at the start of the bar ([count] pages, [current] lit), on small screens where a
+     * row of their own would take the keyboard's room. The buttons then sit at the bar's end.
+     */
+    var dots: Pair<Int, Int>? = null
+        set(v) { field = v; invalidate() }
 
     fun show(style: ButtonStyle, hints: List<String>) {
         painter.style = style
@@ -421,10 +425,23 @@ class ControlBar(context: Context) : View(context) {
         var shown = groups
         var gap = Design.SPACE_XL * dp
         fun total() = shown.sumOf { painter.measureLine(it, text).toDouble() }.toFloat() + gap * (shown.size - 1)
-        val room = width - 2 * Design.SPACE_L * dp
+        val dotsW = dots?.let { (n, _) -> (n - 1) * (8f + Design.SPACE_XS) * dp + (24f + Design.SPACE_XL) * dp } ?: 0f
+        val room = width - 2 * Design.SPACE_L * dp - dotsW
         if (total() > room) gap = Design.SPACE_L * dp
         while (shown.size > 1 && total() > room) shown = shown.filterIndexed { i, _ -> i != shown.size - 2 }
+        val d = dots
         var x = (width - total()) / 2f
+        if (d != null) {
+            // Dots at the start, the same dots as the tour's own row: 8 dp, the current one a 24 dp pill
+            val h = 8f * dp; var dx = Design.SPACE_L * dp; val cy = height / 2f
+            for (i in 0 until d.first) {
+                val w = if (i == d.second) 24f * dp else h
+                dotPaint.color = if (i == d.second) SettingsStyle.accent else Design.DOT_IDLE
+                canvas.drawRoundRect(dx, cy - h / 2, dx + w, cy + h / 2, h / 2, h / 2, dotPaint)
+                dx += w + Design.SPACE_XS * dp
+            }
+            x = width - Design.SPACE_L * dp - total()
+        }
         shown.forEach { parts ->
             painter.drawLine(canvas, parts, x, height / 2f, text)
             x += painter.measureLine(parts, text) + gap

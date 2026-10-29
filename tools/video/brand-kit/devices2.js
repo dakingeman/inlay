@@ -1,8 +1,8 @@
 // Generic handhelds and a TV remote in Inlay's line style. Every part that can be pressed lights up on its own.
 function handheldSvg(kind, w, opt){
-  opt=opt||{}; const d=DEV[kind], [vx,vy,vw,vh]=d.vb, line='#5a5e6a', detail='#33363f', ACC=opt.acc||'#72D6E8', on=opt.on||{}, style=opt.style||'xbox';
+  opt=opt||{}; const d=DEV[kind], [vx,vy,vw,vh]=d.vb, line='#5a5e6a', detail='#33363f', ACC=opt.acc||TOKENS.brandAccent, on=opt.on||{}, style=opt.style||'xbox';
   const sw=vw/w, lit=k=>on[k]>0, L=k=>lit(k)?`fill="${ACC}" fill-opacity=".9" stroke="${ACC}" filter="url(#gh${kind})"`:`fill="#0f1014" stroke="${line}"`;
-  const ink=k=>lit(k)?'#0B0F17':'#8d919c';
+  const ink=k=>lit(k)?TOKENS.inkDark:'#8d919c';
   let s=`<svg width="${w}" height="${w*vh/vw}" viewBox="${vx} ${vy} ${vw} ${vh}" style="overflow:visible"><defs><filter id="gh${kind}" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="${4*sw}" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>`;
   // shoulders first (behind the body): a trigger and a bumper on each top corner
   const S=d.shoulders, M=x=>2*S.cx-x, names={xbox:['LT','LB','RT','RB'],ps:['L2','L1','R2','R1'],switch:['ZL','L','ZR','R']}[style];
@@ -18,8 +18,8 @@ function handheldSvg(kind, w, opt){
   // Face buttons in the chosen style
   const [fx,fy,g,fr]=d.face;
   s+=[['Y',0,-g],['X',-g,0],['B',g,0],['A',0,g]].map(([k,dx,dy])=>{const cx=fx+dx,cy=fy+dy;
-    let glyph; if(style==='ps'){const col=lit(k)?'#0B0F17':{A:'#8FB4FF',B:'#FF6B6B',X:'#F59BD5',Y:'#4DD6B5'}[k];glyph=psGlyph(k,cx,cy,fr*0.48,col).replace(/stroke-width="2.2"/g,`stroke-width="${1.5*sw}"`);}
-    else {const label=style==='switch'?{A:'B',B:'A',X:'Y',Y:'X'}[k]:k;const col=lit(k)?'#0B0F17':style==='switch'?'#E6E8EC':{A:'#6CC24A',B:'#F0503C',X:'#3E9BFF',Y:'#F5C518'}[k];glyph=`<text x="${cx}" y="${cy+fr*0.05}" fill="${col}" font-family="I" font-weight="700" font-size="${fr*1.05}" text-anchor="middle" dominant-baseline="central">${label}</text>`;}
+    let glyph; if(style==='ps'){const col=lit(k)?TOKENS.inkDark:TOKENS.face.ps[k];glyph=psGlyph(k,cx,cy,fr*0.48,col).replace(/stroke-width="2.2"/g,`stroke-width="${1.5*sw}"`);}
+    else {const label=style==='switch'?{A:'B',B:'A',X:'Y',Y:'X'}[k]:k;const col=lit(k)?TOKENS.inkDark:style==='switch'?TOKENS.inkLight:TOKENS.face.xbox[k];glyph=`<text x="${cx}" y="${cy+fr*0.05}" fill="${col}" font-family="I" font-weight="700" font-size="${fr*1.05}" text-anchor="middle" dominant-baseline="central">${label}</text>`;}
     return `<circle cx="${cx}" cy="${cy}" r="${fr}" ${L(k)} stroke-width="${1.2*sw}"/>${glyph}`}).join('');
   const pill=([px,py],k)=>`<rect x="${px-11*sw*1.2}" y="${py-5*sw*1.2}" width="${22*sw*1.2}" height="${10*sw*1.2}" rx="${5*sw*1.2}" ${L(k)} stroke-width="${1.1*sw}"/>`;
   s+=pill(d.select,'SELECT')+pill(d.start,'START');
@@ -29,8 +29,8 @@ function handheldSvg(kind, w, opt){
 // A TV remote with only the buttons every remote has doing anything: the D-pad ring, OK, Back (and Home, which is Android's).
 // Proportions from the Google TV remote; the other buttons are drawn quieter, because Inlay never uses them.
 function remote2Svg(w, opt){
-  opt=opt||{}; const line='#5a5e6a', detail='#2c2e36', ACC=opt.acc||'#72D6E8', on=opt.on||{};
-  const W=150, H=560, sw=W/w, lit=k=>on[k]>0, L=k=>lit(k)?`fill="${ACC}" fill-opacity=".92" stroke="${ACC}" filter="url(#grm)"`:`fill="#0f1014" stroke="${line}"`, ink=k=>lit(k)?'#0B0F17':'#F2F3F5';
+  opt=opt||{}; const line='#5a5e6a', detail='#2c2e36', ACC=opt.acc||TOKENS.brandAccent, on=opt.on||{};
+  const W=150, H=560, sw=W/w, lit=k=>on[k]>0, L=k=>lit(k)?`fill="${ACC}" fill-opacity=".92" stroke="${ACC}" filter="url(#grm)"`:`fill="#0f1014" stroke="${line}"`, ink=k=>lit(k)?TOKENS.inkDark:'#F2F3F5';
   let s=`<svg width="${w}" height="${w*H/W}" viewBox="0 0 ${W} ${H}" style="overflow:visible"><defs><filter id="grm" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="${4*sw}" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>`;
   s+=`<rect x="5" y="5" width="${W-10}" height="${H-10}" rx="${(W-10)/2}" fill="#101116" stroke="${line}" stroke-width="${1.8*sw}"/>`;
   // the ring: four arcs, each lights on its own; OK in the middle
@@ -41,7 +41,7 @@ function remote2Svg(w, opt){
   s+=arc(-3*q,-q,'Dup')+arc(-q,q,'Dright')+arc(q,3*q,'Ddown')+arc(3*q,5*q,'Dleft');
   // small arrow marks on the ring so it reads as a D-pad
   s+=[[0,-1],[1,0],[0,1],[-1,0]].map(([dx,dy])=>{const mx=cx+dx*(R1+RI)/2, my=cy+dy*(R1+RI)/2, k={'0,-1':'Dup','1,0':'Dright','0,1':'Ddown','-1,0':'Dleft'}[dx+','+dy];
-    const a=4.5; return `<path d="M${mx-dx*a+dy*a*1.4},${my-dy*a+dx*a*1.4} L${mx+dx*a},${my+dy*a} L${mx-dx*a-dy*a*1.4},${my-dy*a-dx*a*1.4}" fill="none" stroke="${lit(k)?'#0B0F17':'#8d919c'}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>`}).join('');
+    const a=4.5; return `<path d="M${mx-dx*a+dy*a*1.4},${my-dy*a+dx*a*1.4} L${mx+dx*a},${my+dy*a} L${mx-dx*a-dy*a*1.4},${my-dy*a-dx*a*1.4}" fill="none" stroke="${lit(k)?TOKENS.inkDark:'#8d919c'}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>`}).join('');
   s+=`<circle cx="${cx}" cy="${cy}" r="${R0}" ${L('OK')} stroke-width="${1.4*sw}"/><text x="${cx}" y="${cy+1}" fill="${ink('OK')}" font-family="I" font-weight="700" font-size="14" text-anchor="middle" dominant-baseline="central">OK</text>`;
   // Back and Home
   const bx=46, hx=104, by=176, br=19;

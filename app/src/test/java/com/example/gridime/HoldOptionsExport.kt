@@ -64,6 +64,21 @@ class HoldOptionsExport {
         } finally { HoldStyle.look = before }
     }
 
+    /** The chosen look at every size the app can show a picture, pressed vs held: build/hold/sizes/<size>-<picture>-<state>.png */
+    @Test fun sizes() {
+        assumeTrue(File("build/visuals-hold").exists())
+        val dir = File("build/hold/sizes").apply { mkdirs() }
+        val pics = listOf(Triple("controller-xbox", DeviceKind.CONTROLLER, ButtonStyle.XBOX), Triple("wide-playstation", DeviceKind.WIDE, ButtonStyle.PLAYSTATION),
+            Triple("vertical-switch", DeviceKind.VERTICAL, ButtonStyle.SWITCH), Triple("remote", DeviceKind.REMOTE, ButtonStyle.XBOX))
+        for (h in listOf(165f, 120f, 90f)) for ((name, kind, st) in pics) for (state in listOf("pressed", "held")) {
+            val p = DevicePictureView(context).apply { accent = SettingsStyle.accent; maxHeightDp = h; tallBoost = false; show(kind, st, false) }
+            val f = attach(p)
+            val k = if (kind == DeviceKind.REMOTE) setOf("A", "Dright") else setOf("A", "LB", "Dright")
+            p.held = k; if (state == "held") p.holding = k
+            idle(900); save(p, File(dir, "${h.toInt()}-$name-$state.png")); f.removeAllViews()
+        }
+    }
+
     private fun picture(kind: DeviceKind, style: ButtonStyle, sticks: Boolean) = DevicePictureView(context).apply {
         accent = SettingsStyle.accent; maxHeightDp = 165f; tallBoost = false; show(kind, style, sticks)
     }

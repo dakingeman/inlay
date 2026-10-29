@@ -76,6 +76,28 @@ class AuditShots {
     @Test fun switch() = everything(ButtonStyle.SWITCH, PictureChoice.HANDHELD)
     @Test @Config(sdk = [34], qualifiers = "w472dp-h363dp-land-420dpi") fun switchVertical() = everything(ButtonStyle.SWITCH, PictureChoice.VERTICAL, "vertical")
 
+    /** The tour and What's new backdrop with every preset colour, and the first page of each in a few telling colours. */
+    @Test
+    fun backdrops() {
+        assumeTrue(File("build/visuals-audit").exists())
+        val dir = File("build/audit/backdrops").apply { mkdirs() }
+        for ((i, pair) in Palette.accents.withIndex()) for (wn in listOf(false, true)) {
+            val b = Bitmap.createBitmap(480, 270, Bitmap.Config.ARGB_8888)
+            Backdrop(pair.second, wn).apply { setBounds(0, 0, 480, 270) }.draw(Canvas(b))
+            File(dir, "%02d-%s-%s.png".format(i, pair.first, if (wn) "whatsnew" else "tour")).outputStream().use { b.compress(Bitmap.CompressFormat.PNG, 100, it) }; b.recycle()
+        }
+        for ((name, idx) in listOf("lemon" to 6, "coral" to 9, "orchid" to 11, "ice" to 15)) {
+            KeyboardSettings(tutorialDone = true, whatsNewSeen = WhatsNew.VERSION, accentIndex = idx, picture = PictureChoice.HANDHELD, showPreview = false).save(context)
+            for (wn in listOf(false, true)) {
+                val a = Robolectric.buildActivity(TutorialActivity::class.java,
+                    Intent(context, TutorialActivity::class.java).putExtra(TutorialActivity.EXTRA_WHATS_NEW, wn)).setup().get()
+                if (!wn) press(a, KeyEvent.KEYCODE_BUTTON_A)
+                idle(2500); save(dir, a.window.decorView, "screen-$name-${if (wn) "whatsnew" else "tour"}")
+                a.finish()
+            }
+        }
+    }
+
     /** The keyboard in each layer and state, per style. */
     @Test
     fun keyboards() {
@@ -108,6 +130,40 @@ class AuditShots {
         }
     }
 
+    /** Phase 2: the keyboard on every theme, in every highlight style, plus hint chips (the accent tray is in VisualsExport's studio shots). build/audit/themes/ */
+    @Test
+    fun themes() {
+        assumeTrue(File("build/visuals-audit").exists())
+        val dir = File("build/audit/themes").apply { mkdirs() }
+        val host = Robolectric.buildActivity(Activity::class.java).setup().get()
+        val frame = android.widget.FrameLayout(host); host.setContentView(frame)
+        val dp = context.resources.displayMetrics.density
+        Palette.tones.forEachIndexed { ti, tone ->
+            for ((name, style, extra) in listOf(
+                Triple("glow", HighlightStyle.GLOW, ""), Triple("solid", HighlightStyle.SOLID, ""), Triple("outline", HighlightStyle.OUTLINE, ""),
+                Triple("lift", HighlightStyle.LIFT, ""), Triple("chips", HighlightStyle.GLOW, "chips"))) {
+                frame.removeAllViews()
+                val v = KeyGridView(context)
+                v.applySettings(KeyboardSettings(tutorialDone = true, whatsNewSeen = WhatsNew.VERSION, buttonStyle = ButtonStyle.XBOX,
+                    showHints = true, comboHints = true, wordSuggestions = true, holdAccents = true, toneIndex = ti, highlightStyle = style, seeThrough = 3))
+                v.setField(FieldKind.TEXT)
+                frame.setBackgroundColor(if (tone.clear) android.graphics.Color.parseColor("#3A6E8F") else android.graphics.Color.BLACK)
+                frame.addView(v, android.widget.FrameLayout.LayoutParams((827 * dp).toInt(), android.view.ViewGroup.LayoutParams.WRAP_CONTENT))
+                idle(400)
+                repeat(30) { if (v.stepTowards("n") == true) return@repeat }
+                when (extra) {
+                    "chips" -> v.setHeldShift(true)
+                    else -> v.setSuggestions(listOf("nintendo", "nine", "night"), "ni")
+                }
+                idle(600)
+                val b = Bitmap.createBitmap(frame.width.coerceAtLeast(1), v.height.coerceAtLeast(1), Bitmap.Config.ARGB_8888)
+                val c = Canvas(b); frame.background?.draw(c); v.draw(c)
+                File(dir, "${ti.toString().padStart(2, '0')}-${tone.name.lowercase()}-$name.png").outputStream().use { b.compress(Bitmap.CompressFormat.PNG, 100, it) }
+                b.recycle()
+            }
+        }
+    }
+
     /** Every badge in every style, on a key and on the dark background, real size and 4x. */
     @Test
     fun badgeSheet() {
@@ -118,7 +174,7 @@ class AuditShots {
             val p = BadgePainter(dp).apply { scale = zoom; gapBadgeToText = 4f; gapBadgeToBadge = 2f }
             val cell = 40f * dp * zoom
             val buttons = ControllerButton.values()
-            val w = (cell * (buttons.size + 3)).toInt(); val h = (cell * 3 * 2).toInt()
+            val w = (cell * (buttons.size + 7)).toInt(); val h = (cell * 3 * 2).toInt()
             val b = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888); val c = Canvas(b)
             c.drawColor(android.graphics.Color.parseColor("#0B0B0E"))
             val key = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { color = android.graphics.Color.parseColor("#1B1B1F") }
@@ -130,7 +186,8 @@ class AuditShots {
                     var x = cell * 0.3f
                     buttons.forEach { bt -> p.draw(c, bt, x, y); x += cell }
                     x = p.draw(c, ControllerButton.A, x, y, presses = 2) + cell * 0.3f
-                    p.drawHeld(c, ControllerButton.R2, x, y)
+                    x = p.drawHeld(c, ControllerButton.R2, x, y) + cell * 0.3f
+                    for (d in "UDLR") x = p.drawDpad(c, d, x, y) + cell * 0.3f
                 }
             }
             File(dir, "badges-${zoom.toInt()}x.png").outputStream().use { b.compress(Bitmap.CompressFormat.PNG, 100, it) }

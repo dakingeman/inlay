@@ -331,8 +331,8 @@ object DevicePicture {
 
 /** How a held button looks (picked in the design review; the tests draw all of them). */
 internal object HoldStyle {
-    enum class Look { FILL, SWELL, TIMER }
-    @Volatile var look = Look.TIMER     // picked 28 Oct 2026: a second ring runs round, then stays
+    enum class Look { TIMER, INNER }
+    @Volatile var look = Look.INNER     // picked 29 Oct 2026: a dark mark sweeps round inside the button (readable from a distance)
 }
 
 /**
@@ -501,7 +501,12 @@ class DevicePictureView(context: Context) : View(context) {
 
     /** Told whenever what's lit changes. The consistency checks listen here. */
     internal var onLit: ((Set<String>) -> Unit)? = null
-    private fun notifyLit() { onLit?.invoke(litNow()) }
+    /** Told whenever what's lit changes (the tour follows the demo's rows with it). */
+    var onLitChanged: (() -> Unit)? = null
+    private fun notifyLit() { onLit?.invoke(litNow()); onLitChanged?.invoke() }
+
+    /** Width over height of the picture as drawn (its kit's box). */
+    val aspectRatio get() = aspect()
 
     private fun aspect(): Float {
         val box = svg?.documentViewBox ?: return 1.6f
@@ -601,9 +606,25 @@ class DevicePictureView(context: Context) : View(context) {
             else if (g.has("ring")) drawRing(canvas, g, p, ox, oy, scale, avoid)
             else if (k in DPAD_ARMS) drawArmRing(canvas, k, g, p, ox, oy, scale, avoid)
         }
+        // Pointed at, not pressed (the tour's caption naming a button the demo isn't using right now):
+        // the ring alone, softer, never the fill, so it can't be mistaken for a press
+        val pointed = onThis(hinted) - lit
+        if (pointed.isNotEmpty()) {
+            val layer = canvas.saveLayerAlpha(0f, 0f, width.toFloat(), height.toFloat(), Design.ALPHA_POINTED)
+            pointed.forEach { k ->
+                val g = geo.optJSONObject(k) ?: return@forEach
+                if (g.has("ring")) drawRing(canvas, g, 0f, ox, oy, scale, null)
+                else if (k in DPAD_ARMS) drawArmRing(canvas, k, g, 0f, ox, oy, scale, null)
+            }
+            canvas.restoreToCount(layer)
+        }
         // Swaying sticks and filling rings: 60 times a second looks the same as a 120 Hz screen's every frame, at half the work
         if (animating) postInvalidateDelayed(16)
     }
+
+    /** Buttons pointed at without being pressed: their ring shows, softer, without the fill. */
+    var hinted: Set<String> = emptySet()
+        set(v) { if (field != v) { field = v; invalidate() } }
 
     private fun animationsOn() = ValueAnimator.areAnimatorsEnabled()
 
@@ -629,7 +650,8 @@ class DevicePictureView(context: Context) : View(context) {
      * least room any button has, and two lit neighbours' press rings must keep clear of each other.
      */
     private val ringF: Float get() {
-        val widest = (RING_GAP_DP + RING_W_DP + TIMER_GAP_DP + TIMER_W_DP) * dp
+        val widest = (RING_GAP_DP + RING_W_DP + when (HoldStyle.look) {
+            HoldStyle.Look.TIMER -> TIMER_GAP_DP + TIMER_W_DP; HoldStyle.Look.INNER -> 0f }) * dp
         val byRoom = (leastRoom * pictureScale - ROOM_AIR_DP * dp) / widest
         val byPairs = (tightest * pictureScale - RING_AIR_DP * dp) / (2 * (RING_GAP_DP + RING_W_DP) * dp)
         return min(1f, min(byRoom, byPairs)).coerceAtLeast(0f)
@@ -647,6 +669,7 @@ class DevicePictureView(context: Context) : View(context) {
     private fun drawRing(canvas: Canvas, g: org.json.JSONObject, p: Float, ox: Float, oy: Float, s: Float, avoid: Path? = null) {
         val shape = outline(g, ox, oy, s)
         ringBands(p).forEachIndexed { i, b ->
+            if (b[0] < 0f || b[1] < 0f) { innerBand(canvas, shape, -b[0], -b[1], b[2]); return@forEachIndexed }
             val saved = canvas.save()
             if (i > 0 && avoid != null) canvas.clipOutPath(avoid)          // the held look steps aside for a lit neighbour
             band(canvas, shape, b[0], b[1], b[2])
@@ -713,9 +736,8 @@ class DevicePictureView(context: Context) : View(context) {
         val gap = gapPx; val w = bandPx; val f = ringPx / ((RING_GAP_DP + RING_W_DP) * dp)   // < 1 on a tight picture
         val out = mutableListOf(floatArrayOf(gap, gap + w, 1f))
         if (p > 0f) when (HoldStyle.look) {
-            HoldStyle.Look.FILL -> out += floatArrayOf(0f, gap, p)                                   // the gap closes, clockwise
-            HoldStyle.Look.SWELL -> out += floatArrayOf(gap + w, gap + w + SWELL_DP * dp * f * p, 1f)  // the ring grows bolder
             HoldStyle.Look.TIMER -> { val tg = TIMER_GAP_DP * dp * f; out += floatArrayOf(gap + w + tg, gap + w + tg + TIMER_W_DP * dp * f, p) }  // a second ring runs round
+            HoldStyle.Look.INNER -> out += floatArrayOf(-INNER_FROM, -INNER_TO, p)    // inside the button: fractions of its size (see innerBand)
         }
         return out
     }
@@ -729,6 +751,28 @@ class DevicePictureView(context: Context) : View(context) {
         paint.style = Paint.Style.STROKE; paint.strokeCap = Paint.Cap.BUTT; paint.color = accent; paint.strokeWidth = 2 * to
         val saved = canvas.save()
         canvas.clipOutPath(near)
+        canvas.drawPath(if (p >= 1f) shape else sweep(shape, p), paint)
+        canvas.restoreToCount(saved)
+        paint.strokeCap = Paint.Cap.ROUND
+    }
+
+    /**
+     * HoldStyle INNER: a band just inside [shape] (from [from] to [to] of its half-size in from the edge),
+     * dark on the accent like a lit label, the first [p] of the way round. Needs no room outside the button.
+     */
+    private fun innerBand(canvas: Canvas, shape: Path, from: Float, to: Float, p: Float) {
+        if (p <= 0f) return
+        val bounds = RectF().also { shape.computeBounds(it, true) }
+        val half = min(bounds.width(), bounds.height()) / 2
+        // Readable at any size: the mark never gets thinner than INNER_MIN_DP and leaves a lit rim of at least
+        // INNER_RIM_DP. On a small button it grows inward until the button is hollow (lit rim, dark middle):
+        // a shape change you can read from across the room, and nothing ever grows outside the button
+        val a = max(from * half, INNER_RIM_DP * dp).coerceAtMost(half * 0.45f)
+        val b = max(to * half, a + INNER_MIN_DP * dp).let { if (it > half * 0.7f) half * 1.05f else it }
+        val saved = canvas.save()
+        canvas.clipPath(shape)
+        if (a > 0f) { val near = Path(); Paint().apply { style = Paint.Style.STROKE; strokeWidth = 2 * a }.getFillPath(shape, near); canvas.clipOutPath(near) }
+        paint.style = Paint.Style.STROKE; paint.strokeCap = Paint.Cap.BUTT; paint.color = STICK_INK; paint.strokeWidth = 2 * b
         canvas.drawPath(if (p >= 1f) shape else sweep(shape, p), paint)
         canvas.restoreToCount(saved)
         paint.strokeCap = Paint.Cap.ROUND
@@ -772,11 +816,12 @@ class DevicePictureView(context: Context) : View(context) {
         val across = if (turn % 180f == 0f) w else h; val along = if (turn % 180f == 0f) h else w
         val r = min(DPAD_CORNER * s, min(across, along) / 2)             // the cross's own corner
         val bands = ringBands(p)
-        val outer = bands.maxOf { it[1] }
+        val outer = bands.maxOf { it[1] }.coerceAtLeast(0f)
         val end = along / 2 - outer - gapPx                              // stop before the neighbouring arm's bands
         val l = -across / 2; val rt = across / 2; val top = -along / 2
         paint.style = Paint.Style.STROKE; paint.strokeCap = Paint.Cap.BUTT; paint.color = accent
         for ((i, b) in bands.withIndex()) {
+            if (b[0] < 0f || b[1] < 0f) { innerBand(canvas, outline(g, ox, oy, s), -b[0], -b[1], b[2]); continue }
             val saved = canvas.save()
             if (i > 0 && avoid != null) canvas.clipOutPath(avoid)
             val o = (b[0] + b[1]) / 2                                    // the band's middle line, this far out
@@ -843,7 +888,7 @@ class DevicePictureView(context: Context) : View(context) {
             paint.style = Paint.Style.FILL; paint.color = accent
             canvas.drawCircle(x, y, r * f, paint)
             if (inner > 0f) {
-                paint.style = Paint.Style.STROKE; paint.strokeWidth = 1.4f * dp; paint.color = Color.argb(115, 11, 15, 23)
+                paint.style = Paint.Style.STROKE; paint.strokeWidth = Design.STROKE_ICON * dp; paint.color = Contrast.withAlpha(Design.INK_DARK, Design.ALPHA_STICK_RIM)
                 canvas.drawCircle(x, y, inner * f, paint)
             }
         }
@@ -870,16 +915,20 @@ class DevicePictureView(context: Context) : View(context) {
         } else {
             // Clicked in: the stick sinks a little (smaller) and gets the same press ring as every button
             cap(cx, cy, CLICKED_IN)
-            band(canvas, Path().apply { addCircle(cx, cy, r, Path.Direction.CW) }, gapPx, gapPx + bandPx, 1f)
+            // The ring wraps the sunken cap and always fits inside the well, with air to spare
+            val inner = r * CLICKED_IN
+            val room = if (wellR > 0f) wellR - ROOM_AIR_DP * dp - inner else gapPx + bandPx
+            val k2 = (room / (gapPx + bandPx)).coerceIn(0f, 1f)
+            band(canvas, Path().apply { addCircle(cx, cy, inner, Path.Direction.CW) }, gapPx * k2, (gapPx + bandPx) * k2, 1f)
         }
     }
 
     private companion object {
-        const val FLASH_MS = 260L
+        const val FLASH_MS = Design.MOTION_FLASH
         const val TALL_BOOST = 1.45f
-        const val HOLD_DELAY_MS = 120L     // a tap is over before the ring starts
-        const val HOLD_FILL_MS = 380L      // then it fills round in this long
-        const val SWAY_MS = 1800L          // a showing-the-direction stick: one full left-right
+        const val HOLD_DELAY_MS = Design.MOTION_HOLD_WAIT   // a tap is over before the hold mark starts
+        const val HOLD_FILL_MS = Design.MOTION_HOLD         // then it sweeps round in this long
+        const val SWAY_MS = Design.MOTION_STICK_SWAY          // a showing-the-direction stick: one full left-right
         val MORPH_KEYS = listOf("A", "B", "X", "Y", "Dup", "Ddown", "Dleft", "Dright", "LS", "RS", "SELECT", "START")
         const val MORPH_AIR = 6f          // picture units round the moving part
         // The press ring at full size: this far out from the button's edge, this thick. A tight picture shrinks both
@@ -890,10 +939,13 @@ class DevicePictureView(context: Context) : View(context) {
         const val ROOM_AIR_DP = 0.5f      // between the widest ring and the nearest other part of the drawing
         const val TIMER_GAP_DP = 0.75f    // HoldStyle TIMER: the second ring, this far out from the press ring
         const val TIMER_W_DP = 1f         // and this thick
+        const val INNER_RIM_DP = 0.75f    // HoldStyle INNER: the lit rim outside the mark, at least this
+        const val INNER_MIN_DP = 1.5f     // and the mark at least this thick, however small the button
+        const val INNER_FROM = 0.10f      // HoldStyle INNER: the band's inner edge and outer edge, as fractions of
+        const val INNER_TO = 0.38f        //   the button's half-size measured in from its edge (letters stay clear)
         const val DPAD_CORNER = 6f        // the cross's corner radius in the kit (picture units)
-        const val SWELL_DP = 1.5f         // HoldStyle SWELL: how much bolder a held ring grows
         const val CLICKED_IN = 0.86f      // a clicked-in stick's size
-        val STICK_INK = Color.parseColor("#06121A")   // the kit's ink on a lit part (premium.js inkLit)
+        val STICK_INK = Design.INK_DARK   // the one dark ink, on a lit part
         val DPAD_ARMS = setOf("Dup", "Ddown", "Dleft", "Dright")
     }
 }

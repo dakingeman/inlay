@@ -14,6 +14,8 @@ sealed class HintPart {
     data class Text(val text: String) : HintPart()
     /** A remote's key held down ("hold OK"): the same HOLD capsule, with the key's name. */
     data class HeldWord(val word: String) : HintPart()
+    /** A D-pad direction ({DUP}, {DDOWN}, {DLEFT}, {DRIGHT}): the same cross on every controller, the pressed arm lit. */
+    data class Dpad(val dir: Char) : HintPart()
 }
 
 /**
@@ -26,18 +28,22 @@ class BadgePainter(private val dp: Float) {
 
     companion object {
         /** One stroke weight for every icon line in every badge (brand: one unified stroke). */
-        const val ICON_STROKE = 1.3f
+        const val ICON_STROKE = Design.STROKE_BADGE
+        /** The badges' dark plate. */
+        val PLATE = Design.BADGE_PLATE
+        /** HOLD in your colour on the capsule's dark plate, kept at 4.5:1 (deep custom colours brighten a little). */
+        fun holdWordColor(accent: Int): Int = Contrast.accentText(accent, Contrast.over(PLATE, Color.BLACK))
     }
     var scale = 1f
     /**
      * Breathing room in hint lines (dp, before scaling). The keyboard's chips are tight;
      * Settings and the tour set these wider, so badges and words never look jammed together.
      */
-    var gapBadgeToBadge = 2f
-    var gapBadgeToText = 4f
+    var gapBadgeToBadge = Design.BADGE_GAP
+    var gapBadgeToText = Design.BADGE_TEXT_GAP
 
-    private val plate = Color.parseColor("#F20A0A0D")
-    private val edge = Color.parseColor("#4DFFFFFF")
+    private val plate = PLATE
+    private val edge = Design.BADGE_EDGE
 
     private val fill = Paint(Paint.ANTI_ALIAS_FLAG)
     private val ring = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE }
@@ -70,10 +76,10 @@ class BadgePainter(private val dp: Float) {
 
     // ---- Held: the button sits in a HOLD capsule with a double outline ---------------------
     private fun holdPaint() = label.apply { textSize = 6.5f * dp * scale; letterSpacing = 0.14f }
-    private val holdPad get() = 2.5f * dp * scale
+    private val holdPad get() = 2f * dp * scale
 
-    /** Room for the softer second outline around the capsule, so it's never clipped. */
-    private val holdHalo get() = 3.2f * dp * scale
+    /** The capsule has one outline (28 Oct 2026), so it needs no extra room round it. */
+    private val holdHalo get() = 0f
     /** How tall a line needs to be: taller when it holds a HOLD capsule. */
     fun lineHeight(parts: List<HintPart>): Float =
         if (parts.any { (it is HintPart.Badge && it.held) || it is HintPart.HeldWord }) height + 2 * holdPad + 2 * holdHalo else height
@@ -90,7 +96,7 @@ class BadgePainter(private val dp: Float) {
     fun drawHeldWord(canvas: Canvas, word: String, left: Float, centerY: Float): Float {
         val w = heldWordWidth(word)
         val right = holdCapsule(canvas, left, w, centerY)
-        val p = wordPaint().apply { color = Color.WHITE; textAlign = Paint.Align.RIGHT }
+        val p = wordPaint().apply { color = Design.BADGE_INK; textAlign = Paint.Align.RIGHT }
         canvas.drawText(word, right - holdPad - 3f * dp * scale, centerY - (p.descent() + p.ascent()) / 2f, p)
         p.textAlign = Paint.Align.CENTER
         return left + w
@@ -100,7 +106,7 @@ class BadgePainter(private val dp: Float) {
     fun drawHeld(canvas: Canvas, button: ControllerButton, left: Float, centerY: Float): Float {
         val w = heldWidth(button)
         val right = holdCapsule(canvas, left, w, centerY)
-        draw(canvas, button, right - holdPad - width(button), centerY)
+        draw(canvas, button, right - holdPad - width(button), centerY, edged = false)
         return left + w
     }
 
@@ -113,11 +119,11 @@ class BadgePainter(private val dp: Float) {
         val box = RectF(left + holdHalo, centerY - h / 2, left + w - holdHalo, centerY + h / 2)
         fill.color = plate
         canvas.drawRoundRect(box, h / 2, h / 2, fill)
-        ring.strokeWidth = 1f * dp * scale
+        ring.strokeWidth = Design.STROKE_HAIRLINE * dp * scale
         ring.color = edge
         val e = ring.strokeWidth / 2f
         canvas.drawRoundRect(box.left + e, box.top + e, box.right - e, box.bottom - e, h / 2 - e, h / 2 - e, ring)
-        val p = holdPaint().apply { color = SettingsStyle.accent; textAlign = Paint.Align.LEFT }
+        val p = holdPaint().apply { color = holdWordColor(SettingsStyle.accent); textAlign = Paint.Align.LEFT }
         canvas.drawText("HOLD", box.left + holdPad + 5f * dp * scale, centerY - (p.descent() + p.ascent()) / 2f, p)
         p.textAlign = Paint.Align.CENTER
         p.letterSpacing = 0f
@@ -125,18 +131,18 @@ class BadgePainter(private val dp: Float) {
     }
 
     /** Draws with the left edge at [left], vertically centred on [centerY]. Returns the right edge. */
-    fun draw(canvas: Canvas, button: ControllerButton, left: Float, centerY: Float, presses: Int = 1): Float {
+    fun draw(canvas: Canvas, button: ControllerButton, left: Float, centerY: Float, presses: Int = 1, edged: Boolean = true): Float {
         val w = width(button, presses)
         val r = radius
         val box = RectF(left, centerY - r, left + w, centerY + r)
         fill.color = plate
         ring.color = edge
-        ring.strokeWidth = 1f * dp * scale
+        ring.strokeWidth = Design.STROKE_HAIRLINE * dp * scale
         canvas.drawRoundRect(box, r, r, fill)
-        canvas.drawRoundRect(box, r, r, ring)
+        if (edged) canvas.drawRoundRect(box, r, r, ring)      // inside a HOLD capsule the capsule's edge is enough
 
         if (presses > 1) {
-            val p = countPaint().apply { color = Contrast.withAlpha(Color.WHITE, 210) }
+            val p = countPaint().apply { color = Contrast.withAlpha(Design.BADGE_INK, Design.ALPHA_INK_STRONG) }
             val tailCx = box.right - tailWidth(presses) / 2f - 1.5f * dp * scale
             canvas.drawText(countText(presses), tailCx, centerY - (p.descent() + p.ascent()) / 2f, p)
         }
@@ -145,18 +151,18 @@ class BadgePainter(private val dp: Float) {
         if (button.isStick) {
             // A thumbstick seen from above: the ring it sits in and its cap, then which one (L or R)
             val sx = left + r
-            glyph.color = Color.WHITE
+            glyph.color = Design.BADGE_INK
             glyph.strokeWidth = ICON_STROKE * dp * scale
             canvas.drawCircle(sx, centerY, r * 0.62f, glyph)
-            fill.color = Color.WHITE
+            fill.color = Design.BADGE_INK
             canvas.drawCircle(sx, centerY, r * 0.3f, fill)
-            val p = shoulderPaint().apply { color = Color.WHITE; textAlign = Paint.Align.LEFT }
+            val p = shoulderPaint().apply { color = Design.BADGE_INK; textAlign = Paint.Align.LEFT }
             canvas.drawText(stickText(button), sx + r * 0.62f + 2.5f * dp * scale, centerY - (p.descent() + p.ascent()) / 2f, p)
             p.textAlign = Paint.Align.CENTER
             return box.right
         }
         shoulderText(button)?.let {
-            val p = shoulderPaint().apply { color = Color.WHITE }
+            val p = shoulderPaint().apply { color = Design.BADGE_INK }
             canvas.drawText(it, cx, centerY - (p.descent() + p.ascent()) / 2f, p)
             return box.right
         }
@@ -180,6 +186,33 @@ class BadgePainter(private val dp: Float) {
         return left
     }
 
+    /**
+     * A D-pad direction badge: the badges' own plate and edge, a plus-shaped D-pad in the badge stroke, and the
+     * pressed arm filled. The same on Xbox, PlayStation and Switch (their D-pads share the shape). Returns the right edge.
+     */
+    fun drawDpad(canvas: Canvas, dir: Char, left: Float, centerY: Float): Float {
+        val r = radius; val cx = left + r
+        fill.color = plate; ring.color = edge; ring.strokeWidth = Design.STROKE_HAIRLINE * dp * scale
+        canvas.drawCircle(cx, centerY, r, fill); canvas.drawCircle(cx, centerY, r - ring.strokeWidth / 2, ring)
+        val a = r * 0.62f; val t = r * 0.22f                         // arm length from the centre, half the arm's width
+        val cross = android.graphics.Path().apply {
+            moveTo(cx - t, centerY - a); lineTo(cx + t, centerY - a); lineTo(cx + t, centerY - t); lineTo(cx + a, centerY - t)
+            lineTo(cx + a, centerY + t); lineTo(cx + t, centerY + t); lineTo(cx + t, centerY + a); lineTo(cx - t, centerY + a)
+            lineTo(cx - t, centerY + t); lineTo(cx - a, centerY + t); lineTo(cx - a, centerY - t); lineTo(cx - t, centerY - t); close()
+        }
+        // The cross as a quiet shape, the pressed arm solid white: which way reads at a glance
+        fill.color = Contrast.withAlpha(Design.BADGE_INK, Design.BADGE_DPAD_REST)
+        canvas.drawPath(cross, fill)
+        fill.color = Design.BADGE_INK
+        when (dir) {
+            'U' -> canvas.drawRect(cx - t, centerY - a, cx + t, centerY - t, fill)
+            'D' -> canvas.drawRect(cx - t, centerY + t, cx + t, centerY + a, fill)
+            'L' -> canvas.drawRect(cx - a, centerY - t, cx - t, centerY + t, fill)
+            else -> canvas.drawRect(cx + t, centerY - t, cx + a, centerY + t, fill)
+        }
+        return left + height
+    }
+
     // ---- Hint lines: badges mixed with short words --------------------------
 
     fun measureLine(parts: List<HintPart>, text: Paint): Float {
@@ -189,6 +222,7 @@ class BadgePainter(private val dp: Float) {
                 is HintPart.Badge -> if (part.held) heldWidth(part.button) else width(part.button, part.presses)
                 is HintPart.Text -> text.measureText(part.text)
                 is HintPart.HeldWord -> heldWordWidth(part.word)
+                is HintPart.Dpad -> height
             }
             if (i < parts.lastIndex) w += spacingAfter(part, parts[i + 1])
         }
@@ -207,13 +241,14 @@ class BadgePainter(private val dp: Float) {
                     x + text.measureText(part.text)
                 }
                 is HintPart.HeldWord -> drawHeldWord(canvas, part.word, x, centerY)
+                is HintPart.Dpad -> drawDpad(canvas, part.dir, x, centerY)
             }
             if (i < parts.lastIndex) x += spacingAfter(part, parts[i + 1])
         }
     }
 
     private fun spacingAfter(part: HintPart, next: HintPart): Float = when {
-        part is HintPart.Badge && next is HintPart.Badge -> gapBadgeToBadge * dp * scale
+        (part is HintPart.Badge || part is HintPart.Dpad) && (next is HintPart.Badge || next is HintPart.Dpad) -> gapBadgeToBadge * dp * scale
         else -> gapBadgeToText * dp * scale
     }
 
@@ -246,7 +281,7 @@ class BadgePainter(private val dp: Float) {
 
         chipFill.color = fill
         chipEdge.color = edge
-        chipEdge.strokeWidth = 1f * dp * scale
+        chipEdge.strokeWidth = Design.STROKE_HAIRLINE * dp * scale
         val h = chipHeight
         val cy = area.centerY()
         var x = area.centerX() - total() / 2f
@@ -283,7 +318,7 @@ class BadgePainter(private val dp: Float) {
 
     /** Start: Xbox Menu and PlayStation Options are three lines; Switch is a plus (traced from KDE's gamepad icon set). */
     private fun drawStart(canvas: Canvas, cx: Float, cy: Float, g: Float) {
-        glyph.color = Color.WHITE
+        glyph.color = Design.BADGE_INK
         if (style == ButtonStyle.SWITCH) {
             canvas.drawLine(cx - g, cy, cx + g, cy, glyph)
             canvas.drawLine(cx, cy - g, cx, cy + g, glyph)
@@ -292,7 +327,7 @@ class BadgePainter(private val dp: Float) {
 
     /** Select: Xbox View (a window in front of another), PlayStation Create (three short rays), Switch minus. */
     private fun drawSelect(canvas: Canvas, cx: Float, cy: Float, g: Float) {
-        glyph.color = Color.WHITE
+        glyph.color = Design.BADGE_INK
         when (style) {
             ButtonStyle.SWITCH -> canvas.drawLine(cx - g, cy, cx + g, cy, glyph)
             ButtonStyle.PLAYSTATION -> {
@@ -323,14 +358,7 @@ class BadgePainter(private val dp: Float) {
     private fun drawFace(canvas: Canvas, button: ControllerButton, cx: Float, cy: Float, g: Float) {
         when (style) {
             ButtonStyle.PLAYSTATION -> {
-                glyph.color = Color.parseColor(
-                    when (button) {
-                        ControllerButton.A -> "#8FB4FF"
-                        ControllerButton.B -> "#FF6B6B"
-                        ControllerButton.X -> "#F59BD5"
-                        else -> "#4DD6B5"
-                    }
-                )
+                glyph.color = Design.FACE_PLAYSTATION.getValue(faceKey(button))
                 when (button) {
                     ControllerButton.A -> {
                         val k = g * 0.88f                       // the cross's tips on the same keyline as the others
@@ -356,14 +384,7 @@ class BadgePainter(private val dp: Float) {
             }
             ButtonStyle.XBOX -> letter(
                 canvas, button.name, cx, cy,
-                Color.parseColor(
-                    when (button) {
-                        ControllerButton.A -> "#6CC24A"
-                        ControllerButton.B -> "#F0503C"
-                        ControllerButton.X -> "#3E9BFF"
-                        else -> "#F5C518"
-                    }
-                )
+                Design.FACE_XBOX.getValue(faceKey(button))
             )
             // Nintendo swaps positions: bottom = B, right = A, left = Y, top = X
             ButtonStyle.SWITCH -> letter(
@@ -374,9 +395,14 @@ class BadgePainter(private val dp: Float) {
                     ControllerButton.X -> "Y"
                     else -> "X"
                 },
-                cx, cy, Color.parseColor("#F2F2F2")
+                cx, cy, Design.INK_LIGHT
             )
         }
+    }
+
+    /** A, B, X or Y: the face button's key in Design.FACE_* (bottom, right, left, top). */
+    private fun faceKey(button: ControllerButton) = when (button) {
+        ControllerButton.A -> "A"; ControllerButton.B -> "B"; ControllerButton.X -> "X"; else -> "Y"
     }
 
     private fun letter(canvas: Canvas, text: String, cx: Float, cy: Float, colour: Int) {

@@ -12,7 +12,7 @@ Flat surfaces made visible with light, not shadow. Graphite from the brand palet
 |---|---|
 | Base | Vertical gradient `#16171C → #101115 → #0B0B0E` (Ink at the bottom). Never flat black |
 | Light | One soft neutral light from above (white at 4 %) |
-| Whisper | One wash of the highlight colour in a top corner: OKLCH lightness 0.30, chroma 0.045, the colour's hue turned 14° towards blue (teal → slightly bluer, so it never reads green) |
+| Whisper | One wash of the highlight colour in a top corner: OKLCH lightness 0.30, chroma 0.045, the colour's hue turned 14° towards blue (teal → slightly bluer, so it never reads green). Near yellow (within 60° of 95°) a dark wash turns olive or brown, so it keeps only a warm hint (down to 40 % of the chroma) and turns towards orange, never through green (`AccentLight.washStrength`, 29 Oct 2026) |
 | Motif | Only on the hero and the social preview: tiles on a 46 px grid (38 px cell, 8 px gap, 9 px corners), see §3. README images, the tour and What's new have no motif |
 | Finish | Vignette (24 % at the corners) and fine grain at 6 %. GIF frames leave the grain out (it makes GIFs huge and speckled) |
 
@@ -35,7 +35,7 @@ Never varies: base colours, the whisper's colour rule, the accent colour. Decide
 - Hero headline 66 px, subline 23 px `#C9CCD3`. Feature images: headline 46 px, text 21 px. The Inlay logo is 68 px tall wherever it shows (hero, social preview, stage images).
 - Everything on the 46 px grid where it can be. Margins at least 96 px (feature images) / 112 px (hero).
 - Text keeps at least 4.5 : 1 contrast; nothing closer than 8 px; `check.js` measures every image.
-- Panels (app screens, keyboard, close-up cards) have one solid edge, 2 px `#2F323A`, the same on every background (a see-through hairline looked thin in some places), plus a soft dark shadow. No coloured glow, no inner highlight.
+- Panels (app screens, keyboard, close-up cards) have one solid edge, 2 px `#2E2E35`, the same on every background (a see-through hairline looked thin in some places), plus a soft dark shadow. No coloured glow, no inner highlight.
 
 ## 4b. Feature images
 
@@ -56,6 +56,15 @@ Never varies: base colours, the whisper's colour rule, the accent colour. Decide
 ## 6. Generic art (game covers, TV thumbnails)
 
 Flat, one simple shape each, no gradients, no glow. Seven tones (base / shape): blue `#3F63B8/#5F89DB`, terracotta `#B65C34/#DA8459`, green `#2F8A66/#50B08B`, purple `#7650B8/#9B79DA`, ochre `#B88A22/#DCB049`, teal `#22879B/#44AEC3`, berry `#AE4466/#D36B8B`. Shapes: circle, hill, three bars, tilted square, arch, two dots. Covers get a flat dark strip behind the title. TV thumbnails sit at 86 % behind the keyboard. Game names mix platforms (Xbox, PlayStation, Nintendo); TV uses films and series.
+
+## 6b. The demo apps (library, notes, TV search)
+
+The keyboard is always shown typing into an app, never on its own. These apps are someone else's Android app, so they follow Android, not Inlay's brand:
+- **Roboto** for everything inside them (titles, covers, notes). Atkinson and Inter stay Inlay's own voice, outside the screen.
+- **Window:** black, 22 px corners, one solid edge 2 px `#2E2E35` (the app's `Design.TRACK`, the same edge as the tour's window), soft dark shadow.
+- **Text box:** card `#111114`, 8 % hairline, placeholder in the secondary text colour `#9A9DA5` (6.95 : 1; never the darker grey), cursor in the highlight colour.
+- **Covers:** flat art (§6), with a dark strip (55 % black) over the bottom 41 %; platform (Roboto Medium, 80 % white, tracked) above the title (Roboto Bold, 95 % white). Measured at least 5.7 : 1 and 7.3 : 1 on every cover colour, the shapes included.
+- The tour uses the same text box look inside its window, without the library around it (the keyboard is the subject there, and small screens need the room).
 
 ## 7. The hero
 
@@ -86,7 +95,7 @@ The same rule works for any colour, presets and the colour slider: the whisper, 
 Settled with Emre on 27 Oct 2026 for 1.2.0. Made by `video.html`, `render-video.js` and `finish-video.py` from the `VisualsVideo` recordings (plus `pic-boxes.py`); the plans are `teaser.plan.json` and `whats-new.plan.json`.
 
 - **Everything moving is the app.** Keyboard scenes (`words`, `accents`, `devices`, `tv`) record the keyboard and device picture; screen scenes (`auto`, `packrow`, `colour`, `tourlook`, `settings`) record whole Settings, tour and What's new screens at the Odin 2 Portal's size. Word suggestions come from the real word list and Learn my words; Automatic runs as if on an AYN Odin 2 Portal.
-- **Two layouts.** Stage (as the README stage images): words top left, the device under them, the game library with the keyboard on the right. Screen: headline 72 px and subline over the recorded screen, 1440 px wide, 2 px `#2F323A` edge.
+- **Two layouts.** Stage (as the README stage images): words top left, the device under them, the game library with the keyboard on the right. Screen: headline 72 px and subline over the recorded screen, 1440 px wide, 2 px `#2E2E35` edge.
 - **Device pictures in stage scenes:** without the floating shoulder keys (the videos never press them; `pic-boxes.py` finds the body), as big as the room under the words allows (640 px column at most), standing on the screen's bottom line. The devices scene has no subline so the tall devices get the room, and the device's name sits under it.
 - **Sound packs:** the real Settings row, stepped with the D-pad, 0.9 s a pack (Emre chose it over designed lists and cards; the What's new page's own showcase types too fast for video). The teaser shows four packs, What's new all nine.
 - **Type.** Headlines 76 px (72 px over screens), sublines 32 px `#C9CCD3`, at most about seven words, one idea each. Cards: logo 160 px (Emre: bigger and more obvious), headline 84 px.

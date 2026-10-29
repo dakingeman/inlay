@@ -2,7 +2,7 @@
 <script src="parts.js"></script>
 <style>.abs{position:absolute}.hl{font-family:A;font-weight:700;line-height:1.08;color:#F2F3F5}.bd{font-family:I;line-height:1.45}
 .dev{position:absolute;filter:drop-shadow(0 22px 34px rgba(0,0,0,.45));transition:none}
-.panel{position:absolute;background:#000;border-radius:22px;overflow:hidden;box-shadow:0 0 0 2px #2F323A,0 2px 4px rgba(0,0,0,.3),0 24px 60px rgba(0,0,0,.45)}
+.panel{position:absolute;background:#000;border-radius:22px;overflow:hidden;box-shadow:0 0 0 2px #2E2E35,0 2px 4px rgba(0,0,0,.3),0 24px 60px rgba(0,0,0,.45)}
 .kbimg{position:absolute;left:0;bottom:0;filter:contrast(1.06) brightness(1.07)}
 .lab{position:absolute;text-align:center;font-family:I;font-size:16px;color:#A7AAB2;width:300px}
 .lab b{display:block;font-weight:500}.lab small{display:block;font-size:14px;color:#80838B;margin-top:2px}
@@ -120,7 +120,7 @@ if(FX.includes('grid')){let t='';const c0=-Math.ceil(x/P)-1,c1=NC+Math.ceil(x/P)
   const dx=Math.abs(cx-800)/800, a=.10+.10*Math.min(1,dx*1.4);
   t+=`<circle cx="${cx}" cy="${cy}" r="1.9" fill="rgba(180,215,230,${a})"/>`;}
  H+=`<svg class="abs" style="left:0;top:0" width="1600" height="900">${t}</svg>`;}
-const KBA=S.tv?1560/732:1680/534;
+const KBA=S.tv?1560/762:1680/534;
 if(S.tv){const TA=1464/660, kw2=kw*0.6, kh2=kw2/TA, tones=[['#3E5BA8','#1A2550'],['#B4573A','#4A1E16'],['#2E8A6A','#103A2C'],['#7A4FB8','#2A1A48'],['#C08A2E','#4A3010'],['#2B8CA0','#0E3A44'],['#A8455E','#401624']];
   let rows='';for(let r=0;r<2;r++){rows+=`<div style="display:flex;gap:16px;margin-top:${r?18:0}px">`;for(let i=0;i<6;i++){rows+=`<div style="width:138px;height:78px;border-radius:12px;overflow:hidden;flex:none;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08)">${thumbArt(i+r*3)}</div>`;}rows+='</div>';}
   H+=`<div class="panel" style="left:${x}px;top:${y}px;width:${kw}px;height:${ph}px;background:#07080B">

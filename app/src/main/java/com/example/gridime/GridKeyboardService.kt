@@ -206,6 +206,7 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
             view.feedback = feedback
             view.applySettings(settings.forControls(Controls.of(this@GridKeyboardService, settings)))
             view.setClips(history.all)
+            view.onClipsClosed = { settleClipRemoval() }
             gridView = view
             updateClipPreview()
             view.setTvMode(tvModeActive())
@@ -251,6 +252,7 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
         if (!restarting) { box++; pendingWord = null }
         gridView?.apply {
             applySettings(settings.forControls(Controls.of(this@GridKeyboardService, settings)))
+            settleClipRemoval()
             setClips(history.all)
             closeClips(focusOnHistoryButton = false)
             // A restart of the same box (chat apps after Send) keeps the layer and highlight
@@ -300,6 +302,7 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
     }
 
     private fun resetHeldInputs() {
+        settleClipRemoval()
         gridView?.resetAccents()
         stopNav()
         deleteRepeater.stop()
@@ -747,6 +750,7 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
         val sensitive = clip?.description?.extras?.getBoolean(EXTRA_IS_SENSITIVE) == true
         if (settings.saveClipHistory && !sensitive) {
             clipText()?.let {
+                settleClipRemoval()
                 history.add(it)
                 gridView?.setClips(history.all)
             }
@@ -855,9 +859,12 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
     private fun onXButton(grid: KeyGridView) {
         when {
             grid.isClipsOpen() -> grid.focusedClipIndex()?.let {
-                history.removeAt(it)
-                grid.setClips(history.all)
-                feedback.delete()
+                // X removes the clip, but its place stays a moment as "Removed": X again brings it back
+                val r = clipRemoval.pressX(it, SystemClock.uptimeMillis())
+                grid.removedClip = clipRemoval.pending
+                if (r.undone) feedback.on() else feedback.delete()
+                handler.removeCallbacks(clipTick)
+                if (clipRemoval.pending != null) handler.postDelayed(clipTick, ClipRemoval.TICK_MS)
             }
             r2Held && settings.undoCombo -> {
                 r2UsedAsModifier = true
@@ -865,6 +872,24 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
             }
             else -> startDelete()
         }
+    }
+
+    /** Removing clips with a way back (see [ClipRemoval]); the history changes for real when it commits. */
+    private val clipRemoval = ClipRemoval { index ->
+        history.removeAt(index)
+        gridView?.apply { removedClip = null; setClips(history.all) }
+    }
+    private val clipTick = object : Runnable {
+        override fun run() {
+            val grid = gridView ?: return clipRemoval.commit()
+            clipRemoval.tick(grid.focusedClipIndex(), SystemClock.uptimeMillis())
+            if (clipRemoval.pending != null) handler.postDelayed(this, ClipRemoval.TICK_MS)
+        }
+    }
+    /** A pending removal goes through now (the clipboard closed, the keyboard went away, a new copy came in). */
+    private fun settleClipRemoval() {
+        handler.removeCallbacks(clipTick)
+        clipRemoval.commit()
     }
 
     private fun onL2() {
