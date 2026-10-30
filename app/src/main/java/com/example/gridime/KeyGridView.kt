@@ -509,10 +509,10 @@ class KeyGridView(context: Context) : View(context) {
         val w = contentWidth() / settings.language.columns
         val total = a.list.size * w
         val left = (a.keyRect.centerX() - 1.5f * w).coerceIn(contentLeft(), max(contentLeft(), contentLeft() + contentWidth() - total))
-        // The tray fills exactly the tool strip's slot, so it keeps the same gap to the keys as every
-        // other row; the cells sit inside it with [TRAY_PAD_V] above and below (design audit, 28 Oct 2026)
-        val top = rowTop(0) + u(TRAY_PAD_V) + (1f - easeOut.getInterpolation(accentAlpha(a))) * u(5f)
-        return RectF(left + i * w + gap / 2f, top, left + (i + 1) * w - gap / 2f, top + toolHeight - 2 * u(TRAY_PAD_V))
+        // Each accent is a key the full height of the tool strip's slot, so the tray keeps the same gap to the
+        // keys as every other row (the "Keys" look, chosen 30 Oct 2026; cells were inset in an outlined tray before)
+        val top = rowTop(0) + (1f - easeOut.getInterpolation(accentAlpha(a))) * u(5f)
+        return RectF(left + i * w + gap / 2f, top, left + (i + 1) * w - gap / 2f, top + toolHeight)
     }
 
     /** The colour a key really shows (see-through keys sit on black). */
@@ -532,9 +532,9 @@ class KeyGridView(context: Context) : View(context) {
     }
 
     /**
-     * The accent layer: the keyboard dims, the held key stays lit, and the accents sit on a raised
-     * tray edged in your highlight colour. Solid themes dim towards their own background (dark themes
-     * darken, Light fades to its grey); Clear dims with black, so the picture behind darkens too.
+     * The accent layer ("Keys", chosen 30 Oct 2026): the keyboard dims; each accent is a key in the tool strip's
+     * slot, the plain letter first and quieter; the held key keeps a soft ring in your colour, so the only lit
+     * thing is the accent A will type. Solid themes dim towards their own background, Clear dims with black.
      */
     private fun drawAccentLayer(canvas: Canvas, rows: List<List<Key>>) {
         val a = accents ?: return
@@ -542,57 +542,77 @@ class KeyGridView(context: Context) : View(context) {
         if (alpha <= 0f) return
         val full = RectF(0f, 0f, width.toFloat(), height.toFloat())
         val saved = canvas.saveLayerAlpha(full, (alpha * 255).roundToInt())
-        // 1. dim
+        labelTag = "tray"
         fillPaint.color = if (clear) Contrast.withAlpha(Color.BLACK, Design.SCRIM_ACCENTS_CLEAR) else Contrast.withAlpha(colBackdrop, Design.SCRIM_ACCENTS)
         if (tv) canvas.drawRoundRect(tvPanel(), u(20f), u(20f), fillPaint) else canvas.drawRect(full, fillPaint)
-        // 2. the held key stays lit
-        val heldBg = Contrast.over(colAccentSoft, lifted(colKey))
-        fillPaint.color = heldBg
+        // the held key: its own key, with a soft ring in your colour (the highlight belongs to the accent)
+        fillPaint.color = solid(colKey)
         canvas.drawRoundRect(a.keyRect, corner, corner, fillPaint)
-        drawLetter(canvas, a.list[0], a.keyRect.centerX(), a.keyRect.centerY(), Contrast.inkFor(heldBg))
-        // 3. the tray
-        val cr = min(corner, (toolHeight - 2 * u(TRAY_PAD_V)) / 2f)
-        val first = cellRect(a, 0)
-        val last = cellRect(a, a.list.lastIndex)
-        val p = gap                                   // side padding = the gap between cells
-        val pv = u(TRAY_PAD_V)
-        val tray = RectF(first.left - p, first.top - pv, last.right + p, first.bottom + pv)
-        fillPaint.color = if (clear) Contrast.withAlpha(Color.BLACK, Design.TRAY_CLEAR) else solid(colBackdrop)
-        canvas.drawRoundRect(tray, cr + pv, cr + pv, fillPaint)
-        ringPaint.color = Contrast.withAlpha(Contrast.inkFor(colBackdrop), Design.ALPHA_FAINT_STRONG)   // a neutral edge: rings are for focus only
-        ringPaint.strokeWidth = u(Design.STROKE_HAIRLINE)
-        canvas.drawRoundRect(RectF(tray).apply { inset(u(0.5f), u(0.5f)) }, cr + pv - u(0.5f), cr + pv - u(0.5f), ringPaint)
-        // 4. cells: the plain letter first (quieter), then its accents
+        // Your colour at full strength (a softened ring fell below 3 : 1 on dark themes, 30 Oct 2026): it stays the
+        // quieter of the two by being a ring, where the accent you're on is filled
+        ringPaint.color = heldRing(); ringPaint.strokeWidth = u(Design.STROKE_FOCUS)
+        val hi = ringPaint.strokeWidth / 2f
+        canvas.drawRoundRect(RectF(a.keyRect).apply { inset(hi, hi) }, corner - hi, corner - hi, ringPaint)
+        drawLetter(canvas, a.list[0], a.keyRect.centerX(), a.keyRect.centerY(), Contrast.inkFor(solid(colKey)), keyW = a.keyRect.width())
+        val cr = min(corner, toolHeight / 2f)
         a.list.indices.forEach { i ->
             val rc = cellRect(a, i)
+            logRect(canvas, "cell", rc)
             fillPaint.color = if (i == 0) solid(colSpecialKey) else lifted(colKey)
             canvas.drawRoundRect(rc, cr, cr, fillPaint)
             if (colEdge != 0 && !clear) {
-                ringPaint.color = colEdge
-                ringPaint.strokeWidth = u(Design.STROKE_HAIRLINE)
+                ringPaint.color = colEdge; ringPaint.strokeWidth = u(Design.STROKE_HAIRLINE)
                 canvas.drawRoundRect(RectF(rc).apply { inset(u(0.5f), u(0.5f)) }, cr, cr, ringPaint)
             }
         }
-        // 5. the highlight, then the letters on top
         if (a.open) drawHighlight(canvas, cr)
         a.list.forEachIndexed { i, ch ->
             val rc = cellRect(a, i)
             val focused = a.open && i == a.index
             val bg = if (focused) focusFill else if (i == 0) solid(colSpecialKey) else lifted(colKey)
             val ink = Contrast.inkFor(bg)
-            val s = canvas.save()
-            drawLetter(canvas, ch, rc.centerX(), rc.centerY(), if (i == 0 && !focused) Contrast.withAlpha(ink, Design.ALPHA_INK_SOFT) else ink, Design.TYPE_KEY_ACCENT)
-            canvas.restoreToCount(s)
+            drawLetter(canvas, ch, rc.centerX(), rc.centerY(), if (i == 0 && !focused) Contrast.withAlpha(ink, Design.ALPHA_INK_SOFT) else ink, Design.TYPE_KEY_TRAY)
         }
-        // 6. the hint, on the space bar as in select mode
-        if (a.open && settings.showHints) {
-            rows.forEachIndexed { r, row ->
-                row.forEachIndexed { c, key ->
-                    if (key.type == KeyType.SPACE) drawChips(canvas, keyRect(r, row, c), solid(colBackdrop), accentChips(a))
-                }
-            }
-        }
+        if (a.open && settings.showHints) rows.forEachIndexed { r, row -> row.forEachIndexed { c, key ->
+            if (key.type == KeyType.SPACE) drawChips(canvas, keyRect(r, row, c), solid(colBackdrop), accentChips(a)) } }
+        labelTag = "label"
         canvas.restoreToCount(saved)
+    }
+
+    /**
+     * The held letter's ring: your colour where it shows at 3 : 1 against both its key and the dimmed keyboard
+     * around it, otherwise the key's own ink (on Clear over a bright app, some colours vanished into the grey).
+     */
+    private fun heldRing(): Int {
+        val held = solid(colKey); val around = dimmedAroundTray()
+        return listOf(colAccent, Contrast.inkFor(held)).firstOrNull { Contrast.ratio(it, held) >= 3.0 && Contrast.ratio(it, around) >= 3.0 }
+            ?: listOf(colAccent, Contrast.inkFor(held)).maxByOrNull { min(Contrast.ratio(it, held), Contrast.ratio(it, around)) }!!
+    }
+
+    /** The keyboard under the accent layer's dim; on Clear the hardest case, a white app behind. */
+    private fun dimmedAroundTray(): Int =
+        if (clear) Contrast.over(Contrast.withAlpha(Color.BLACK, Design.SCRIM_ACCENTS_CLEAR), Color.WHITE)
+        else Contrast.over(Contrast.withAlpha(colBackdrop, Design.SCRIM_ACCENTS), solid(colBackdrop))
+
+    /**
+     * Test hook: every colour pair the accent tray and number row show, as (what, ink, background), for the
+     * contrast check. The held ring is measured against its key and against the dimmed keyboard around it.
+     */
+    internal fun trayColoursForTest(): List<Triple<String, Int, Int>> {
+        val cell = lifted(colKey); val plain = solid(colSpecialKey)
+        val dimmed = dimmedAroundTray()
+        val held = solid(colKey)
+        val ring = heldRing()
+        val digit = seen(colKey)
+        return listOf(
+            Triple("accent letter", Contrast.inkFor(cell), cell),
+            Triple("plain letter", Contrast.over(Contrast.withAlpha(Contrast.inkFor(plain), Design.ALPHA_INK_SOFT), plain), plain),
+            Triple("chosen accent", Contrast.inkFor(focusFill), focusFill),
+            Triple("held letter", Contrast.inkFor(held), held),
+            Triple("held ring on its key", ring, held),
+            Triple("held ring on the dimmed keyboard", ring, dimmed),
+            Triple("digit", Contrast.over(Contrast.withAlpha(Contrast.inkFor(digit), Design.ALPHA_INK_STRONG), digit), digit),
+        )
     }
 
     private fun accentChips(a: AccentState): List<List<HintPart>> = when {
@@ -608,36 +628,25 @@ class KeyGridView(context: Context) : View(context) {
     }
 
     /**
-     * The optional number row: one bar in the special-key colour, so it reads as a shelf above the
-     * letters rather than more letters. Depth comes from light, as everywhere in Inlay: a faint
-     * hairline edge (8 %, or the theme's own key border). Short, soft dividers sit between the
-     * digits and step aside next to the highlighted one.
+     * The optional number row ("Keys", chosen 30 Oct 2026): a slim key for every digit, in the letters' key colour
+     * and shape, lined up with the letter columns. It was one bar with dividers, a look nothing else used.
      */
     private fun drawNumberBar(canvas: Canvas, rows: List<List<Key>>) {
         if (!hasNumberRow) return
         val row = rows[1]
-        val a = keyRect(1, row, 0)
-        val b = keyRect(1, row, row.lastIndex)
-        val bar = RectF(a.left, a.top, b.right, a.bottom)     // lines up with the letter keys' outer edges
-        val r = numberBarRadius
-        fillPaint.color = colSpecialKey
-        canvas.drawRoundRect(bar, r, r, fillPaint)
-        val ink = Contrast.inkFor(seen(colSpecialKey))
-        ringPaint.color = if (colEdge != 0) colEdge else Contrast.withAlpha(ink, Design.ALPHA_FAINT)
-        ringPaint.strokeWidth = u(Design.STROKE_HAIRLINE)
-        canvas.drawRoundRect(RectF(bar).apply { inset(u(0.5f), u(0.5f)) }, r - u(0.5f), r - u(0.5f), ringPaint)
-        fillPaint.color = Contrast.withAlpha(ink, Design.ALPHA_FAINT)
-        val h = numRowHeight * 0.36f
-        val focusedCol = if (selRow == 1 && accents == null) selCol else -2
-        for (i in 1 until row.size) {
-            if (i == focusedCol || i - 1 == focusedCol) continue
-            val x = keyRect(1, row, i).left - gap / 2f
-            canvas.drawRoundRect(x - u(0.5f), bar.centerY() - h / 2f, x + u(0.5f), bar.centerY() + h / 2f, u(0.5f), u(0.5f), fillPaint)
+        val r = numberKeyRadius
+        for (i in row.indices) {
+            val k = keyRect(1, row, i)
+            fillPaint.color = colKey; canvas.drawRoundRect(k, r, r, fillPaint)
+            if (colEdge != 0) {
+                ringPaint.color = colEdge; ringPaint.strokeWidth = u(Design.STROKE_HAIRLINE)
+                canvas.drawRoundRect(RectF(k).apply { inset(u(0.5f), u(0.5f)) }, r - u(0.5f), r - u(0.5f), ringPaint)
+            }
         }
     }
 
-    /** The bar's corners follow your key shape, never rounder than a pill. */
-    private val numberBarRadius get() = min(corner, numRowHeight / 2f)
+    /** The digit keys' corners follow your key shape, never rounder than a pill. */
+    private val numberKeyRadius get() = min(corner, numRowHeight / 2f)
 
     /** A hairline between the two plain word suggestions (the first one already sits on a key). */
     private fun drawWordDividers(canvas: Canvas, strip: List<Key>) {
@@ -740,6 +749,7 @@ class KeyGridView(context: Context) : View(context) {
     fun flashLanguage() {
         languageFlashUntil = SystemClock.uptimeMillis() + LANGUAGE_FLASH_MS
         invalidate()
+        postDelayed({ invalidate() }, LANGUAGE_FLASH_MS - Design.MOTION_FADE)   // the fade then drives itself
         postDelayed({ invalidate() }, LANGUAGE_FLASH_MS + 20)
     }
 
@@ -845,8 +855,10 @@ class KeyGridView(context: Context) : View(context) {
         if (drawLog == null || text.isBlank()) return
         val path = Path(); textPaint.getTextPath(text, 0, text.length, x, y, path)
         val r = RectF(); path.computeBounds(r, true)
-        logRect(canvas, "label:$text", r)
+        logRect(canvas, "$labelTag:$text", r)
     }
+    /** "label" for the keyboard's own words; "tray" while the accent layer draws over it, so checks tell them apart. */
+    private var labelTag = "label"
     /** Test hook: every key on screen now, with what it is. */
     internal fun keysForTest(): List<Pair<String, RectF>> = allRows().flatMapIndexed { r, row ->
         row.indices.filter { row[it].type != KeyType.GAP && row[it].type != KeyType.EMPTY }.map { c -> "${row[c].type}:${row[c].label}" to keyRect(r, row, c) }
@@ -871,13 +883,13 @@ class KeyGridView(context: Context) : View(context) {
         const val TV_SCREEN_SHARE = 0.55f     // leave the game visible
         const val TV_PREVIEW_DP = 34f
         const val TV_PREVIEW_TEXT_DP = 18f
+        const val TOOL_MIN_FIT = 0.7f        // the top row's shared word size never goes below this
         const val LABEL_MIN_FIT = 0.85f      // a key's word shrinks at most this far to keep clear of its badge
         const val EDGE_DP = 6f               // the keyboard's own margin round its keys
         const val TV_PANEL_PAD = 10f          // the floating TV panel's padding round the keys, on every side
         const val LEAD_AHEAD = 1.3f
         const val LIFT_SCALE = 1.07f
         /** Space above and below the accent cells inside their tray. */
-        const val TRAY_PAD_V = 3f
         /** BadgePainter's circle radius at scale 1. */
         const val BADGE_RADIUS_DP = 6.5f
         /** Height of the keyboard at size 1, in dp (edges, tool strip, four key rows, gaps). */
@@ -894,6 +906,10 @@ class KeyGridView(context: Context) : View(context) {
         /** Hold A: nothing shows for this long, so quick taps never flash the accents... */
         /** What a clip waiting to be removed says in its place. */
         const val REMOVED_LABEL = "Removed"
+        /** The smallest a Shift, Delete or Enter icon gets to keep its badge; any smaller and the badge steps aside. */
+        const val ICON_MIN_SCALE = 0.85f
+        /** The least room between a letter and its key's side. */
+        const val LETTER_SIDE_DP = 2f
         const val ACCENT_HOLD_START_MS = Design.MOTION_REVEAL_WAIT
         /** ...then the strip hands over to the accents over this long. */
         const val ACCENT_REVEAL_MS = Design.MOTION_REVEAL
@@ -928,7 +944,7 @@ class KeyGridView(context: Context) : View(context) {
 
         if (settings.motion == HighlightMotion.INSTANT || wrapped) {
             focusRect.set(to)
-            if (wrapped && settings.motion != HighlightMotion.INSTANT) pulse(from = 0.94f)
+            if (wrapped && settings.motion != HighlightMotion.INSTANT) pulse(from = Design.PRESS_SQUEEZE_WRAP)
             invalidate()
             return
         }
@@ -966,7 +982,7 @@ class KeyGridView(context: Context) : View(context) {
         }
     }
 
-    private fun pulse(from: Float = 0.92f) {
+    private fun pulse(from: Float = Design.PRESS_SQUEEZE) {
         if (quiet) return
         pulseAnim?.cancel()
         pulseAnim = ValueAnimator.ofFloat(from, 1f).apply {
@@ -1528,8 +1544,10 @@ class KeyGridView(context: Context) : View(context) {
         }
 
         // 2. The gliding highlight, in the chosen style (while the accents are open it sits on their tray)
+        // ...and none on the empty clipboard's note: it isn't something to pick (audit, 30 Oct 2026)
+        val onNote = rows.getOrNull(selRow)?.getOrNull(selCol)?.type == KeyType.EMPTY
         val highlightHidden = a != null && a.open
-        if (!highlightHidden) drawHighlight(canvas)
+        if (!highlightHidden && !onNote) drawHighlight(canvas)
 
         // 3. Labels, icons, badges
         iconPaint.strokeWidth = u(Design.STROKE_ICON)
@@ -1567,7 +1585,9 @@ class KeyGridView(context: Context) : View(context) {
             val top = lastSlotTop()
             drawChips(
                 canvas, RectF(contentLeft(), top, contentLeft() + contentWidth(), top + slotHeight), colBackdrop,
-                if (removedClip != null && focusedClipIndex() == removedClip) listOf(
+                if (clips.isEmpty() && removedClip == null) listOf(
+                    listOf(HintPart.Badge(ControllerButton.B), HintPart.Text("Back"))
+                ) else if (removedClip != null && focusedClipIndex() == removedClip) listOf(
                     listOf(HintPart.Badge(ControllerButton.X), HintPart.Text("Undo")),
                     listOf(HintPart.Badge(ControllerButton.B), HintPart.Text("Back"))
                 ) else listOf(
@@ -1589,7 +1609,7 @@ class KeyGridView(context: Context) : View(context) {
         KeyType.CLIP -> if (key.index == removedClip) null else colKey   // a removed clip leaves an empty place
         KeyType.CHAR, KeyType.SPACE -> colKey
         KeyType.EMPTY, KeyType.GAP -> null
-        KeyType.DIGIT -> null                                // the number row shares one bar (drawNumberBar)
+        KeyType.DIGIT -> null                                // drawn by drawNumberBar: slim keys, their own radius
         KeyType.TOOL -> when {
             key.tool == Tool.WORD && key.best -> colKey      // the first word sits on a key you can press
             key.tool == Tool.WORD -> null
@@ -1712,7 +1732,7 @@ class KeyGridView(context: Context) : View(context) {
 
     private fun visibleBg(key: Key, focused: Boolean): Int {
         if (focused) return focusFill
-        if (key.type == KeyType.DIGIT) return seen(colSpecialKey)
+        if (key.type == KeyType.DIGIT) return seen(colKey)          // digits sit on their own slim keys
         // On the see-through theme the tool strip sits on its own plate (drawn in onDraw)
         val bg = backgroundFor(key) ?: return if (clear) seen(colSpecialKey) else colBackdrop
         return if (clear) seen(bg) else if (Color.alpha(bg) == 255) bg else Contrast.over(bg, colBackdrop)
@@ -1736,8 +1756,10 @@ class KeyGridView(context: Context) : View(context) {
         // Icons (shift, delete, enter) step left, out of the corner badge's way, on keys too narrow for both
         // to sit centred (the ZR badge sat on the shift arrow on vertical handhelds, audit 28 Oct 2026)
         val hint = if (settings.showHints) key.hint?.takeIf { settings.hasSticks || !it.isStick } else null
-        val iconHalfW = s * 1.35f
-        val iconHalfH = s * 1.3f
+        var iconS = s
+        var iconYields = false
+        var iconHalfW = s * 1.35f
+        var iconHalfH = s * 1.3f
         var iconCx = cx
         var iconCy = cy
         // Badges follow a Round key's corner when there's room; on narrow keys they keep the tight inset
@@ -1748,8 +1770,23 @@ class KeyGridView(context: Context) : View(context) {
             if (cy - iconHalfH < badgeBottom + u(2f)) {
                 // First step left; if the key is too narrow for that, also step down below the badge
                 iconCx = max(rect.left + u(4f) + iconHalfW, min(cx, badgeLeft - u(3f) - iconHalfW))
-                if (iconCx + iconHalfW > badgeLeft - u(1f))
-                    iconCy = min(rect.bottom - u(3f) - iconHalfH, max(cy, badgeBottom + u(2f) + iconHalfH))
+                if (iconCx + iconHalfW > badgeLeft - u(1f)) {
+                    // Below the badge; on a key too short for that too (Shift one key wide on a phone in Turkish,
+                    // Russian or Ukrainian; audit, 30 Oct 2026) the icon gets just small enough to fit under it
+                    // (a little; if it would have to shrink more than that, the badge steps aside instead and the
+                    // icon stays whole and centred, as words do. Holding RT still shows its tips)
+                    val room = rect.bottom - u(3f) - (badgeBottom + u(2f))
+                    val k = if (room < 2 * iconHalfH) room / (2 * iconHalfH) else 1f
+                    if (k < ICON_MIN_SCALE) {
+                        iconYields = true; iconCx = cx; iconCy = cy
+                    } else {
+                        if (k < 1f) {
+                            iconS = s * k; iconHalfW *= k; iconHalfH *= k
+                            iconCx = max(rect.left + u(4f) + iconHalfW, min(cx, badgeLeft - u(3f) - iconHalfW))
+                        }
+                        iconCy = min(rect.bottom - u(3f) - iconHalfH, max(cy, badgeBottom + u(2f) + iconHalfH))
+                    }
+                }
             }
         }
         // Words on the key keep clear of the badge the same way (drawLabel reads these two)
@@ -1761,9 +1798,10 @@ class KeyGridView(context: Context) : View(context) {
 
         when (key.type) {
             // The number pad's digits are bigger: its keys are a compact block, not a stretched row
-            KeyType.CHAR -> drawLetter(canvas, displayLabel(key), cx, cy, ink, if (layer == Layer.NUMPAD) Design.TYPE_KEY_DIGIT else Design.TYPE_KEY)
+            KeyType.CHAR -> drawLetter(canvas, displayLabel(key), cx, cy, ink, if (layer == Layer.NUMPAD) Design.TYPE_KEY_DIGIT else Design.TYPE_KEY, rect.width())
             // The number row: smaller and a touch quieter than letters
-            KeyType.DIGIT -> drawLabel(canvas, key.label, cx, cy, if (focused) ink else Contrast.withAlpha(ink, Design.ALPHA_INK_STRONG), Design.TYPE_KEY_ACCENT, 500)
+            // (on Clear only as quiet as 4.5 : 1 allows: over a white app the fixed step fell to 4.1, 30 Oct 2026)
+            KeyType.DIGIT -> drawLabel(canvas, key.label, cx, cy, if (focused) ink else if (clear) quietInk(ink, bg, Design.ALPHA_INK_STRONG) else Contrast.withAlpha(ink, Design.ALPHA_INK_STRONG), Design.TYPE_KEY_ACCENT, 500)
             KeyType.GAP -> Unit
             KeyType.LAYER -> drawLabel(canvas, key.label, cx, cy, ink, Design.TYPE_KEY_LABEL, 600)
             KeyType.SPACE -> {
@@ -1772,26 +1810,33 @@ class KeyGridView(context: Context) : View(context) {
                     return                                  // the chips replace the Y badge
                 }
                 if (accents?.open == true && settings.showHints) return     // the accent hints use the space bar
-                val showName = settings.showLanguageLabel || SystemClock.uptimeMillis() < languageFlashUntil
-                if (showName && labelFits(settings.language.label, rect)) {
-                    // The language you're typing in, quietly, like phone keyboards do
-                    drawLabel(canvas, settings.language.label, cx, cy, quietInk(ink, seen(bg)), Design.TYPE_KEY_LABEL, 500)
-                } else {
+                val left = languageFlashUntil - SystemClock.uptimeMillis()
+                val showName = settings.showLanguageLabel || left > 0
+                // A flashed name fades into the line over its last moment instead of vanishing in one frame (30 Oct 2026)
+                val nameAlpha = if (settings.showLanguageLabel || left >= Design.MOTION_FADE || !ValueAnimator.areAnimatorsEnabled()) 1f
+                    else Design.EASE_IN.getInterpolation(1f - left.toFloat() / Design.MOTION_FADE).let { 1f - it }
+                fun line(alpha: Float) {
                     // Clean: just a short line, as in 1.0
-                    iconPaint.color = soft
+                    iconPaint.color = fade(soft, alpha)
                     iconPaint.style = Paint.Style.STROKE
                     canvas.drawLine(cx - rect.width() * 0.12f, cy + s * 0.5f, cx + rect.width() * 0.12f, cy + s * 0.5f, iconPaint)
                 }
+                if (showName && labelFits(settings.language.label, rect)) {
+                    // The language you're typing in, quietly, like phone keyboards do
+                    drawLabel(canvas, settings.language.label, cx, cy, fade(quietInk(ink, seen(bg)), nameAlpha), Design.TYPE_KEY_LABEL, 500)
+                    if (nameAlpha < 1f) { line(1f - nameAlpha); postInvalidateOnAnimation() }
+                } else line(1f)
             }
-            KeyType.SHIFT -> drawShift(canvas, iconCx, iconCy, s, focused, bg, ink)
-            KeyType.DELETE -> if (undoOnDelete) drawUndo(canvas, iconCx, iconCy, s, ink) else drawBackspace(canvas, iconCx, iconCy, s, ink)
-            KeyType.ENTER -> drawEnter(canvas, iconCx, iconCy, s, ink)
+            KeyType.SHIFT -> drawShift(canvas, iconCx, iconCy, iconS, focused, bg, ink)
+            KeyType.DELETE -> if (undoOnDelete) drawUndo(canvas, iconCx, iconCy, iconS, ink) else drawBackspace(canvas, iconCx, iconCy, iconS, ink)
+            KeyType.ENTER -> drawEnter(canvas, iconCx, iconCy, iconS, ink)
             KeyType.TOOL -> drawTool(canvas, key, rect, s, focused, bg, ink, soft)
             KeyType.CLIP -> drawClip(canvas, key, rect, ink)
             KeyType.EMPTY -> drawLabel(canvas, key.label, cx, cy, soft, Design.TYPE_KEY_LABEL, 400)
         }
 
-        if (hint != null && !badgeYields) {
+        if (iconYields && hint != null) logRect(canvas, "yield:${key.type}", rect)
+        if (hint != null && !badgeYields && !iconYields) {
             hint.let {
                 val right = rect.right - inset
                 val left = badges.drawInCorner(canvas, it, right, rect.top + inset)
@@ -1866,21 +1911,63 @@ class KeyGridView(context: Context) : View(context) {
                 applyFont(textPaint, weight)
                 // The word centres in the room the RS badge leaves (not the whole key), so a long first word
                 // keeps all its letters on narrow keyboards (4:3 screens, the tour); it only moves when the badge shows
-                val badgeRoom = if (key.best && settings.showHints && settings.hasSticks) badges.width(ControllerButton.R3) + u(3f) else 0f
+                var badgeRoom = if (key.best && settings.showHints && settings.hasSticks) badges.width(ControllerButton.R3) + u(3f) else 0f
+                // A word you'd take should be readable whole: first it gets a little smaller, then the RS badge steps
+                // aside, and only then is it cut ("re…" for "republic" on a phone; audit, 30 Oct 2026)
+                val w = textPaint.measureText(key.label)
+                var size = Design.TYPE_KEY_WORD
+                fun fits(room: Float) = w * LABEL_MIN_FIT <= room
+                if (badgeRoom > 0f && !fits(rect.width() - u(12f) - badgeRoom) && fits(rect.width() - u(12f))) {
+                    badgeRoom = 0f; badgeYields = true; labelBadge = null
+                }
                 val room = rect.width() - u(12f) - badgeRoom
-                drawLabel(canvas, ellipsize(key.label, room), cx - badgeRoom / 2f, cy, wordColour, Design.TYPE_KEY_WORD, weight)
+                if (w > room && fits(room)) size *= room / w
+                drawLabel(canvas, if (fits(room)) key.label else ellipsize(key.label, room), cx - badgeRoom / 2f, cy, wordColour, size, weight)
             }
             else -> {
                 val text = when (key.tool) {
                     // The count only if it fits next to the corner badge; the word never overlaps anything
-                    Tool.SELECT -> if (selecting) toolLabelThatFits(rect, "Selecting · $selectedCount", "Selecting", "Sel.") else "Select"
+                    Tool.SELECT -> if (selecting) toolLabelThatFits(rect, "Selecting · $selectedCount", "Selecting", "Select") else "Select"
                     Tool.PASTE -> clipPreview?.let { toolLabelThatFits(rect, "Paste  “$it”", "Paste", badge = key.hint) } ?: "Paste"
                     else -> key.label
                 }
-                drawLabel(canvas, text, cx, cy, colour, Design.TYPE_KEY_LABEL, 500)
+                val size = Design.TYPE_KEY_LABEL * toolFit()
+                // On a key too narrow for the word and its badge (Select on a phone at Largest), the badge steps aside
+                key.hint?.takeIf { settings.showHints }?.let { b ->
+                    textPaint.textSize = u(size); applyFont(textPaint, 500)
+                    // the same room drawLabel works with: from the key's padding to 3 dp short of the badge
+                    if (textPaint.measureText(text) > rect.width() - u(4f) - badgeInset - badges.width(b) - u(3f)) { badgeYields = true; labelBadge = null }
+                }
+                drawLabel(canvas, text, cx, cy, colour, size, 500)
             }
         }
     }
+
+    /**
+     * One size for every word in the top row (Select, Cut, Copy, Paste): each used to shrink on its own, so "Copy"
+     * came out smaller than "Cut" beside it on a phone at Largest (audit, 30 Oct 2026). The size is the one the
+     * tightest word needs (badges step aside rather than shrink the row); drawLabel then has nothing left to do.
+     */
+    private fun toolFit(): Float {
+        val row = allRows().firstOrNull() ?: return 1f
+        val state = "${row.size}|${width}|$scale|${settings.font}|${settings.showHints}|$selecting"
+        toolFitCache?.let { (k, f) -> if (k == state) return f }
+        val paint = Paint(textPaint).apply { textSize = u(Design.TYPE_KEY_LABEL) }
+        applyFont(paint, 500)
+        var f = 1f
+        row.forEachIndexed { c, key ->
+            if (key.type != KeyType.TOOL || key.tool == Tool.WORD || key.tool == Tool.HISTORY || key.tool == Tool.SETTINGS) return@forEachIndexed
+            val rect = keyRect(0, row, c)
+            // 1 dp more each side than drawLabel keeps, so drawLabel never has to shrink one word on its own
+            val room = rect.width() - 2 * u(5f)
+            val w = paint.measureText(key.label)
+            if (w > room && w > 0f) f = min(f, room / w)
+        }
+        f = max(f, TOOL_MIN_FIT)
+        toolFitCache = state to f
+        return f
+    }
+    private var toolFitCache: Pair<String, Float>? = null
 
     private fun drawClip(canvas: Canvas, key: Key, rect: RectF, ink: Int) {
         val pad = u(10f)
@@ -1917,9 +2004,9 @@ class KeyGridView(context: Context) : View(context) {
     }
 
     /** Letters: the chosen font, at the chosen weight. */
-    private fun drawLetter(canvas: Canvas, text: String, cx: Float, cy: Float, colour: Int, sizeDp: Float = Design.TYPE_KEY) {
+    private fun drawLetter(canvas: Canvas, text: String, cx: Float, cy: Float, colour: Int, sizeDp: Float = Design.TYPE_KEY, keyW: Float = 0f) {
         textPaint.color = colour
-        textPaint.textSize = u(sizeDp)
+        textPaint.textSize = u(sizeDp) * letterFit(sizeDp, keyW)
         applyFont(textPaint, 400 + settings.letterWeight * 25)
         coverMissingGlyphs(textPaint, text)
         shadowForClear(textPaint)
@@ -1934,6 +2021,29 @@ class KeyGridView(context: Context) : View(context) {
         textPaint.style = Paint.Style.FILL
         textPaint.strokeWidth = 0f
     }
+
+    /**
+     * How much the letters shrink so the widest one on the keyboard fits its key with [LETTER_SIDE_DP] each side:
+     * 1 almost always. On a small phone at Largest, W, Æ, Ж, Щ and Ю ran past their keys (audit, 30 Oct 2026).
+     * One factor for every letter on screen, so a W is never smaller than the M beside it. Cached per state.
+     */
+    private fun letterFit(sizeDp: Float, keyW: Float): Float {
+        if (keyW <= 0f) return 1f
+        val state = "$sizeDp|${keyW.toInt()}|$layer|$shiftState|$heldShift|${settings.language}|${settings.font}|${settings.letterWeight}|$scale"
+        letterFitCache?.let { (k, f) -> if (k == state) return f }
+        val paint = Paint(textPaint).apply { textSize = u(sizeDp); style = Paint.Style.FILL }
+        applyFont(paint, 400 + settings.letterWeight * 25)
+        val stroke = if (customFont == null) settings.letterWeight * 0.1f * dp * scale else 0f
+        // single letters only: ".com" in web boxes is a CHAR key too, and shrank every letter to its size
+        val widest = allRows().flatten().filter { it.type == KeyType.CHAR && displayLabel(it).codePointCount(0, displayLabel(it).length) == 1 }.maxOfOrNull {
+            val t = displayLabel(it); coverMissingGlyphs(paint, t); paint.measureText(t) + stroke
+        } ?: 0f
+        val room = keyW - 2 * u(LETTER_SIDE_DP)
+        val f = if (widest > room && widest > 0f) room / widest else 1f
+        letterFitCache = state to f
+        return f
+    }
+    private var letterFitCache: Pair<String, Float>? = null
 
     /**
      * Hyperlegible has no Cyrillic letters (and no ₺ ₽ ₴). For those, switch to Inter,

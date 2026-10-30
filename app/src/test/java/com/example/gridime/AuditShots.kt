@@ -111,6 +111,147 @@ class AuditShots {
         }
     }
 
+    /**
+     * The keyboard in every language, for looking at (CombinationsTest measures the same keyboards): letters with
+     * the language on the space bar, shift, a held letter's accents, and the Classic layout. build/audit/languages/<size>/
+     */
+    private fun languages(size: String) {
+        assumeTrue(File("build/visuals-audit").exists())
+        val dir = File("build/audit/languages/$size").apply { mkdirs() }
+        val width = context.resources.displayMetrics.widthPixels
+        val set = android.animation.ValueAnimator::class.java.getMethod("setDurationScale", Float::class.javaPrimitiveType)
+        for (lang in Language.values()) {
+            val other = if (lang == Language.ENGLISH) Language.GERMAN else Language.ENGLISH
+            val vowel = if (lang == Language.RUSSIAN || lang == Language.UKRAINIAN) "е" else "e"
+            fun kb(state: String, s0: KeyboardSettings.() -> KeyboardSettings = { this }, act: KeyGridView.() -> Unit = {}) {
+                val host = Robolectric.buildActivity(Activity::class.java).setup().get()
+                val frame = android.widget.FrameLayout(host); host.setContentView(frame)
+                val v = KeyGridView(context)
+                v.applySettings(KeyboardSettings(tutorialDone = true, whatsNewSeen = WhatsNew.VERSION, language1 = lang, language2 = other,
+                    showHints = true, comboHints = true, wordSuggestions = true, holdAccents = true).s0())
+                v.setField(FieldKind.TEXT)
+                v.listener = object : KeyGridView.Listener {
+                    override fun onText(text: String) {}; override fun onDelete() {}; override fun onEnter() {}
+                    override fun onTool(tool: Tool) {}; override fun onClip(index: Int) {}
+                    override fun onReplaceLast(expected: String, replacement: String) = true
+                }
+                frame.addView(v, android.widget.FrameLayout.LayoutParams(width, android.view.ViewGroup.LayoutParams.WRAP_CONTENT))
+                idle(500)
+                set.invoke(null, 0f)
+                try { v.act(); idle(500) } finally { set.invoke(null, 1f) }
+                save(dir, v, "${lang.name.lowercase()}-$state")
+            }
+            kb("letters")
+            kb("shift") { cycleShift() }
+            kb("accents") { repeat(30) { if (stepTowards(vowel) == true) return@repeat }; pressA(); idle(400) }
+            kb("classic", { copy(layout = KeyLayout.CLASSIC) })
+            kb("largest-shift", { copy(sizeLevel = 2) }) { cycleShift() }
+        }
+    }
+    @Test fun languagesHandheld() = languages("handheld")
+    @Test @Config(sdk = [34], qualifiers = "w472dp-h363dp-land-420dpi") fun languagesVertical() = languages("vertical")
+    @Test @Config(sdk = [34], qualifiers = "w360dp-h640dp-port-xxhdpi") fun languagesPhone() = languages("phone")
+
+    /**
+     * Every keyboard state at one screen size, for the visual audit (30 Oct 2026). build/audit/states/<size>/
+     */
+    private fun states(size: String) {
+        assumeTrue(File("build/visuals-audit").exists())
+        val dir = File("build/audit/states/$size").apply { mkdirs() }
+        val width = context.resources.displayMetrics.widthPixels
+        val set = android.animation.ValueAnimator::class.java.getMethod("setDurationScale", Float::class.javaPrimitiveType)
+        fun kb(state: String, field: FieldKind = FieldKind.TEXT, s0: KeyboardSettings.() -> KeyboardSettings = { this }, act: KeyGridView.() -> Unit = {}) {
+            val host = Robolectric.buildActivity(Activity::class.java).setup().get()
+            val frame = android.widget.FrameLayout(host); host.setContentView(frame)
+            val v = KeyGridView(context)
+            v.applySettings(KeyboardSettings(tutorialDone = true, whatsNewSeen = WhatsNew.VERSION, language2 = Language.GERMAN,
+                showHints = true, comboHints = true, wordSuggestions = true, holdAccents = true).s0())
+            v.setField(field)
+            v.listener = object : KeyGridView.Listener {
+                override fun onText(text: String) {}; override fun onDelete() {}; override fun onEnter() {}
+                override fun onTool(tool: Tool) {}; override fun onClip(index: Int) {}
+                override fun onReplaceLast(expected: String, replacement: String) = true
+            }
+            frame.addView(v, android.widget.FrameLayout.LayoutParams(width, android.view.ViewGroup.LayoutParams.WRAP_CONTENT))
+            idle(500)
+            set.invoke(null, 0f)
+            try { v.act(); idle(500) } finally { set.invoke(null, 1f) }
+            save(dir, v, state)
+        }
+        val clips = listOf("metal gear solid", "AYN Odin 2 Portal", "https://github.com/dakingeman/inlay", "see you at 8", "Wien", "1234 5678")
+        kb("01-letters")
+        kb("02-words") { setSuggestions(listOf("republic", "remember", "reply"), "re") }
+        kb("03-rt-held") { setHeldShift(true) }
+        kb("04-caps-lock") { cycleShift(); cycleShift() }
+        kb("05-symbols") { toggleLayer(fromKey = true) }
+        kb("06-symbols-tr", s0 = { copy(language1 = Language.TURKISH) }) { toggleLayer(fromKey = true) }
+        kb("07-symbols-ru", s0 = { copy(language1 = Language.RUSSIAN) }) { toggleLayer(fromKey = true) }
+        kb("08-numpad", FieldKind.NUMBER)
+        kb("09-url", FieldKind.URL)
+        kb("10-email", FieldKind.EMAIL)
+        kb("11-clips") { setClips(clips); toggleClips() }
+        kb("12-clips-empty") { setClips(emptyList()); toggleClips() }
+        kb("13-select") { setSelecting(true, 30) }
+        kb("14-paste-preview") { setClips(clips) }
+        kb("15-accents") { repeat(30) { if (stepTowards("e") == true) return@repeat }; pressA(); idle(400) }
+        kb("16-number-row", s0 = { copy(numberRow = true) })
+        kb("17-largest", s0 = { copy(sizeLevel = 2) })
+        kb("18-light", s0 = { copy(toneIndex = Palette.tones.indexOfFirst { it.name == "Light" }.coerceAtLeast(0)) })
+        kb("19-tv") { setTvMode(true) }
+        kb("20-no-sticks", s0 = { copy(hasSticks = false) }) { setSuggestions(listOf("republic", "remember", "reply"), "re") }
+    }
+    @Test fun statesHandheld() = states("handheld")
+    @Test @Config(sdk = [34], qualifiers = "w472dp-h363dp-land-420dpi") fun statesVertical() = states("vertical")
+    @Test @Config(sdk = [34], qualifiers = "w360dp-h640dp-port-xxhdpi") fun statesPhone() = states("phone")
+
+    /**
+     * The accent tray and number row ("Keys", 30 Oct 2026) in every theme, highlight style, key shape, font and size,
+     * with the tray open on e and the number row on. build/audit/tray/<size>/
+     */
+    private fun tray(size: String) {
+        assumeTrue(File("build/visuals-audit").exists())
+        val dir = File("build/audit/tray/$size").apply { mkdirs() }
+        val width = context.resources.displayMetrics.widthPixels
+        val set = android.animation.ValueAnimator::class.java.getMethod("setDurationScale", Float::class.javaPrimitiveType)
+        val base = KeyboardSettings(tutorialDone = true, whatsNewSeen = WhatsNew.VERSION, numberRow = true,
+            showHints = true, comboHints = true, wordSuggestions = true, holdAccents = true)
+        val looks = Palette.tones.indices.map { "theme-${Palette.tones[it].name.lowercase()}" to base.copy(toneIndex = it) } +
+            HighlightStyle.values().map { "style-${it.name.lowercase()}" to base.copy(highlightStyle = it) } +
+            KeyShape.values().map { "shape-${it.name.lowercase()}" to base.copy(keyShape = it) } +
+            FontChoice.values().map { "font-${it.name.lowercase()}" to base.copy(font = it) } +
+            (0..2).map { "size-$it" to base.copy(sizeLevel = it) } +
+            listOf("lang-russian" to base.copy(language1 = Language.RUSSIAN), "lang-turkish" to base.copy(language1 = Language.TURKISH),
+                "accent-cherry" to base.copy(accentIndex = Palette.accents.indexOfFirst { it.first == "Cherry" }),
+                "accent-lemon" to base.copy(accentIndex = Palette.accents.indexOfFirst { it.first == "Lemon" }),
+                "tv" to base.copy(tvMode = TvMode.ON))
+        for ((name, s0) in looks) for (state in listOf("accents", "numbers")) {
+            val host = Robolectric.buildActivity(Activity::class.java).setup().get()
+            val frame = android.widget.FrameLayout(host); host.setContentView(frame)
+            val v = KeyGridView(context)
+            v.applySettings(s0)
+            if (s0.tvMode == TvMode.ON) v.setTvMode(true)
+            v.setField(FieldKind.TEXT)
+            v.listener = object : KeyGridView.Listener {
+                override fun onText(text: String) {}; override fun onDelete() {}; override fun onEnter() {}
+                override fun onTool(tool: Tool) {}; override fun onClip(index: Int) {}
+                override fun onReplaceLast(expected: String, replacement: String) = true
+            }
+            frame.addView(v, android.widget.FrameLayout.LayoutParams(width, android.view.ViewGroup.LayoutParams.WRAP_CONTENT))
+            idle(500)
+            set.invoke(null, 0f)
+            val held = if (s0.language1 == Language.RUSSIAN) "е" else "e"
+            try {
+                if (state == "accents") { repeat(30) { if (v.stepTowards(held) == true) return@repeat }; v.pressA(); idle(400); v.moveFocus(1, 0); idle(300) }
+                else { repeat(30) { if (v.stepTowards("t") == true) return@repeat }; v.moveFocus(0, -1); idle(300) }
+                idle(400)
+            } finally { set.invoke(null, 1f) }
+            save(dir, v, "$name-$state")
+        }
+    }
+    @Test fun trayHandheld() = tray("handheld")
+    @Test @Config(sdk = [34], qualifiers = "w472dp-h363dp-land-420dpi") fun trayVertical() = tray("vertical")
+    @Test @Config(sdk = [34], qualifiers = "w360dp-h640dp-port-xxhdpi") fun trayPhone() = tray("phone")
+
     /** The keyboard in each layer and state, per style. */
     @Test
     fun keyboards() {

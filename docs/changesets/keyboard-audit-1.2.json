@@ -1,0 +1,18 @@
+{
+ "name": "keyboard-audit-1.2",
+ "title": "Keyboard visual audit 1.2",
+ "recorded": "2026-10-30",
+ "base": "69e85ef",
+ "files": [
+  {
+   "path": "app/src/main/java/com/example/gridime/KeyGridView.kt",
+   "before": "07aab35d3a03c5fee213bb1678ab50cac2fc656e",
+   "after": "bb6a9330e5d43fdbe617b5ecf7cc254ae23a9980"
+  },
+  {
+   "path": "app/src/test/java/com/example/gridime/AuditShots.kt",
+   "before": "19c0ea75f71212093caed1a249c5ecbb07dc7805",
+   "after": "93f08e5ece4ac05eedec93d6995d1f7a6cb3b2dc"
+  }
+ ]
+}

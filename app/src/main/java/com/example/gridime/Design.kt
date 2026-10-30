@@ -127,7 +127,8 @@ object Design {
     // Keyboard (design units, times the keyboard's size): its own small scale
     const val TYPE_KEY = 19f        // letters
     const val TYPE_KEY_DIGIT = 22f  // the number pad
-    const val TYPE_KEY_ACCENT = 16f // accent tray letters, number row digits
+    const val TYPE_KEY_ACCENT = 16f // number row digits
+    const val TYPE_KEY_TRAY = 18f   // accent tray letters: the tray's keys are the strip's full height (30 Oct 2026)
     const val TYPE_KEY_WORD = 14f   // word suggestions
     const val TYPE_KEY_LABEL = 13f  // ?123, space bar, tools, clipboard
     const val TYPE_CHIP = 12f       // hint chips
@@ -137,6 +138,8 @@ object Design {
     const val MOTION_FOCUS_MIN = 35L   // while a direction is held and repeating
     const val MOTION_FOCUS_JUMP = 0.75f // share of the way the highlight jumps on the very first frame
     const val MOTION_PRESS = 110L      // key squeeze and release
+    const val PRESS_SQUEEZE = 0.92f    //   a pressed key shrinks to this, then springs back over MOTION_PRESS (no overshoot)
+    const val PRESS_SQUEEZE_WRAP = 0.94f //   the gentler squeeze when the highlight wraps round to the other edge
     const val MOTION_FADE = 140L       // hint chips appearing
     /** Landscape screens at least this wide put things side by side (small 4:3 handhelds are about 480). */
     const val WIDE_MIN_DP = 440

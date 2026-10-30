@@ -17,3 +17,6 @@ __pycache__/
 
 # Kotlin build cache
 .kotlin/
+
+# Sound and video-music working files (62 MB): kept out of build/, which Clean Project empties, and off GitHub
+/sound-work/

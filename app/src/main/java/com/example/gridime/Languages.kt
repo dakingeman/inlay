@@ -72,6 +72,16 @@ object Accents {
     )
 
     /**
+     * The letters a Cyrillic language may offer: only its own (they are all on its keys). Russian and Ukrainian share
+     * one list above, so without this Ukrainian offered ё and ъ, Russian ґ, і and ї, and both the Belarusian ў
+     * (audit, 30 Oct 2026). Latin languages keep every accent, for names and borrowed words.
+     */
+    private fun own(language: Language): Set<Char>? {
+        val letters = language.rows.joinToString("")
+        return if (letters.any { it in '\u0400'..'\u04FF' }) letters.toSet() else null
+    }
+
+    /**
      * Hold A: the letter just typed first, then its accents, this language's own ones first.
      * Null when the letter has no accented forms.
      */
@@ -82,6 +92,7 @@ object Accents {
         val base = group[0]
         val preferred = language.accentFirst.filter { it in group && it != base }
         var cycle = (base.toString() + preferred + group.drop(1).filterNot { it in preferred }).toList()
+        own(language)?.let { mine -> cycle = cycle.filter { it in mine } }
         if (upper) cycle = cycle.filter { language.upper(it.toString()).length == 1 && it != 'ß' && it != 'ı' }
         val list = listOf(lower) + cycle.filter { it != lower }
         if (list.size < 2) return null
@@ -96,7 +107,9 @@ object Accents {
         val base = group[0]
         // The language's own accents first, in its order, then the rest
         val preferred = language.accentFirst.filter { it in group && it != base }
+        val mine = own(language)
         val cycle = (base.toString() + preferred + group.drop(1).filterNot { it in preferred })
+            .filter { mine == null || it in mine }
             .filter { !upper || language.upper(it.toString()).length == 1 && it != 'ß' && it != 'ı' }
         if (cycle.length < 2) return null
         val index = cycle.indexOf(lower).let { if (it < 0) 0 else it }

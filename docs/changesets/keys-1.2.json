@@ -1,0 +1,33 @@
+{
+ "name": "keys-1.2",
+ "title": "Accent tray and number row: Keys look 1.2",
+ "recorded": "2026-10-30",
+ "base": "327772f",
+ "files": [
+  {
+   "path": "app/src/main/java/com/example/gridime/Design.kt",
+   "before": "895ce0b61169e2adcce09a56113fadf4281dac1e",
+   "after": "743ee69ff9b4bf962d6b7aa911a4d4f4ba3e2878"
+  },
+  {
+   "path": "app/src/main/java/com/example/gridime/KeyGridView.kt",
+   "before": "bb6a9330e5d43fdbe617b5ecf7cc254ae23a9980",
+   "after": "1e19a94e62cfc3907776a28917371e5e133ac586"
+  },
+  {
+   "path": "app/src/test/java/com/example/gridime/AuditShots.kt",
+   "before": "93f08e5ece4ac05eedec93d6995d1f7a6cb3b2dc",
+   "after": "00902c2ee6e429ae0ab7d1bfb231e6b07a1c7df0"
+  },
+  {
+   "path": "app/src/test/java/com/example/gridime/CombinationsTest.kt",
+   "before": "bcea961bfc7bd487d82cdaaae8fa1be8d6aec7f6",
+   "after": "8be5cb3a034f5a938b90a626473c51c1b2a77f8e"
+  },
+  {
+   "path": "app/src/test/java/com/example/gridime/TrayAndNumberRowContrastTest.kt",
+   "before": null,
+   "after": "4d9cc365f0e8acc4435ccc8bd14f80b1b67a568d"
+  }
+ ]
+}

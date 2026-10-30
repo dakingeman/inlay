@@ -1,0 +1,33 @@
+{
+ "name": "languages-1.2",
+ "title": "Keyboard in every language 1.2",
+ "recorded": "2026-10-30",
+ "base": "30ba251a00ee2944a18326bd34bc7582bee6729a",
+ "files": [
+  {
+   "path": "app/src/main/java/com/example/gridime/KeyGridView.kt",
+   "before": "635e5fb414a6793e3a72b8656366060ed96081ee",
+   "after": "07aab35d3a03c5fee213bb1678ab50cac2fc656e"
+  },
+  {
+   "path": "app/src/main/java/com/example/gridime/Languages.kt",
+   "before": "fe9474a3065951c52cc0f5630ef20b4f8f45d4de",
+   "after": "55d18b8d6e26e443db37c10d4d9188f943731f34"
+  },
+  {
+   "path": "app/src/test/java/com/example/gridime/AuditShots.kt",
+   "before": "37d157eac6c91fa925959a6284f4dab7f62b02fa",
+   "after": "19c0ea75f71212093caed1a249c5ecbb07dc7805"
+  },
+  {
+   "path": "app/src/test/java/com/example/gridime/CombinationsTest.kt",
+   "before": "6b59f55bc6e62c3145709e0095ce286670bf9ee4",
+   "after": "bcea961bfc7bd487d82cdaaae8fa1be8d6aec7f6"
+  },
+  {
+   "path": "app/src/test/java/com/example/gridime/CyrillicAccentsTest.kt",
+   "before": null,
+   "after": "8befa013b1a17800bc5e3bfbf68c2e5829ea36f9"
+  }
+ ]
+}
