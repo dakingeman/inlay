@@ -359,6 +359,8 @@ class KeyGridView(context: Context) : View(context) {
     private val accentHold = Runnable { revealAccents() }
 
     fun isAccentsOpen() = accents?.open == true
+    /** The accents are open and the highlight has moved along them since (the tour's card follows this). */
+    fun accentsMoved() = accents?.let { it.open && it.moved } == true
 
     /** A pressed (the service calls this on the first A down). */
     fun pressA() {
@@ -453,7 +455,9 @@ class KeyGridView(context: Context) : View(context) {
         a.open = true
         a.index = 1
         feedback?.on()
-        animateFocus()
+        // Straight onto the accent: a glide from the held key up to the tray read as the keyboard navigating there
+        // by itself (Odin test, 30 Oct 2026). Moving between accents still glides.
+        animateFocus(snap = true)
     }
 
     private fun chooseAccent(index: Int) {
@@ -475,7 +479,7 @@ class KeyGridView(context: Context) : View(context) {
         a.sticky = false
         pulse()
         fadeAccentsOut()
-        animateFocus()
+        animateFocus(snap = true)               // back on the key at once, as the tray fades
     }
 
     /** Fades the accents away and brings the strip back. */
@@ -565,6 +569,8 @@ class KeyGridView(context: Context) : View(context) {
                 canvas.drawRoundRect(RectF(rc).apply { inset(u(0.5f), u(0.5f)) }, cr, cr, ringPaint)
             }
         }
+        // The highlight rides with its accent key while the tray rises (unless it's gliding between accents)
+        if (a.open && focusAnim?.isRunning != true) focusRect.set(cellRect(a, a.index))
         if (a.open) drawHighlight(canvas, cr)
         a.list.forEachIndexed { i, ch ->
             val rc = cellRect(a, i)
@@ -927,7 +933,7 @@ class KeyGridView(context: Context) : View(context) {
      * While a direction is held, each glide gets shorter so the highlight never lags
      * behind the repeats. A wrap from one edge to the other snaps instead of sweeping.
      */
-    private fun animateFocus(wrapped: Boolean = false) {
+    private fun animateFocus(wrapped: Boolean = false, snap: Boolean = false) {
         if (quiet) return                  // a dry run: nothing moves on screen
         clampFocus()
         if (width == 0 || !focusReady) {
@@ -942,7 +948,7 @@ class KeyGridView(context: Context) : View(context) {
         val sinceLast = now - lastMoveAt
         lastMoveAt = now
 
-        if (settings.motion == HighlightMotion.INSTANT || wrapped) {
+        if (settings.motion == HighlightMotion.INSTANT || wrapped || snap) {
             focusRect.set(to)
             if (wrapped && settings.motion != HighlightMotion.INSTANT) pulse(from = Design.PRESS_SQUEEZE_WRAP)
             invalidate()

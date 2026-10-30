@@ -1055,17 +1055,21 @@ class BadgeLineView(
 
     /** How many lines it was drawn on (for checks). */
     val lineCount get() = lines.size
-    /** False if a line is wider than the room it got: its end would be cut off (for checks). */
-    val fits get() = lines.all { painter.measureLine(it, text) <= width - 1f }
+    /**
+     * False if a line doesn't fit the room it got. A line is drawn 1 px in, and its last pixel needs 1 px of room for its
+     * soft edge, so it needs its own width plus 2 px: with just its width (rounded down) the badges' right edges were
+     * cut off in the tour on the Odin (30 Oct 2026). For checks.
+     */
+    val fits get() = lines.all { painter.measureLine(it, text) + 2f <= width }
 
     override fun onMeasure(widthSpec: Int, heightSpec: Int) {
         val full = painter.measureLine(parts, text) + 2 * dp
         val room = MeasureSpec.getSize(widthSpec)
         lines = if (wrap && MeasureSpec.getMode(widthSpec) != MeasureSpec.UNSPECIFIED && full > room) breakLines(room - 2 * dp) else listOf(parts)
-        val widest = lines.maxOf { painter.measureLine(it, text) } + 2 * dp
+        val widest = lines.maxOf { painter.measureLine(it, text) } + 2 * dp      // see naturalWidth
         // Honour a fixed width from the layout (the tour lines badges up in a column), otherwise wrap
         setMeasuredDimension(
-            resolveSize(widest.roundToInt(), widthSpec),
+            resolveSize(kotlin.math.ceil(widest).toInt(), widthSpec),
             resolveSize((rowHeight + rowStep * (lines.size - 1) + 4 * dp).roundToInt(), heightSpec)
         )
     }
@@ -1087,6 +1091,12 @@ class BadgeLineView(
         if (line.isNotEmpty()) result += join(line)
         return result
     }
+
+    /**
+     * The width this line needs on one line, margins included: the one rule for anyone sizing a badge line by hand
+     * (the tour lines its badges up in a column). Measuring the badges alone and rounding cut their right edges off.
+     */
+    fun naturalWidth(): Int = kotlin.math.ceil(painter.measureLine(parts, text) + 2 * dp).toInt()
 
     /** In a column wider than this line, sit at its end (next to the words that follow), not at its start. */
     var alignEnd = false

@@ -53,14 +53,20 @@ function _withMerged(style,fn){
   D.body=MERGED[style]; ks.forEach(x=>D[x]='M0,0');
   try{ return fn().replace(/<path d="M0,0"[^>]*\/>/g,''); } finally{ Object.assign(D,keep); }
 }
+/** The middle of a controller's body outline (MERGED, from merge-outlines.py), left to right, in picture units. */
+function _bodyCentre(style){ const n=MERGED[style].match(/-?\d+(\.\d+)?/g).map(Number), xs=n.filter((_,i)=>i%2===0); return (Math.min(...xs)+Math.max(...xs))/2; }
 function kitController(style,on,W){
   on=on||{}; const k=W/657, a=Object.assign({kind:'ctrl'},KIT_ANCH[style]), u=unitsPerDp(a,style,423), pad=-(shoulderTop(a,style,u)-RING_ROOM*u);
   const on2=Object.assign({},on,{LB:0,RB:0,LT:0,RT:0}); let svg;
   if(style==='xbox'){ const keep={lt:CTRL.lt,rt:CTRL.rt}; CTRL.lt=CTRL.rt='M0,0'; svg=_withMerged('xbox',()=>controller(W,on2,style)); Object.assign(CTRL,keep);
     svg=svg.replace(/<text[^>]*>(LT|RT|LB|RB)<\/text>/g,''); [CTRL.lb,CTRL.rb].forEach(d=>{svg=svg.replace(`d="${d}" fill="#0f1014"`,`d="${d}" fill="#101116"`);}); }
   else svg=_withMerged(style,()=>controller(W,on2,style));
-  const inner=floorShadow(328,423,520)+polish(_strip(svg)+shoulderKeysKit(a,style,on,u),657/W);
-  return `<svg width="${W}" height="${(423+pad+20)*k}" viewBox="0 ${-pad} 657 ${423+pad+20}" style="overflow:visible;display:block">${inner}</svg>`;
+  // Every controller is framed round its own outline's middle (the traced Xbox body sat 28 units right of the others, so
+  // it looked off-centre on the Device tab; Odin test, 30 Oct 2026). The frame moves, the drawing is untouched (its parts
+  // stay flat for kit2android), and the floor shadow sits under the body's real middle.
+  const c=_bodyCentre(style), x0=(c-657/2).toFixed(2);
+  const inner=floorShadow(c,423,520)+polish(_strip(svg)+shoulderKeysKit(a,style,on,u),657/W);
+  return `<svg width="${W}" height="${(423+pad+20)*k}" viewBox="${x0} ${-pad} 657 ${423+pad+20}" style="overflow:visible;display:block">${inner}</svg>`;
 }
 function kitHandheld(kind,style,on,W){
   on=on||{}; const H=handheld2(kind,W,{on,style}); const u=unitsPerDp(H.anchors,style,H.VH), pad=-(shoulderTop(H.anchors,style,u)-RING_ROOM*u), k=W/H.VW;

@@ -47,6 +47,8 @@ class TourFilmExport {
         film("odin-type", PictureChoice.HANDHELD, ButtonStyle.XBOX, false, 1, 14)
         film("odin-ps-coral", PictureChoice.CONTROLLER, ButtonStyle.PLAYSTATION, false, 1, 24, accent = 9)
     }
+    /** The D-pad on the device picture against the keyboard's steps, frame by frame (Odin test, 30 Oct 2026). */
+    @Test @Config(sdk = [34], qualifiers = "w827dp-h412dp-land-xhdpi") fun dpadSync() = film("odin-dpad", PictureChoice.HANDHELD, ButtonStyle.XBOX, false, 1, 7, fps = 30)
     /** Every tour page with rows, for checking the beats by eye (touch build/visuals-beats). */
     @Test @Config(sdk = [34], qualifiers = "w472dp-h363dp-land-420dpi") fun beatsPocket() = beats("pocket")
     @Test @Config(sdk = [34], qualifiers = "w827dp-h412dp-land-xhdpi") fun beatsOdin() = beats("odin")

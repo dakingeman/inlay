@@ -483,6 +483,9 @@ class DevicePictureView(context: Context) : View(context) {
 
     /** Lights [key] for a moment, like a quick press. */
     fun flash(key: String, ms: Long = FLASH_MS) {
+        // A D-pad presses one way at a time: a new direction ends the last one. Two lit arms showed the old arm's
+        // ring without its light (the drawing fills one arm at a time), a ring that seemed to linger (Odin test, 30 Oct 2026)
+        if (key in DPAD_ARMS) flashes.keys.removeAll { it in DPAD_ARMS && it != key }
         flashes[key] = SystemClock.uptimeMillis() + ms
         invalidate()
         notifyLit()
@@ -497,6 +500,12 @@ class DevicePictureView(context: Context) : View(context) {
 
     /** The picture's button measurements, and its picture-units-to-pixels scale (for the layout audit). */
     internal fun geoForTest(): JSONObject? = css?.optJSONObject("_geo")
+    /** Where picture unit (0, 0) lands in the view, as drawn (the picture is centred and keeps its shape). */
+    internal fun boxForTest(): Pair<Float, Float> {
+        val box = svg?.documentViewBox ?: return 0f to 0f
+        val sc = pictureScaleForTest()
+        return ((width - box.width() * sc) / 2f - box.left * sc) to ((height - box.height() * sc) / 2f - box.top * sc)
+    }
     internal fun pictureScaleForTest(): Float { val b = svg?.documentViewBox ?: return 1f; return min(width / b.width(), height / b.height()) }
 
     /** Told whenever what's lit changes. The consistency checks listen here. */
@@ -557,7 +566,14 @@ class DevicePictureView(context: Context) : View(context) {
             val cls = geo?.optJSONObject(k)?.optJSONObject("ring")?.optString("cls") ?: return rule
             return rule.lines().filterNot { it.startsWith(".$cls{") }.joinToString("\n")
         }
-        val rules = (lit - sticks.toSet()).mapNotNull { k -> css?.optString(k)?.takeIf { s -> s.isNotEmpty() }?.let { withoutRing(k, it) } } +
+        // Each lit D-pad arm brings its own copy of the whole cross (drawn dark, with the outline) under its light.
+        // With two arms lit, the later copy covered the earlier arm's light, leaving only its ring (Odin test, 30 Oct
+        // 2026). So only the earliest copy is drawn and every lit arm's light sits on it.
+        val armCopy = Regex("^\\.([A-Za-z]+)(\\d+)\\{display:inline\\}$")
+        val firstCopy = (lit intersect DPAD_ARMS).mapNotNull { k -> css?.optString(k)?.lines()?.firstNotNullOfOrNull { armCopy.matchEntire(it.trim()) }?.groupValues?.get(2)?.toInt() }.minOrNull()
+        fun oneCross(k: String, rule: String): String = if (k !in DPAD_ARMS || firstCopy == null) rule else
+            rule.lines().filterNot { l -> armCopy.matchEntire(l.trim())?.groupValues?.get(2)?.toInt()?.let { it != firstCopy } == true }.joinToString("\n")
+        val rules = (lit - sticks.toSet()).mapNotNull { k -> css?.optString(k)?.takeIf { s -> s.isNotEmpty() }?.let { oneCross(k, withoutRing(k, it)) } } +
             sticks.flatMap { k -> geo!!.getJSONObject(k).getJSONObject("stick").getJSONArray("hide").let { a -> (0 until a.length()).map { ".${a.getString(it)}{display:none}" } } }
         val sheet = rules.joinToString("\n").replace("ACC", colour)
         // The drawing only changes when what's lit, the colour or the size does: keep the last one,
@@ -923,7 +939,7 @@ class DevicePictureView(context: Context) : View(context) {
         }
     }
 
-    private companion object {
+    internal companion object {
         const val FLASH_MS = Design.MOTION_FLASH
         const val TALL_BOOST = 1.45f
         const val HOLD_DELAY_MS = Design.MOTION_HOLD_WAIT   // a tap is over before the hold mark starts

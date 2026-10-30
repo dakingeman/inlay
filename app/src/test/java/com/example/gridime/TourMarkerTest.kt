@@ -19,10 +19,11 @@ import java.time.Duration
 import kotlin.math.abs
 
 /**
- * Balance, not only overlaps. On every screen the tour runs on, for every page with button rows:
- *  - one current-row marker shows (the same in the list and the caption), drawn whole: nothing cuts it off
- *  - it is exactly as tall as its row's buttons, centred on them, and the same step before them everywhere
- *  - the buttons and the words line up with the title, and the words down the list line up with each other
+ * Balance, not only overlaps. On every screen the tour runs on, for every page with steps (the card, 30 Oct 2026):
+ *  - one step card shows, drawn whole: nothing cuts it off, and it stays clear of the button bar, the keyboard window and the device
+ *  - a scrolling area keeps its edge: words scrolled past it never draw over the device (a small upright phone did, 30 Oct 2026)
+ *  - its buttons and words start exactly on the title's left edge (the card's own edge hangs into the margin)
+ *  - beside the keyboard (the split), the card's foot sits on the keyboard window's foot: the same line on every page
  *  - small screens: the device beside the sentence and caption is drawn whole, centred on them, with the same margin on its
  *    right as the words have on their left, and at least [TutorialActivity.DEVICE_HEADER_GAP_DP] from the words
  * Measured in pixels, with a pixel to spare for rounding.
@@ -34,9 +35,22 @@ class TourMarkerTest {
     private fun win(v: View): Rect { val l = IntArray(2); v.getLocationInWindow(l); return Rect(l[0], l[1], l[0] + v.width, l[1] + v.height) }
     private fun shown(v: View): Boolean { var x: View? = v; while (x != null) { if (x.visibility != View.VISIBLE) return false; x = x.parent as? View }; return true }
     private fun markers(v: View, out: MutableList<View> = mutableListOf()): List<View> {
-        if (v.tag == TutorialActivity.MARKER_TAG) out += v
+        if (v.tag == TutorialActivity.CARD_TAG) out += v
         if (v is ViewGroup) for (i in 0 until v.childCount) markers(v.getChildAt(i), out)
         return out
+    }
+
+    private fun scrolls(v: View, out: MutableList<android.widget.ScrollView> = mutableListOf()): List<android.widget.ScrollView> {
+        if (v is android.widget.ScrollView) out += v
+        if (v is ViewGroup) for (i in 0 until v.childCount) scrolls(v.getChildAt(i), out)
+        return out
+    }
+
+    /** The card's first row of buttons (a held button at the top counts too: it starts on the same edge). */
+    private fun firstBadge(v: View): BadgeLineView? {
+        if (v is BadgeLineView && v.isShown) return v
+        if (v is ViewGroup) for (i in 0 until v.childCount) firstBadge(v.getChildAt(i))?.let { return it }
+        return null
     }
 
     private fun run(screen: String) {
@@ -59,27 +73,25 @@ class TourMarkerTest {
                     val where = "$screen, $dev, ${if (whatsNew) "What's new" else "tour"} page ${p + 1} \"$title\""
                     val c = t.layoutForCheck()
                     if (rows.isNotEmpty()) {
-                        val all = markers(t.window.decorView).filter { shown(it) }
-                        val lit = all.filter { it.alpha > 0.99f }
-                        if (lit.size != 1) problems += "$where: ${lit.size} current-row markers showing"
-                        for (m in lit) {
-                            val r = win(m)
+                        val cards = markers(t.window.decorView).filter { shown(it) }
+                        if (cards.size != 1) problems += "$where: ${cards.size} step cards showing"
+                        for (card in cards) {
+                            val r = win(card)
                             val seen = Rect()
-                            if (!m.getGlobalVisibleRect(seen) || seen.width() < m.width || seen.height() < m.height) problems += "$where: the marker is cut off (${seen.width()}x${seen.height()} of ${m.width}x${m.height})"
-                            val parent = m.parent as ViewGroup
-                            val next = parent.getChildAt(parent.indexOfChild(m) + 1)
-                            val badge = (next as? BadgeLineView) ?: ((next as? ViewGroup)?.getChildAt(0) as? BadgeLineView)
-                            if (badge == null) { problems += "$where: the marker isn't before its buttons"; continue }
-                            val b = win(badge)
-                            val gap = b.left - r.right
-                            if (abs(gap - TutorialActivity.MARKER_GAP_DP * d) > slack) problems += "$where: marker ${gap / d} dp before its buttons (should be ${TutorialActivity.MARKER_GAP_DP})"
-                            if (abs(r.exactCenterY() - b.exactCenterY()) > slack) problems += "$where: marker off centre on its buttons by ${(r.exactCenterY() - b.exactCenterY()) / d} dp"
-                            if (r.height() > b.height()) problems += "$where: marker taller than its buttons"
-                            // The buttons line up with the title (the widest; narrower ones sit right next to their words)
+                            if (!card.getGlobalVisibleRect(seen) || seen.width() < card.width - 1 || seen.height() < card.height - 1) problems += "$where: the card is cut off (${seen.width()}x${seen.height()} of ${card.width}x${card.height})"
+                            val bar = win(c.controls); val panel = win(c.panel)
+                            if (r.bottom > bar.top + slack) problems += "$where: the card runs ${(r.bottom - bar.top) / d} dp into the button bar"
+                            if (Rect.intersects(r, panel)) problems += "$where: the card overlaps the keyboard window"
+                            if (shown(c.picture) && Rect.intersects(r, win(c.picture))) problems += "$where: the card overlaps the device picture"
+                            val badge = firstBadge(card)
                             val titleLeft = win(c.title).left
-                            if (b.left < titleLeft - slack) problems += "$where: the buttons start ${(titleLeft - b.left) / d} dp before the title"
+                            if (badge == null) problems += "$where: the card has no buttons"
+                            else if (abs(win(badge).left - titleLeft) > 2 * d) problems += "$where: the card's buttons start ${(win(badge).left - titleLeft) / d} dp off the title's edge"
+                            if (c.split && abs(r.bottom - panel.bottom) > 2 * d) problems += "$where: the card's foot is ${(r.bottom - panel.bottom) / d} dp off the keyboard window's foot"
                         }
                     }
+                    // A scrolling area keeps its edge: what scrolls past it never draws over the device or the keyboard
+                    scrolls(t.window.decorView).filter { (it.parent as? ViewGroup)?.clipChildren != true }.forEach { problems += "$where: a scrolling area draws past its own edge" }
                     // Small screens: the device beside the words
                     if (c.header != null && shown(c.picture) && c.pictureCol.parent === c.header) {
                         val pr = win(c.picture); val col = win(c.pictureCol); val beside = win((c.header as ViewGroup).getChildAt(0)); val h = win(c.header)
@@ -107,6 +119,7 @@ class TourMarkerTest {
     @Test @Config(sdk = [34], qualifiers = "w827dp-h412dp-land-xhdpi") fun odin() = run("Odin 2 Portal")
     @Test @Config(sdk = [34], qualifiers = "w891dp-h411dp-land-xxhdpi") fun phone() = run("phone sideways")
     @Test @Config(sdk = [34], qualifiers = "w411dp-h891dp-port-xxhdpi") fun phoneUpright() = run("phone upright")
+    @Test @Config(sdk = [34], qualifiers = "w360dp-h640dp-port-xxhdpi") fun smallPhoneUpright() = run("small phone upright")
     @Test @Config(sdk = [34], qualifiers = "w960dp-h540dp-land-television-xhdpi") fun tv() = run("TV")
     @Test @Config(sdk = [34], qualifiers = "w640dp-h432dp-land-xhdpi") fun fourThree() = run("4:3")
     @Test @Config(sdk = [34], qualifiers = "w480dp-h432dp-land-hdpi") fun square() = run("square")
