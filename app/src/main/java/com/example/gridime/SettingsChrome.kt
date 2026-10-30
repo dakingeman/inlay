@@ -78,13 +78,15 @@ object HintText {
     }
 }
 
-/** Small uppercase label above a group of settings. */
+/**
+ * Small quiet label above a group of settings, in sentence case ("Get started"): plain words, no spaced-out
+ * capitals (brand voice and design bible rule 15; capitals dropped everywhere, 30 Oct 2026).
+ */
 class SectionHeader(context: Context, title: String) : TextView(context) {
     init {
         val dp = resources.displayMetrics.density
-        text = title.uppercase()
+        text = title
         textSize = Design.TYPE_SECTION
-        letterSpacing = 0.12f
         typeface = SettingsStyle.medium
         setTextColor(SettingsStyle.textSecondary)
         // starts where the row titles start (card inset + row padding), so text lines up down the page

@@ -44,6 +44,12 @@ class AuditShots {
         else -> emptyList()
     }
 
+    private fun scrollers(v: View): List<android.view.ViewGroup> = when (v) {
+        is android.widget.ScrollView -> listOf(v)
+        is android.view.ViewGroup -> (0 until v.childCount).flatMap { scrollers(v.getChildAt(it)) }
+        else -> emptyList()
+    }
+
     private fun everything(style: ButtonStyle, pic: PictureChoice, tag: String = style.name.lowercase()) {
         assumeTrue(File("build/visuals-audit").exists())
         val dir = File("build/audit/$tag").apply { mkdirs() }
@@ -57,6 +63,12 @@ class AuditShots {
             save(dir, s.window.decorView, "settings-$tab-a-top")
             r.lastOrNull()?.requestFocusFromTouch(); idle(700)
             save(dir, s.window.decorView, "settings-$tab-b-bottom")
+            // the whole tab in one tall picture (the scrolling list drawn at its full length), for page-by-page audits
+            scrollers(s.window.decorView).maxByOrNull { it.width * it.height }?.getChildAt(0)?.let { list ->
+                val b = Bitmap.createBitmap(list.width.coerceAtLeast(1), list.height.coerceAtLeast(1), Bitmap.Config.ARGB_8888)
+                Canvas(b).apply { drawColor(Design.BACKDROP_BOTTOM); list.draw(this) }
+                File(dir, "settings-$tab-c-full.png").outputStream().use { b.compress(Bitmap.CompressFormat.PNG, 100, it) }; b.recycle()
+            }
             press(s, KeyEvent.KEYCODE_BUTTON_R1, 600)
         }
         // Settings with the keyboard up (Y)
@@ -75,6 +87,7 @@ class AuditShots {
     @Test fun playstation() = everything(ButtonStyle.PLAYSTATION, PictureChoice.CONTROLLER)
     @Test fun switch() = everything(ButtonStyle.SWITCH, PictureChoice.HANDHELD)
     @Test @Config(sdk = [34], qualifiers = "w472dp-h363dp-land-420dpi") fun switchVertical() = everything(ButtonStyle.SWITCH, PictureChoice.VERTICAL, "vertical")
+    @Test @Config(sdk = [34], qualifiers = "w360dp-h640dp-port-xxhdpi") fun phone() = everything(ButtonStyle.XBOX, PictureChoice.AUTO, "phone")
 
     /** The tour and What's new backdrop with every preset colour, and the first page of each in a few telling colours. */
     @Test

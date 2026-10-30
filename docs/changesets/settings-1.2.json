@@ -1,0 +1,68 @@
+{
+ "name": "settings-1.2",
+ "title": "Settings overhaul 1.2 (all six tabs)",
+ "recorded": "2026-10-30",
+ "base": "5d967ac",
+ "files": [
+  {
+   "path": "app/src/main/java/com/example/gridime/Design.kt",
+   "before": "5d3f3bb81b05871527d5548062602ccd7931fa3b",
+   "after": "895ce0b61169e2adcce09a56113fadf4281dac1e"
+  },
+  {
+   "path": "app/src/main/java/com/example/gridime/KeyboardSettings.kt",
+   "before": "b853b2648959da275275e747dd8342cccac125cc",
+   "after": "02efe1fd0e602a06bb82c21f843a7bd285729116"
+  },
+  {
+   "path": "app/src/main/java/com/example/gridime/SettingsActivity.kt",
+   "before": "724884f40bd5ff9fe862973c97163715a12bd8b3",
+   "after": "87bc7c176256b2586b8904bba3e006d0e78ac064"
+  },
+  {
+   "path": "app/src/main/java/com/example/gridime/SettingsChrome.kt",
+   "before": "e8237aafe1bd697b421558d046eefd292c40a53b",
+   "after": "f45cc7007ca98a916ff203aeb276bbe487d7e633"
+  },
+  {
+   "path": "app/src/main/java/com/example/gridime/SettingsViews.kt",
+   "before": "87cc726d140424b64858ab8b73f09801cbabdf8f",
+   "after": "ec97d7ec0e4b17052092f03ddfff2604b2771f8f"
+  },
+  {
+   "path": "app/src/main/java/com/example/gridime/TutorialActivity.kt",
+   "before": "19f1990326a363d8bf6a03a0c74b0dc7722ed328",
+   "after": "84442ca0ba634a22066b2f52df710448630f2ffa"
+  },
+  {
+   "path": "app/src/test/java/com/example/gridime/AccentMigrationTest.kt",
+   "before": null,
+   "after": "42d15816df4408cf4e71776b3fa1206974bdfc64"
+  },
+  {
+   "path": "app/src/test/java/com/example/gridime/AuditShots.kt",
+   "before": "11bcd126c9a1d0e12a1522828b7584764dde5554",
+   "after": "37d157eac6c91fa925959a6284f4dab7f62b02fa"
+  },
+  {
+   "path": "app/src/test/java/com/example/gridime/SettingsKeyboardUpTest.kt",
+   "before": null,
+   "after": "5ad9c9b3af7131e740cec6591fa71d9c52ab2206"
+  },
+  {
+   "path": "app/src/test/java/com/example/gridime/SettingsTextFitTest.kt",
+   "before": null,
+   "after": "7c1bb90cd75fdeaa4a6ab19d307c786872400f8f"
+  },
+  {
+   "path": "design/tokens.js",
+   "before": "cd1fe6afb57d06b158206ea4b539a0ff01a80432",
+   "after": "dc2dd3e295b307098a7e9ef3a08937c96abde0a1"
+  },
+  {
+   "path": "design/tokens.json",
+   "before": "d21543d98de7efff30d3f97558c1ff7276147084",
+   "after": "33ab609fa4986335e6277a52ff26f130fcd57dac"
+  }
+ ]
+}

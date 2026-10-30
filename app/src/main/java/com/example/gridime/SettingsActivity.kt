@@ -488,6 +488,7 @@ class SettingsActivity : Activity() {
         rows.firstOrNull()?.let { it.nextFocusUpId = tabs.id }
         rows.lastOrNull()?.let { it.nextFocusDownId = it.id }
         focusableRows = rows
+        if (settings.showPreview && scroll.height > 0 && shortWithKeyboard()) rows.forEach { (it as? SettingRow)?.compact = true }
 
         if (animate) scroll.scrollTo(0, 0)
         muteSystemSounds(content)
@@ -599,7 +600,20 @@ class SettingsActivity : Activity() {
     private fun keyboardTarget(maxScroll: Int): Int? {
         val rect = focusedRect() ?: return null
         rect.offset(0, scroll.paddingTop)                       // page coordinates -> the scroll's
-        return fit(rect, top = px(TabBar.FOLDED_DP + EDGE_FADE_DP), bottom = scroll.height - sheetFullHeight(), maxScroll = maxScroll)
+        return fit(rect, top = px(TabBar.FOLDED_DP + EDGE_FADE_DP), bottom = scroll.height - sheetFullHeight(), maxScroll = maxScroll, fade = px(EDGE_FADE_DP))
+    }
+
+    /** A screen too short for whole rows above the keyboard: rows hide their hints while it's open. */
+    private fun shortWithKeyboard(): Boolean =
+        scroll.height - sheetFullHeight() - px(TabBar.FOLDED_DP + EDGE_FADE_DP) < px(COMPACT_ROOM_DP)
+
+    /** Hints in or out on every row of the page, then lays the page out at once, so the next scroll target is right. */
+    private fun compactRows(on: Boolean) {
+        var changed = false
+        focusableRows.forEach { r -> (r as? SettingRow)?.let { if (it.compact != on) { it.compact = on; changed = true } } }
+        if (!changed || scroll.width == 0) return
+        scroll.measure(View.MeasureSpec.makeMeasureSpec(scroll.width, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(scroll.height, View.MeasureSpec.EXACTLY))
+        scroll.layout(scroll.left, scroll.top, scroll.right, scroll.bottom)
     }
 
     /** One animation moves the panel, the tabs and the page together, from wherever they are. */
@@ -639,6 +653,8 @@ class SettingsActivity : Activity() {
 
         val full = sheetFullHeight()
         sheet.visibility = View.VISIBLE
+        // Hints step aside (or come back) first, so every position below is worked out on the final layout
+        compactRows(show && shortWithKeyboard())
         val column = scroll.getChildAt(0) ?: return
         val contentHeight = column.height - column.paddingBottom       // the page without the keyboard room
         val pad = scroll.paddingTop
@@ -713,8 +729,12 @@ class SettingsActivity : Activity() {
      * relative to the page's top edge). A row taller than even that space keeps its bottom, where
      * its switch, chips or slider are, in view.
      */
-    private fun fit(rect: Rect, top: Int, bottom: Int, maxScroll: Int): Int {
-        val target = if (rect.height() <= bottom - top) rect.centerY() - (top + bottom) / 2 else rect.bottom - bottom
+    private fun fit(rect: Rect, top: Int, bottom: Int, maxScroll: Int, fade: Int = 0): Int {
+        val target = when {
+            rect.height() <= bottom - top -> rect.centerY() - (top + bottom) / 2
+            rect.height() <= bottom - (top - fade) -> rect.top - (top - fade)    // whole, using the soft edge: flush under the tabs
+            else -> rect.bottom - bottom
+        }
         return target.coerceIn(0, maxScroll.coerceAtLeast(0))
     }
 
@@ -800,7 +820,8 @@ class SettingsActivity : Activity() {
                 active = true, colourAt = { colour(b = it) }) { update(settings.copy(customBrightness = it)); refreshTracks() }
         }
         return listOf(
-        Section("Theme", listOf(
+        // One group: a "Theme" heading over a single "Theme" row said the same word twice (audit, 30 Oct 2026)
+        Section("Theme and colour", listOf(
             StepperRow(this, "Theme", "Dark themes suit OLED screens. Clear lets the app behind show through",
                 Palette.tones.map { it.name }, settings.toneIndex.coerceIn(0, Palette.tones.lastIndex)) {
                 update(settings.copy(toneIndex = it))
@@ -810,8 +831,7 @@ class SettingsActivity : Activity() {
                 0, 10, settings.seeThrough, { it.toString() }) {
                 update(settings.copy(seeThrough = it))
             } else null
-        )),
-        Section("Colour", listOf<SettingRow>(swatches) + customRows),
+        ) + listOf<SettingRow>(swatches) + customRows),
         Section("Keys", listOfNotNull(
             ChoiceRow(this, "Keyboard size", say("Also on the keyboard: press {L3}", "How big the keys are"),
                 listOf("Normal", "Large", "Largest"), settings.sizeLevel.coerceIn(0, 2)) {
@@ -839,16 +859,17 @@ class SettingsActivity : Activity() {
                 update(settings.copy(motion = HighlightMotion.values()[it]))
             }
         )),
-        Section("Letters", listOf(
+        Section("Letters", WeightSampleView(this) { settings.font }.let { sample -> listOf(
             ChoiceRow(this, "Font", "Hyperlegible is designed to be the easiest to read",
                 FontChoice.values().map { it.label }, settings.font.ordinal) {
                 update(settings.copy(font = FontChoice.values()[it]))
+                sample.requestLayout(); sample.invalidate()
             },
             SliderRow(this, "Letter weight", "How bold the letters are", 0, 10, settings.letterWeight,
-                { it.toString() }) {
+                { it.toString() }, sample = sample) {
                 update(settings.copy(letterWeight = it))
             }
-        ))
+        ) })
         )
     }
 
@@ -1070,7 +1091,7 @@ class SettingsActivity : Activity() {
                     else "Press any button: it lights up on the picture. Hold {B} to stop") { startButtonTest() }
             )),
             Section("Controls", (if (c.sticks) listOf(
-            SliderRow(this, "Stick speed", "How fast the highlight moves while you hold the left stick all the way. A lighter push goes more gently",
+            SliderRow(this, "Stick speed", "How fast the highlight moves while you hold the left stick all the way. A\u00A0lighter push goes more gently",
                 0, 4, settings.stickSpeed, { STICK_LABELS[it] }) {
                 update(settings.copy(stickSpeed = it))
             },
@@ -1216,8 +1237,9 @@ class SettingsActivity : Activity() {
                     runCatching { startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url))) }
                 }
             },
-            InfoRow(this, "Fonts: Atkinson Hyperlegible Next and Inter", "Open Font Licence"),
-            InfoRow(this, "PlayStation drawing: traced from \"Dualshock 4 Layout.svg\" by Tokyoship", "CC BY 3.0 · controller names belong to their makers")
+            // Credits: a short name, the details under it (a long bold credit line read like a heading; audit, 30 Oct 2026)
+            InfoRow(this, "Fonts", "Atkinson Hyperlegible Next and Inter · Open Font Licence"),
+            InfoRow(this, "PlayStation drawing", "Traced from \"Dualshock 4 Layout.svg\" by Tokyoship · CC BY 3.0 · controller names belong to their makers")
         )),
         Section("Updates", listOf(
             ActionRow(this, "Get updates automatically",
@@ -1259,6 +1281,7 @@ class SettingsActivity : Activity() {
         const val SIDE_PICTURE_MIN_DP = 600
         const val SHEET_FADE_DP = 12f
         const val EDGE_FADE_DP = 16f        // the page's soft top and bottom edges
+        const val COMPACT_ROOM_DP = 150f    // less room than this above the keyboard: rows hide their hints while it's open
         const val BUTTON_TEST_IDLE_MS = 8000L    // the button test ends on its own after this long without a press
         const val BUTTON_TEST_STOP_MS = 700L     // holding B (Back) this long ends it
         const val TOP_SNAP_DP = 72f         // closer to the top than this, a scroll goes right to it

@@ -475,11 +475,11 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
         root.addView(dots, lpMatchWrap())
 
         // ---- The words ----
-        // The label above the title says which this is: "WELCOME TOUR" in quiet grey, or, for
-        // What's new, a "NEW IN 1.2.0" tag. The page count sits next to it, quieter.
+        // The label above the title says which this is: "Welcome tour" in quiet grey, or, for
+        // What's new, a "New in 1.2.0" tag. The page count sits next to it, quieter. Sentence case, no
+        // spaced-out capitals (30 Oct 2026)
         eyebrow = TextView(this).apply {
             textSize = Design.TYPE_SECTION
-            letterSpacing = 0.12f
             typeface = SettingsStyle.medium
             // Your colour as a soft tint, never a ring: rings mean "you are here" (audit + Emre, 28 Oct 2026).
             // The words are measured on the backdrop's light (and the tag's tint): 4.5:1 with any colour
@@ -494,9 +494,8 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
             }
         }
         eyebrowCount = TextView(this).apply {
-            fontFeatureSettings = Design.NUMBERS_TABULAR      // "2 OF 7" → "3 OF 7": the line keeps its length
+            fontFeatureSettings = Design.NUMBERS_TABULAR      // "2 of 7" → "3 of 7": the line keeps its length
             textSize = Design.TYPE_SECTION
-            letterSpacing = 0.12f
             typeface = SettingsStyle.medium
             setTextColor(SettingsStyle.textSecondary)
             includeFontPadding = false
@@ -692,8 +691,8 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
     private fun show(index: Int, animate: Boolean, direction: Int = 1) {
         page = index
         val p = pages[index]
-        eyebrow.text = if (whatsNew) "NEW IN ${WhatsNew.VERSION}" else "WELCOME TOUR"
-        eyebrowCount.text = if (whatsNew) "${index + 1} OF ${pages.size}" else "· ${index + 1} OF ${pages.size}"
+        eyebrow.text = if (whatsNew) "New in ${WhatsNew.VERSION}" else "Welcome tour"
+        eyebrowCount.text = if (whatsNew) "${index + 1} of ${pages.size}" else "· ${index + 1} of ${pages.size}"
         title.text = p.title
         body.text = p.body
         buildRows(p.rows)
@@ -722,7 +721,7 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
 
     /**
      * THE PAGE TEMPLATE. Every tour and What's new page is the same four zones, top to bottom:
-     *  1. the label line ("WELCOME TOUR · 2 OF 7", or the NEW IN tag)
+     *  1. the label line ("Welcome tour · 2 of 7", or the New in tag)
      *  2. the title: one line, one size per screen
      *  3. one or two sentences, never hidden
      *  4. the button rows: a grid (three columns for five or more rows on wide screens, two otherwise,

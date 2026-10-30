@@ -119,10 +119,10 @@ object Palette {
         "Amber" to "#FFC857",
         "Tangerine" to "#FF9F5A",
         "Coral" to "#FF8A80",
+        "Cherry" to "#FF5C6C",     // 1.2: a clear red, bright enough to stay as chosen on every dark theme; Indigo (#8C9EFF) went, it looked like Lavender (audit, 30 Oct 2026)
         "Rose" to "#F48FB1",
         "Orchid" to "#E27AE8",
         "Lavender" to "#B39DFF",
-        "Indigo" to "#8C9EFF",
         "Sand" to "#D9C7A7",
         "Ice" to "#E8EAED"
     ).map { it.first to Color.parseColor(it.second) }
@@ -272,7 +272,7 @@ data class KeyboardSettings(
     fun save(context: Context) {
         val json = JSONObject()
             .put(K_STYLE, buttonStyle.name)
-            .put(K_ACCENT, accentIndex)
+            .put(K_ACCENT_2, accentIndex)
             .put(K_HUE, customHue)
             .put(K_STRENGTH, customStrength)
             .put(K_BRIGHTNESS, customBrightness)
@@ -329,6 +329,14 @@ data class KeyboardSettings(
 
         private const val K_STYLE = "button_style"
         private const val K_ACCENT = "accent"
+        /**
+         * From 1.2 the colour list changed (Cherry in, Indigo out), so the choice has a new name and the old one is
+         * read once through [ACCENT_1_1]: everyone keeps exactly the colour they had. Indigo becomes the same colour
+         * as a custom colour.
+         */
+        private const val K_ACCENT_2 = "accent_2"
+        private val ACCENT_1_1 = intArrayOf(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12, 13, -2, 14, 15)   // -2: Indigo
+        private const val INDIGO = "#8C9EFF"
         private const val K_HUE = "custom_hue"
         private const val K_STRENGTH = "custom_strength"
         private const val K_BRIGHTNESS = "custom_brightness"
@@ -418,6 +426,20 @@ data class KeyboardSettings(
         fun isPhone(context: Context): Boolean =
             context.packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_TELEPHONY)
 
+        /** The custom colour sliders (hue, strength, brightness) that come closest to [colour]. */
+        fun customFor(colour: Int): Triple<Int, Int, Int> {
+            var best = Triple(0, 0, 0); var err = Double.MAX_VALUE
+            val target = AccentLight.oklch(colour)
+            for (h in 0 until 360) for (st in 0..100 step 2) for (b in 0..100 step 2) {
+                val c = AccentLight.oklch(Palette.customAccent(h, st, b))
+                val dh = Math.toRadians(c[2] - target[2])
+                val e = (c[0] - target[0]).let { it * it } + (c[1] - target[1]).let { it * it } +
+                    4 * c[1] * target[1] * Math.sin(dh / 2).let { it * it }
+                if (e < err) { err = e; best = Triple(h, st, b) }
+            }
+            return best
+        }
+
         private fun from(p: Source, phone: Boolean = true): KeyboardSettings {
             val d = KeyboardSettings()
             // Custom colours saved before 1.2 had only a hue (a soft pastel): turn that colour into the
@@ -433,12 +455,21 @@ data class KeyboardSettings(
                 val top = minOf(Palette.CUSTOM_C_MAX, AccentLight.maxChroma(lb, h)).coerceAtLeast(Palette.CUSTOM_C_MIN + 0.001)
                 Triple(h.roundToInt() % 360, ((c - Palette.CUSTOM_C_MIN) / (top - Palette.CUSTOM_C_MIN) * 100).roundToInt().coerceIn(0, 100), b)
             }
+            // The colour: the 1.2 choice if saved, otherwise the 1.1 one moved to its new place in the list
+            val saved2 = p.int(K_ACCENT_2, Int.MIN_VALUE)
+            val old = p.int(K_ACCENT, d.accentIndex)
+            val accent = when {
+                saved2 != Int.MIN_VALUE -> saved2
+                old < 0 -> old
+                else -> ACCENT_1_1.getOrElse(old) { d.accentIndex }
+            }
+            val (cHue, cStrength, cBright) = if (accent == -2) customFor(Color.parseColor(INDIGO)) else Triple(hue, strength, brightness)
             return KeyboardSettings(
                 buttonStyle = enumOr(p.str(K_STYLE), d.buttonStyle),
-                accentIndex = p.int(K_ACCENT, d.accentIndex),
-                customHue = hue,
-                customStrength = strength,
-                customBrightness = brightness,
+                accentIndex = if (accent == -2) -1 else accent,
+                customHue = cHue,
+                customStrength = cStrength,
+                customBrightness = cBright,
                 toneIndex = p.int(K_TONE, d.toneIndex),
                 font = enumOr(p.str(K_FONT), d.font),
                 letterWeight = p.int(K_WEIGHT, d.letterWeight),

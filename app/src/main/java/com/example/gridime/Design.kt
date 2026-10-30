@@ -118,7 +118,7 @@ object Design {
     // One scale: 12 · 14 · 16 · 20 · 24 · 28. Nothing anywhere is ever smaller than TYPE_MIN
     // (Android TV's minimum), so text never shrinks below it to fit; layouts make room instead.
     const val TYPE_MIN = 12f
-    const val TYPE_SECTION = 12f    // section labels, eyebrows (capitals, tracked)
+    const val TYPE_SECTION = 14f    // section labels, eyebrows: sentence case, medium, quiet colour (was 12, in capitals, until 30 Oct 2026)
     const val TYPE_CAPTION = 14f    // subtitles, captions, tabs, option pickers
     const val TYPE_ROW = 16f        // row titles, values, body text
     const val TYPE_TITLE = 20f      // titles on short screens

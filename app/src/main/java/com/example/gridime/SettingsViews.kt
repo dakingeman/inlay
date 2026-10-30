@@ -122,6 +122,8 @@ abstract class SettingRow(
 ) : LinearLayout(context) {
 
     companion object {
+        /** The least room a row's name gets beside its control before the control moves under it. */
+        const val TEXT_MIN_DP = 176f
         /** Button icons used in subtitles. Set by the Settings screen before building rows. */
         var buttonStyle: ButtonStyle = ButtonStyle.XBOX
         /** Sounds and vibration for changes made in Settings. */
@@ -133,10 +135,47 @@ abstract class SettingRow(
 
     protected val dp = resources.displayMetrics.density
     protected fun px(v: Float) = (v * dp).roundToInt()
-    private val stackedLayout = stacked
+    protected val stackedLayout = stacked
     private val titleView = TextView(context)
     private var subtitleView: View? = null
+
+    /**
+     * While the keyboard is open on a short screen, the hint steps aside (every row at once, so nothing jumps), so
+     * the setting's name and its control always show together above the keyboard (audit, 30 Oct 2026).
+     */
+    var compact = false
+        set(v) { if (field == v) return; field = v; subtitleView?.visibility = if (v) View.GONE else View.VISIBLE }
     private var control: View? = null
+    private lateinit var textsView: LinearLayout
+
+    /**
+     * A row with its control beside the name puts the control under the name instead when the name would get less
+     * than [TEXT_MIN_DP] (on a phone the Button guide's "Jump a whole word with the stick" ran over seven lines
+     * beside its badges; audit, 30 Oct 2026). Decided at every layout, so it follows rotation and screen size.
+     */
+    private var autoStacked = false
+
+    override fun onMeasure(widthSpec: Int, heightSpec: Int) {
+        val c = control
+        if (!stackedLayout && c != null && MeasureSpec.getMode(widthSpec) != MeasureSpec.UNSPECIFIED) {
+            val room = MeasureSpec.getSize(widthSpec) - paddingLeft - paddingRight
+            c.measure(MeasureSpec.makeMeasureSpec(room, MeasureSpec.AT_MOST), MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED))
+            val beside = room - c.measuredWidth - px(Design.SPACE_L)
+            // only when the name would really wrap there: "Undo" stays beside its badges on a phone
+            textsView.measure(MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED), MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED))
+            val stack = beside < px(TEXT_MIN_DP) && textsView.measuredWidth > beside
+            if (stack != autoStacked) { autoStacked = stack; restack(stack) }
+        }
+        super.onMeasure(widthSpec, heightSpec)
+    }
+
+    private fun restack(stack: Boolean) {
+        orientation = if (stack) VERTICAL else HORIZONTAL
+        gravity = if (stack) Gravity.START else Gravity.CENTER_VERTICAL
+        textsView.layoutParams = if (stack) LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT) else LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f)
+        control?.let { v -> v.layoutParams = (v.layoutParams as LayoutParams).apply {
+            if (stack) { topMargin = px(Design.SPACE_M); marginStart = 0 } else { topMargin = 0; marginStart = px(Design.SPACE_L) } } }
+    }
 
     /** "Action · detail": the detail after the dot in the quieter subtitle colour and weight. */
     protected fun qualifyTitle() {
@@ -167,6 +206,7 @@ abstract class SettingRow(
 
         val texts = LinearLayout(context).apply {
             orientation = VERTICAL
+            textsView = this
             addView(titleView.apply {
                 text = title
                 textSize = Design.TYPE_ROW
@@ -194,7 +234,8 @@ abstract class SettingRow(
                 setLineSpacing(0f, Design.LINE_CAPTION)
             }
         } else {
-            BadgeLineView(context, parts, buttonStyle, Design.TYPE_CAPTION, SettingsStyle.textSecondary, badgeScale = Design.BADGE_INLINE)
+            // wraps like a normal hint instead of being cut at the row's edge (audit, 30 Oct 2026)
+            BadgeLineView(context, parts, buttonStyle, Design.TYPE_CAPTION, SettingsStyle.textSecondary, badgeScale = Design.BADGE_INLINE, wrap = true)
         }
     }
 
@@ -271,6 +312,9 @@ class ChoiceRow(
 
     init {
         setControl(segments)
+        // Under its title, every picker spans the row, so all pickers line up with one edge instead of three
+        // different widths (audit, 30 Oct 2026)
+        if (stackedLayout) segments.layoutParams = (segments.layoutParams as LayoutParams).apply { width = LayoutParams.MATCH_PARENT }
     }
 
     override fun step(dir: Int): Boolean {
@@ -310,6 +354,8 @@ class StepperRow(
 
     init {
         setControl(stepper)
+        // Under its title (narrow screens) it spans the row like the pickers do
+        if (stackedLayout) stepper.layoutParams = (stepper.layoutParams as LayoutParams).apply { width = LayoutParams.MATCH_PARENT }
     }
 
     override fun step(dir: Int): Boolean {
@@ -372,8 +418,11 @@ class SliderRow(
     value: Int,
     private val label: (Int) -> String,
     private val silent: Boolean = false,       // true when onChange plays its own demo
+    /** Shown at the slider's end instead of the value's words, when a picture says it better (letter weight). */
+    private val sample: WeightSampleView? = null,
     private val onChange: (Int) -> Unit
-) : SettingRow(context, title, subtitle, stacked = SettingsStyle.isNarrow(context)) {
+) : SettingRow(context, title, subtitle, stacked = true) {
+    // Always under its title: beside it, the slider squeezed the hint into a narrow column (audit, 30 Oct 2026)
 
     private val valueText = TextView(context).apply {
         fontFeatureSettings = Design.NUMBERS_TABULAR         // even-width digits: the value doesn't wobble while sliding
@@ -386,7 +435,7 @@ class SliderRow(
     private val slider = SliderView(context, min, max, value) { update(it) }
 
     init {
-        val narrow = SettingsStyle.isNarrow(context)
+        val narrow = true                                    // the slider spans the row, its value at its end
         val control = LinearLayout(context).apply {
             orientation = HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
@@ -396,7 +445,8 @@ class SliderRow(
             // The value sits 16 dp after the track, in a column just wide enough for its widest value,
             // so it never floats far from the slider (audit, 29 Oct 2026)
             val widest = (min..max).maxOf { valueText.paint.measureText(label(it)) }
-            addView(valueText, LayoutParams(if (narrow) LayoutParams.WRAP_CONTENT else widest.toInt() + 1, LayoutParams.WRAP_CONTENT)
+            if (sample != null) { sample.weight = value; addView(sample, LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT).apply { marginStart = px(Design.SPACE_L) }) }
+            else addView(valueText, LayoutParams(if (narrow) LayoutParams.WRAP_CONTENT else widest.toInt() + 1, LayoutParams.WRAP_CONTENT)
                 .apply { marginStart = px(Design.SPACE_L) })
         }
         setControl(control)
@@ -415,7 +465,49 @@ class SliderRow(
 
     private fun update(v: Int) {
         valueText.text = label(v)
+        sample?.weight = v
         onChange(v)
+    }
+}
+
+/**
+ * "Aa" in the keyboard's own font at a letter weight (0 to 10), drawn the way the keys draw it: the variable fonts
+ * at 400 + 25 a step, the system font thickened with an outline. A picture of the result says more than "4"
+ * (design bible: pictures before paragraphs; audit, 30 Oct 2026).
+ */
+class WeightSampleView(context: Context, private val font: () -> FontChoice) : View(context) {
+    private val dp = resources.displayMetrics.density
+    private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        textSize = android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_SP, Design.TYPE_TITLE, resources.displayMetrics)
+        color = SettingsStyle.textPrimary
+        textAlign = Paint.Align.RIGHT
+    }
+    private val fonts = HashMap<FontChoice, Typeface?>()
+    var weight = 0
+        set(v) { field = v; invalidate() }
+
+    private fun base(f: FontChoice): Typeface? = fonts.getOrPut(f) {
+        when (f) {
+            FontChoice.HYPERLEGIBLE -> runCatching { resources.getFont(R.font.atkinson_next) }.getOrNull()
+            FontChoice.INTER -> runCatching { resources.getFont(R.font.inter) }.getOrNull()
+            FontChoice.SYSTEM -> null
+        }
+    }
+
+    override fun onMeasure(widthSpec: Int, heightSpec: Int) {
+        paint.typeface = base(font()); paint.fontVariationSettings = null
+        paint.fontVariationSettings = "'wght' 650"                    // room for the boldest
+        val w = paint.measureText("Aa") + 2 * dp
+        setMeasuredDimension((w + 1).roundToInt(), (paint.descent() - paint.ascent() + 2 * dp).roundToInt())
+    }
+
+    override fun onDraw(canvas: Canvas) {
+        val f = base(font())
+        paint.typeface = f ?: Typeface.DEFAULT
+        paint.fontVariationSettings = null
+        if (f != null) { paint.fontVariationSettings = "'wght' ${400 + weight * 25}"; paint.style = Paint.Style.FILL }
+        else { paint.style = if (weight > 0) Paint.Style.FILL_AND_STROKE else Paint.Style.FILL; paint.strokeWidth = weight * 0.1f * dp }
+        canvas.drawText("Aa", width - dp, height / 2f - (paint.descent() + paint.ascent()) / 2f, paint)
     }
 }
 
@@ -493,12 +585,14 @@ class ColourSliderRow(
     active: Boolean,
     colourAt: (Int) -> Int,
     private val onChange: (Int) -> Unit
-) : SettingRow(context, title, subtitle, stacked = SettingsStyle.isNarrow(context)) {
+) : SettingRow(context, title, subtitle, stacked = true) {
 
     val slider = ColourSliderView(context, initial, max, active, colourAt) { onChange(it) }
 
     init {
+        // Under its title and across the row, like every slider (audit, 30 Oct 2026)
         setControl(slider)
+        slider.layoutParams = (slider.layoutParams as LayoutParams).apply { width = LayoutParams.MATCH_PARENT }
     }
 
     fun setActive(active: Boolean) {
@@ -518,11 +612,12 @@ class ColourSliderRow(
 
 /** Read-only row with a value on the right. */
 /** Long values (credits, licences) sit under the title, so neither gets squeezed (audit, 28 Oct 2026). */
-class InfoRow(context: Context, title: String, value: String) : SettingRow(context, title, null, stacked = value.length > 28) {
+/** A fact: a short value sits at the end of the row; a long one is the row's hint, so it reads like every other hint. */
+class InfoRow(context: Context, title: String, value: String) : SettingRow(context, title, value.takeIf { it.length > 28 }) {
     override val interactive get() = false
 
     init {
-        setControl(TextView(context).apply {
+        if (value.length <= 28) setControl(TextView(context).apply {
             text = value
             textSize = Design.TYPE_ROW
             setTextColor(SettingsStyle.textSecondary)
@@ -925,7 +1020,10 @@ class SwatchGridView(
     }
 }
 
-/** Draws a line of controller badges and words, e.g. "Hold [RT] and press [X]". */
+/**
+ * Draws a line of controller badges and words, e.g. "Hold [RT] and press [X]". With [wrap], a line too wide for its
+ * room breaks between words (never inside a badge) onto more lines, spaced like a normal two-line hint.
+ */
 class BadgeLineView(
     context: Context,
     private val parts: List<HintPart>,
@@ -934,7 +1032,8 @@ class BadgeLineView(
     colour: Int,
     badgeScale: Float,
     gapBadgeToBadge: Float = Design.BADGE_GAP,
-    gapBadgeToText: Float = Design.BADGE_TEXT_GAP
+    gapBadgeToText: Float = Design.BADGE_TEXT_GAP,
+    private val wrap: Boolean = false
 ) : View(context) {
 
     private val painter = BadgePainter(resources.displayMetrics.density).apply {
@@ -949,22 +1048,56 @@ class BadgeLineView(
         textSize = android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_SP, textSizeSp, resources.displayMetrics)
         color = colour
     }
+    private val dp = resources.displayMetrics.density
+    private var lines: List<List<HintPart>> = listOf(parts)
+    private val rowHeight get() = maxOf(painter.lineHeight(parts), text.descent() - text.ascent())
+    private val rowStep get() = rowHeight * Design.LINE_CAPTION
+
+    /** How many lines it was drawn on (for checks). */
+    val lineCount get() = lines.size
+    /** False if a line is wider than the room it got: its end would be cut off (for checks). */
+    val fits get() = lines.all { painter.measureLine(it, text) <= width - 1f }
 
     override fun onMeasure(widthSpec: Int, heightSpec: Int) {
-        val textHeight = text.descent() - text.ascent()
+        val full = painter.measureLine(parts, text) + 2 * dp
+        val room = MeasureSpec.getSize(widthSpec)
+        lines = if (wrap && MeasureSpec.getMode(widthSpec) != MeasureSpec.UNSPECIFIED && full > room) breakLines(room - 2 * dp) else listOf(parts)
+        val widest = lines.maxOf { painter.measureLine(it, text) } + 2 * dp
         // Honour a fixed width from the layout (the tour lines badges up in a column), otherwise wrap
         setMeasuredDimension(
-            resolveSize((painter.measureLine(parts, text) + 2 * resources.displayMetrics.density).roundToInt(), widthSpec),
-            resolveSize((maxOf(painter.lineHeight(parts), textHeight) + 4 * resources.displayMetrics.density).roundToInt(), heightSpec)
+            resolveSize(widest.roundToInt(), widthSpec),
+            resolveSize((rowHeight + rowStep * (lines.size - 1) + 4 * dp).roundToInt(), heightSpec)
         )
+    }
+
+    /** Fills each line with as many words and badges as fit; words of one text part are split, badges never. */
+    private fun breakLines(max: Float): List<List<HintPart>> {
+        val tokens = parts.flatMap { p -> if (p is HintPart.Text) p.text.split(" ").filter { it.isNotEmpty() }.map { HintPart.Text(it) } else listOf(p) }
+        fun join(line: List<HintPart>): List<HintPart> {
+            val out = mutableListOf<HintPart>()
+            line.forEach { t -> val last = out.lastOrNull()
+                if (t is HintPart.Text && last is HintPart.Text) out[out.lastIndex] = HintPart.Text(last.text + " " + t.text) else out += t }
+            return out
+        }
+        val result = mutableListOf<List<HintPart>>(); var line = mutableListOf<HintPart>()
+        for (t in tokens) {
+            if (line.isNotEmpty() && painter.measureLine(join(line + t), text) > max) { result += join(line); line = mutableListOf() }
+            line += t
+        }
+        if (line.isNotEmpty()) result += join(line)
+        return result
     }
 
     /** In a column wider than this line, sit at its end (next to the words that follow), not at its start. */
     var alignEnd = false
 
     override fun onDraw(canvas: Canvas) {
-        val w = painter.measureLine(parts, text)
-        painter.drawLine(canvas, parts, if (alignEnd) width - 1f - w else 1f, height / 2f, text)
+        if (lines.size == 1) {
+            val w = painter.measureLine(parts, text)
+            painter.drawLine(canvas, parts, if (alignEnd) width - 1f - w else 1f, height / 2f, text)
+            return
+        }
+        lines.forEachIndexed { i, line -> painter.drawLine(canvas, line, 1f, 2 * dp + rowHeight / 2 + i * rowStep, text) }
     }
 }
 
