@@ -854,7 +854,7 @@ class SettingsActivity : Activity() {
                 HighlightStyle.values().map { it.label }, settings.highlightStyle.ordinal) {
                 update(settings.copy(highlightStyle = HighlightStyle.values()[it]))
             },
-            ChoiceRow(this, "Highlight motion", "Fluid leans slightly into each move. Instant has no animation",
+            ChoiceRow(this, "Highlight motion", "Subtle glides, Fluid leans into each move, Instant jumps",
                 HighlightMotion.values().map { it.label }, settings.motion.ordinal) {
                 update(settings.copy(motion = HighlightMotion.values()[it]))
             }
@@ -884,7 +884,7 @@ class SettingsActivity : Activity() {
 
     private fun typingPage() = listOf(
         Section("Languages", listOf(
-            StepperRow(this, "Language", "Italian, Dutch, Polish and more type on English",
+            StepperRow(this, "Language", "Italian, Dutch, Polish and others: pick English and hold a letter for its accents",
                 Language.values().map { it.label }, settings.language1.ordinal) {
                 update(settings.copy(language1 = Language.values()[it], activeLanguage = 0))
             },
@@ -897,16 +897,16 @@ class SettingsActivity : Activity() {
                 extraLanguageOptions(), extraIndex(settings.language3)) {
                 update(settings.copy(language3 = extraFrom(it), activeLanguage = 0))
             },
-            ToggleRow(this, "Language on the space bar", "Off keeps the space bar clean. A switch still shows it for a moment",
+            ToggleRow(this, "Language on the space bar", "Its name on the space bar. When off, it still shows for a moment after you switch",
                 settings.showLanguageLabel) {
                 update(settings.copy(showLanguageLabel = it))
             }
         )),
         Section("Help while typing", listOf(
             ToggleRow(this, "Word suggestions", say(
-                    "Words you might mean show in the tool strip, most likely first. Press the right stick in {R3} to take it, or move up and pick one",
-                    "Words you might mean show in the tool strip, most likely first. Move up to one and press {A} to take it",
-                    "Words you might mean show in the tool strip, most likely first. Move up to one and press OK to take it"),
+                    "Words you might mean show in the top row, most likely first. Press the right stick in {R3} to take it, or move up and pick one",
+                    "Words you might mean show in the top row, most likely first. Move up to one and press {A} to take it",
+                    "Words you might mean show in the top row, most likely first. Move up to one and press OK to take it"),
                 settings.wordSuggestions) {
                 update(settings.copy(wordSuggestions = it))
             },
@@ -941,7 +941,7 @@ class SettingsActivity : Activity() {
             }
         )),
         Section("Shortcuts", listOfNotNull(
-            ToggleRow(this, "Select all key", say("When off, double-press {SELECTx2} instead", remote = "A key in the top row that selects everything"),
+            ToggleRow(this, "Select all key", say("When off, press {SELECTx2} instead", remote = "A key in the top row that selects everything"),
                 settings.selectAllButton) {
                 update(settings.copy(selectAllButton = it))
             },
@@ -952,7 +952,7 @@ class SettingsActivity : Activity() {
         )),
         Section("Clipboard", listOf(
             ToggleRow(this, "Remember copied text",
-                "Your last ${Layouts.MAX_CLIP_CARDS} copies, on this device only. Passwords are never kept.",
+                "Your last ${Layouts.MAX_CLIP_CARDS} copies, on this device only. Passwords are never kept",
                 settings.saveClipHistory) {
                 update(settings.copy(saveClipHistory = it))
             },
@@ -965,7 +965,7 @@ class SettingsActivity : Activity() {
 
     private fun feedbackPage() = listOf(
         Section("Vibration", listOf(
-            ToggleRow(this, "Vibration", null, settings.vibration) {
+            ToggleRow(this, "Vibration", "A light buzz as you move and type", settings.vibration) {
                 update(settings.copy(vibration = it))
             },
             SliderRow(this, "When moving", "A light tick for each key you pass",
@@ -978,7 +978,7 @@ class SettingsActivity : Activity() {
                 update(settings.copy(pressStrength = it))
                 feedback.key()
             },
-            ActionRow(this, "Try it", "A key press, a trigger and caps lock") {
+            ActionRow(this, "Try the vibration", "Plays a key press, a trigger and caps lock") {
                 playSequence(listOf(feedback::key, feedback::on, feedback::lock))
             }
         )),
@@ -1007,7 +1007,7 @@ class SettingsActivity : Activity() {
                 settings.soundInSilent) {
                 update(settings.copy(soundInSilent = it))
             },
-            ActionRow(this, "Try it", "Every sound at its real volume: move, type, space, delete, triggers, caps lock, select all, enter") {
+            ActionRow(this, "Try every sound", "Plays each one at its real volume: move, type, space, delete, triggers, caps lock, select all, enter") {
                 playSequence(listOf(
                     feedback::move, feedback::key, feedback::space, feedback::delete, feedback::on,
                     feedback::off, feedback::lock, feedback::selectAll, feedback::confirm
@@ -1025,7 +1025,7 @@ class SettingsActivity : Activity() {
             GuideRow(this, "Shift · tap twice for caps lock", "{R2}"),
             GuideRow(this, "One capital letter", "{R2} + {A}"),
             GuideRow(this, "Accent the last letter · press again for more", "{R2} + {Y}"),
-            GuideRow(this, if (settings.smartKeys) "Symbols · in number boxes, letters" else "Letters and symbols", "{L2}"),
+            GuideRow(this, if (settings.smartKeys) "Numbers and symbols · letters in number-only boxes" else "Numbers and symbols", "{L2}"),
             GuideRow(this, "Enter · Search · Go", "{START}")
         )
         if (settings.languages.size > 1) {
@@ -1041,7 +1041,7 @@ class SettingsActivity : Activity() {
             GuideRow(this, "Select everything", "{SELECTx2}")
         )
         if (settings.rightStick && controls.sticks) {
-            editing.add(1, GuideRow(this, "Move the text cursor · push further to go faster", "{R3} left or right"))
+            editing.add(1, GuideRow(this, "Move the text cursor with the stick · push further to go faster", "{R3} left or right"))
             editing.add(3, GuideRow(this, "Jump a whole word with the stick", "{R2} + {R3} left or right"))
             editing += GuideRow(this, "Go to the start or end · a line in long text", "{R3} up or down")
         }
@@ -1111,7 +1111,7 @@ class SettingsActivity : Activity() {
                 settings.showHints) {
                 update(settings.copy(showHints = it))
             },
-            ToggleRow(this, "Combo tips", "Shows what you can do while holding {R2}",
+            ToggleRow(this, "Combo tips", "Tips on the keys while you hold {R2}",
                 settings.comboHints) {
                 update(settings.copy(comboHints = it))
             }
@@ -1134,11 +1134,11 @@ class SettingsActivity : Activity() {
     /** What Inlay is set up for, and what that changes, in plain words. */
     private fun setUpFor(c: Controls): Pair<String, String> = when {
         c.remote -> "Set up for a TV remote" to
-            "Everything works with the ring, OK and Back. Button hints are hidden."
+            "Everything works with the ring, OK and Back. Button hints are hidden"
         c.kind == DeviceKind.VERTICAL && !c.sticks -> "Set up for a vertical handheld" to
-            "Your button icons on the keys. Without sticks, pick suggested words with the D-pad."
+            "Your button icons on the keys. Without sticks, pick suggested words with the D-pad"
         else -> "Set up for ${when (c.kind) { DeviceKind.CONTROLLER -> "a controller"; DeviceKind.WIDE -> "a handheld"; else -> "a vertical handheld with sticks" }}" to
-            "Your button icons on the keys. The right stick moves the text cursor and picks words."
+            "Your button icons on the keys. The right stick moves the text cursor and picks words"
     }
 
     // ---- Try your buttons: every press lights up on the picture -------------------------
@@ -1212,7 +1212,7 @@ class SettingsActivity : Activity() {
     internal fun guideCheck(): List<Pair<String, String>> = guidePage().flatMap { it.rows }.filterIsInstance<GuideRow>().map { it.title to it.buttons }
 
     private fun aboutPage() = listOf(
-        Section("Setup", listOf(
+        Section("Setup and help", listOf(
             ActionRow(this, "Turn on Inlay", "Opens Android's list of keyboards") {
                 startActivity(Intent(Settings.ACTION_INPUT_METHOD_SETTINGS))
             },

@@ -1,0 +1,13 @@
+{
+ "name": "words-1.2",
+ "title": "Words pass 1.2 (Settings)",
+ "recorded": "2026-10-30",
+ "base": "b2b5ad9",
+ "files": [
+  {
+   "path": "app/src/main/java/com/example/gridime/SettingsActivity.kt",
+   "before": "87bc7c176256b2586b8904bba3e006d0e78ac064",
+   "after": "649c688979572886b104dd2aa9c740331ef1c1e3"
+  }
+ ]
+}
