@@ -1,0 +1,38 @@
+{
+ "name": "card-grid-1.2",
+ "title": "Step card on the page grid; demos match the screen",
+ "recorded": "2026-10-30",
+ "base": "3a11c89",
+ "files": [
+  {
+   "path": "app/src/main/java/com/example/gridime/KeyGridView.kt",
+   "before": "7fae5fbca028f36b21004df216afdcbb3da54456",
+   "after": "38f865e77dacb5a837ca08ca822c8fdf72643b19"
+  },
+  {
+   "path": "app/src/main/java/com/example/gridime/TutorialActivity.kt",
+   "before": "9a768c93e603c4038d354cf7d6634629a4db4aa9",
+   "after": "01f3872ac88df9a0b5cda1fa312be530a3419d7c"
+  },
+  {
+   "path": "app/src/test/java/com/example/gridime/DemoTruthTest.kt",
+   "before": null,
+   "after": "ec8d731bf93ca5a6d5844ff72ff2cbbcf17a9b1a"
+  },
+  {
+   "path": "app/src/test/java/com/example/gridime/TourFastFlipTest.kt",
+   "before": null,
+   "after": "380786352da85ee44c39a5c7d81b3087e378736a"
+  },
+  {
+   "path": "app/src/test/java/com/example/gridime/TourMarkerTest.kt",
+   "before": "c88842314f2a0791461924c526ed90216b1bebc9",
+   "after": "1055450998f85bf8bd2b9730fac12e2c1f1aa521"
+  },
+  {
+   "path": "app/src/test/java/com/example/gridime/TourWordsLogicTest.kt",
+   "before": null,
+   "after": "93bed1c9b1e9cd10fd66957bd0fd0a4a5b1331a2"
+  }
+ ]
+}

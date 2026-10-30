@@ -22,8 +22,10 @@ import kotlin.math.abs
  * Balance, not only overlaps. On every screen the tour runs on, for every page with steps (the card, 30 Oct 2026):
  *  - one step card shows, drawn whole: nothing cuts it off, and it stays clear of the button bar, the keyboard window and the device
  *  - a scrolling area keeps its edge: words scrolled past it never draw over the device (a small upright phone did, 30 Oct 2026)
- *  - its buttons and words start exactly on the title's left edge (the card's own edge hangs into the margin)
- *  - beside the keyboard (the split), the card's foot sits on the keyboard window's foot: the same line on every page
+ *  - the card's edge sits exactly on the title's left edge, inside its column (it never hangs past it: a fading page cut
+ *    the overhang off on the Odin, 30 Oct 2026)
+ *  - beside the keyboard (the split), the card shares the keyboard window's foot, and its top sits on the line its screen
+ *    chose ([TutorialActivity.CardTop]): the window's top, or the keyboard's top under the text box
  *  - small screens: the device beside the sentence and caption is drawn whole, centred on them, with the same margin on its
  *    right as the words have on their left, and at least [TutorialActivity.DEVICE_HEADER_GAP_DP] from the words
  * Measured in pixels, with a pixel to spare for rounding.
@@ -55,6 +57,7 @@ class TourMarkerTest {
 
     private fun run(screen: String) {
         val problems = mutableListOf<String>()
+        val cardTops = mutableListOf<String>()
         val d = context.resources.displayMetrics.density
         val slack = 1.5f
         for ((dev, pic) in listOf("handheld" to PictureChoice.HANDHELD, "vertical" to PictureChoice.VERTICAL, "vertical with sticks" to PictureChoice.VERTICAL,
@@ -86,8 +89,18 @@ class TourMarkerTest {
                             val badge = firstBadge(card)
                             val titleLeft = win(c.title).left
                             if (badge == null) problems += "$where: the card has no buttons"
-                            else if (abs(win(badge).left - titleLeft) > 2 * d) problems += "$where: the card's buttons start ${(win(badge).left - titleLeft) / d} dp off the title's edge"
+                            if (abs(r.left - titleLeft) > slack) problems += "$where: the card's edge is ${(r.left - titleLeft) / d} dp off the title's edge"
                             if (c.split && abs(r.bottom - panel.bottom) > 2 * d) problems += "$where: the card's foot is ${(r.bottom - panel.bottom) / d} dp off the keyboard window's foot"
+                            if (c.split) {
+                                val line = when (t.cardTop) {
+                                    TutorialActivity.CardTop.WINDOW -> panel.top
+                                    TutorialActivity.CardTop.KEYBOARD -> win(c.keyboard).top
+                                    TutorialActivity.CardTop.ROOM -> null
+                                }
+                                if (line != null && abs(r.top - line) > 2 * d) problems += "$where: the card's top is ${(r.top - line) / d} dp off its line (${t.cardTop})"
+                                if (r.top < panel.top - slack) problems += "$where: the card reaches ${(panel.top - r.top) / d} dp above the keyboard window"
+                                cardTops += "$screen ${t.cardTop}"
+                            }
                         }
                     }
                     // A scrolling area keeps its edge: what scrolls past it never draws over the device or the keyboard
@@ -112,6 +125,7 @@ class TourMarkerTest {
                 }
                 t.finish()
             }
+        cardTops.distinct().forEach { println("CARD-TOP $it") }
         problems.distinct().forEach { println("PROBLEM $it") }
         assertTrue("${problems.distinct().size} problems:\n" + problems.distinct().take(40).joinToString("\n"), problems.isEmpty())
     }

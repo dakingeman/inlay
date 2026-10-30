@@ -1,0 +1,83 @@
+{
+ "name": "tour-card-1.2",
+ "title": "Odin test fixes: step card, badges, D-pad, accent jump, centred controllers",
+ "recorded": "2026-10-30",
+ "base": "acb02d1",
+ "files": [
+  {
+   "path": "app/src/main/assets/devices/controller-ps.svg",
+   "before": "4cefe3ede5909aeb31777f6d1940fdf3d7308d80",
+   "after": "3ba1d634a4e2871c5c8bc344e21a0c7d8fd425ef"
+  },
+  {
+   "path": "app/src/main/assets/devices/controller-switch.svg",
+   "before": "2c016d8a2453957d254d05786ffb859b2d55b94b",
+   "after": "eb90205fc213023c9a340f209c8a5269aa037857"
+  },
+  {
+   "path": "app/src/main/assets/devices/controller-xbox.json",
+   "before": "3080b64b68add3491861a40e1eba02f7a455e58d",
+   "after": "03bb74abc66c0aaa9d3c04b3130280e999406601"
+  },
+  {
+   "path": "app/src/main/assets/devices/controller-xbox.svg",
+   "before": "b33a3ca9d53bd5ccd13e68c6b750e32ce62f28c8",
+   "after": "5580095de92c1c5f9f4ef50eddbb3efcd5fe0b0e"
+  },
+  {
+   "path": "app/src/main/java/com/example/gridime/DevicePicture.kt",
+   "before": "5b383118988a8a1c100d74d8d0215b8de282489a",
+   "after": "463fde84fe115a50db30b1e52661eed0ddcaddce"
+  },
+  {
+   "path": "app/src/main/java/com/example/gridime/KeyGridView.kt",
+   "before": "1e19a94e62cfc3907776a28917371e5e133ac586",
+   "after": "7fae5fbca028f36b21004df216afdcbb3da54456"
+  },
+  {
+   "path": "app/src/main/java/com/example/gridime/SettingsViews.kt",
+   "before": "ec97d7ec0e4b17052092f03ddfff2604b2771f8f",
+   "after": "be8d9123aa089b0adebfe521e56daae0fa8474ea"
+  },
+  {
+   "path": "app/src/main/java/com/example/gridime/TutorialActivity.kt",
+   "before": "84442ca0ba634a22066b2f52df710448630f2ffa",
+   "after": "9a768c93e603c4038d354cf7d6634629a4db4aa9"
+  },
+  {
+   "path": "app/src/test/java/com/example/gridime/AccentHighlightSnapTest.kt",
+   "before": null,
+   "after": "95d34d2d1a50095c9ffa09e71930da3974d04a06"
+  },
+  {
+   "path": "app/src/test/java/com/example/gridime/DevicePictureCentreTest.kt",
+   "before": null,
+   "after": "5c8c4fbc1dad4ffcca7a7c9b9d6f305a7366c9dd"
+  },
+  {
+   "path": "app/src/test/java/com/example/gridime/DpadArmsLightTest.kt",
+   "before": null,
+   "after": "07350682c8e728b8a2828e79c5d8c91c0883a2df"
+  },
+  {
+   "path": "app/src/test/java/com/example/gridime/TourBadgeFitTest.kt",
+   "before": null,
+   "after": "3e8072b636b95f4cbea43618e7fc4ee2dc05da58"
+  },
+  {
+   "path": "app/src/test/java/com/example/gridime/TourFilmExport.kt",
+   "before": "b012a6cf5ebaeefa8c21ff766d94bb8c7465eb9f",
+   "after": "0038417209a067901f647d1f4af2230ff2d94e76"
+  },
+  {
+   "path": "app/src/test/java/com/example/gridime/TourMarkerTest.kt",
+   "before": "b74125e6cadc44996f4f8641ad59092092c3b2b0",
+   "after": "c88842314f2a0791461924c526ed90216b1bebc9"
+  },
+  {
+   "path": "tools/video/brand-kit/kit.js",
+   "before": "1fc19e297a3fb3b4164c40c7b95afc83923614de",
+   "after": "d3965e023278853229d6ac63ae4bc4ea6825c6f2"
+  }
+ ]
+}

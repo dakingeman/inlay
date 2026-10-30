@@ -281,12 +281,37 @@ class KeyGridView(context: Context) : View(context) {
     fun setSuggestions(list: List<String>, prefix: String) {
         if (list == words && prefix == wordPrefix) return
         val before = showWords
+        if (list != words) wordsSince = android.os.SystemClock.uptimeMillis()
         keepStripFocus {
             words = list
             wordPrefix = prefix
         }
         if (before != showWords) fadeStripIn()
         invalidate()
+    }
+
+    /** For the checks: the word suggestions on show now (none while the strip shows the tools). */
+    internal fun wordsForCheck(): List<String> = if (showWords) words else emptyList()
+
+    /**
+     * For the checks ("what you see is what happens", 30 Oct 2026): told whenever the tour or What's new does something
+     * the screen doesn't show, such as a key pressed while the highlight is elsewhere, a word taken that isn't on show,
+     * or one taken before it could be read.
+     */
+    internal var truthCheck: ((String) -> Unit)? = null
+    private var wordsSince = 0L
+    /** A word is taken: it must be on show, and have been for [WORD_SEEN_MS]. */
+    private fun checkWordSeen(word: String) {
+        val report = truthCheck ?: return
+        if (!showWords || word !in words) { report("the word \"$word\" was taken but isn't on show (showing: ${if (showWords) words else "the tools"})"); return }
+        val seen = android.os.SystemClock.uptimeMillis() - wordsSince
+        if (seen < WORD_SEEN_MS) report("the word \"$word\" was taken $seen ms after it showed (at least $WORD_SEEN_MS)")
+    }
+    /** The tour takes the first word with R3 (no highlight on it): it must be the first word on show. */
+    fun noteBestWordTaken(word: String) {
+        if (truthCheck == null || quiet) return
+        if (showWords && words.firstOrNull() != word) truthCheck?.invoke("R3 took \"$word\" but the first word on show is \"${words.firstOrNull()}\"")
+        checkWordSeen(word)
     }
 
     /** The word R3 takes, or null when none is showing. */
@@ -471,6 +496,9 @@ class KeyGridView(context: Context) : View(context) {
     }
 
     private fun closeAccents(keep: Boolean) {
+        accents?.let { a -> if (keep && a.open && !quiet) truthCheck?.let { report ->
+            if (!cellRect(a, a.index).contains(focusRect.centerX(), focusRect.centerY()))
+                report("the accent \"${a.list.getOrNull(a.index)}\" was kept while the highlight showed somewhere else") } }
         val a = accents ?: return
         if (!a.open) return resetAccents()
         if (!keep && a.index != 0) listener?.onReplaceLast(a.list[a.index], a.list[0])
@@ -881,6 +909,8 @@ class KeyGridView(context: Context) : View(context) {
     private fun lerp(a: Float, b: Float, t: Float) = a + (b - a) * t
 
     private companion object {
+        /** The least time a word suggestion is on show before the tour takes it (a reader sees where it came from). */
+        const val WORD_SEEN_MS = 600L
         const val LANGUAGE_FLASH_MS = 1400L
         // TV mode (Android TV design guide: ~3 m viewing distance, 5 % safe area)
         const val TV_WIDTH_DP = 600f          // compact keyboard, centred
@@ -1169,6 +1199,15 @@ class KeyGridView(context: Context) : View(context) {
     fun pressSelected() {
         onDemoInput?.invoke("A", null)
         clampFocus()
+        if (!quiet) truthCheck?.let { report ->
+            val rows = allRows()
+            val key = rows[selRow][selCol]
+            val what = if (key.tool == Tool.WORD) "the word \"${key.label}\"" else "\"${displayLabel(key)}\""
+            // (a highlight waiting to be placed is drawn on its key in the very next frame)
+            if (focusReady && !keyRect(selRow, rows[selRow], selCol).contains(focusRect.centerX(), focusRect.centerY()))
+                report("$what was pressed while the highlight showed somewhere else")
+            if (key.tool == Tool.WORD) checkWordSeen(key.label)
+        }
         press(allRows()[selRow][selCol])
     }
 

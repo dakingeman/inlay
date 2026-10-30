@@ -60,6 +60,7 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
     private lateinit var picture: DevicePictureView
     private lateinit var stage: LinearLayout
     private lateinit var panel: StagePanel
+    private lateinit var keyboardBox: View
     private lateinit var pictureCol: LinearLayout
     private var stageRow: LinearLayout? = null
     /** Small screens: the words and the device beside them. */
@@ -217,7 +218,7 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
 
     /** The highlights of [WhatsNew.VERSION], each acted out like the tour. */
     private val whatsNewPages: List<Page> by lazy {
-        val learns = " It learns the words you use, like names and game titles."
+        val learns = " It learns your words, like names and game titles."
         listOf(
             Page("Word suggestions that learn",
                 "While you type, the words you probably mean show in the top row." + learns +
@@ -569,6 +570,7 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
         val keyboardClip = RoundClipFrame(this, px(KEYBOARD_RADIUS_DP).toFloat()).apply {
             addView(demo, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
         }
+        keyboardBox = keyboardClip
         panel = StagePanel(this, field, keyboardClip, demo, framed = !onTv,
             pad = px(if (short) Design.SPACE_S else PANEL_PAD_DP), gap = px(if (short) Design.SPACE_XS else PANEL_GAP_DP),
             fieldUnit = px(if (short) FIELD_HEIGHT_SHORT_DP else FIELD_HEIGHT_DP)).apply {
@@ -596,6 +598,7 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
             addView(picture, lpMatchWrap())
         }
         panel.loop = loop
+        panel.addOnLayoutChangeListener { _, _, top, _, bottom, _, oldTop, _, oldBottom -> if (bottom - top != oldBottom - oldTop) fitCardToPanel() }
         panel.loopAccent = settings.accent
 
         // The screen's side margin; small screens keep a little less, so the keyboard gets the width
@@ -868,20 +871,39 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
     private val cardBadgeScale get() = if (compactCard) badgeScale else badgeScale * CARD_BADGE
     private val actionSp get() = if (compactCard) bodySp() else Design.TYPE_TITLE
 
+    /** The card's buttons at the card's size. */
+    private fun cardBadges(parts: List<HintPart>) = BadgeLineView(this, parts, settings.buttonStyle, Design.TYPE_CAPTION, SettingsStyle.textSecondary,
+        badgeScale = cardBadgeScale, gapBadgeToBadge = BADGE_GAP, gapBadgeToText = TEXT_GAP)
+
+    /**
+     * THE STEP CARD, laid on the page's grid (Emre, 30 Oct 2026):
+     *  - beside the keyboard (split) the card is the keyboard window's twin: same top line, same foot, same corners, so
+     *    the words column reads as two rows, the sentence beside the device and the card beside the keyboard
+     *  - inside, the same "button, then what it does" line as the button bar at the foot of the screen: the buttons on
+     *    the card's left edge, in line with a held button shared by every step (once, as the card's first line), the
+     *    words straight after them (Emre, 30 Oct 2026: a button floating in a column looked lost); the detail or the
+     *    numbered mini-steps under the words
+     *  - the step sits in one place (top of a block as tall as the page's tallest step), centred in the card's room;
+     *    the progress dots and the next step at the foot
+     *  - the card lies inside its column, never past its edge: nothing can cut it off while a page fades in
+     * When a page's buttons would take more than [CARD_BADGE_COL_MAX] of the card's width, the buttons sit above the
+     * words for every step of that page instead (one rule per page, so the steps never differ).
+     */
     private fun buildCaption(list: List<Pair<String, String>>) {
         val (shared, steps) = stepsOf(list)
+        val pad = px(if (compactCard) Design.SPACE_M else Design.SPACE_L)
+        val padV = px(if (short) Design.SPACE_XS else if (compactCard) Design.SPACE_S else Design.SPACE_L)   // the shortest screens need every dp for the keyboard
+        val cardRoom = (wordsWidthOverride ?: (if (header != null && columnRegular >= 0) wordsWidthFor(pages[page].demo) else null)
+            ?: if (words.width > 0) words.width - words.paddingLeft - words.paddingRight else resources.displayMetrics.widthPixels - 2 * px(Design.SPACE_XXL))
+        val inner = cardRoom - 2 * pad
+        val gap = px(Design.SPACE_M)
+        val colW = if (compactCard) 0 else steps.maxOf { cardBadges(it.buttons).naturalWidth() }
+        val stacked = !compactCard && colW > inner * CARD_BADGE_COL_MAX
+        cardInner = inner; cardStacked = stacked
+
         val content = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        if (shared != null && !compactCard) content.addView(LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            addView(BadgeLineView(this@TutorialActivity, HintText.parse("hold $shared"), settings.buttonStyle, Design.TYPE_CAPTION,
-                SettingsStyle.textSecondary, badgeScale = badgeScale, gapBadgeToBadge = BADGE_GAP, gapBadgeToText = TEXT_GAP))
-            addView(TextView(this@TutorialActivity).apply {
-                text = "and press"; textSize = Design.TYPE_CAPTION; typeface = SettingsStyle.regular; setTextColor(SettingsStyle.textSecondary)
-            }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { marginStart = px(Design.SPACE_S) })
-        }, lpMatchWrap().apply { bottomMargin = px(Design.SPACE_S) })
         val badges = FrameLayout(this)
-        val lead = LinearLayout(this).apply { orientation = if (compactCard) LinearLayout.HORIZONTAL else LinearLayout.VERTICAL; gravity = if (compactCard) Gravity.CENTER_VERTICAL else Gravity.START }
+        val lead = LinearLayout(this).apply { orientation = if (stacked) LinearLayout.VERTICAL else LinearLayout.HORIZONTAL; gravity = if (stacked) Gravity.START else Gravity.CENTER_VERTICAL }
         lead.addView(badges, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT))
         content.addView(lead, lpMatchWrap())
         val action = TextView(this).apply {
@@ -895,8 +917,11 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
             includeFontPadding = false
             rowTexts += this
         }
-        if (compactCard) lead.addView(action, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { marginStart = px(ROW_TEXT_GAP_DP) })
-        else lead.addView(action, lpMatchWrap(topMargin = Design.SPACE_S))
+        when {
+            compactCard -> lead.addView(action, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { marginStart = px(ROW_TEXT_GAP_DP) })
+            stacked -> lead.addView(action, lpMatchWrap(topMargin = Design.SPACE_S))
+            else -> lead.addView(action, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { marginStart = gap })
+        }
         val detail = TextView(this).apply {
             typeface = SettingsStyle.regular; textSize = Design.TYPE_CAPTION; setTextColor(SettingsStyle.textSecondary)
             maxLines = 1; includeFontPadding = false
@@ -920,40 +945,103 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
             addView(pips)
             addView(next, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { marginStart = px(Design.SPACE_M) })
         }
+        // The step's room: the step sits at its top, and the room is centred between the card's first line and its foot
+        val stage = FrameLayout(this).apply { addView(content, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.CENTER_VERTICAL)) }
         val box = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             tag = CARD_TAG
-            // The card: a quiet raised panel, corners like the keyboard window's. Its words line up with the title,
-            // so the card's edge hangs into the margin by its own padding
+            // A quiet raised panel, corners like the keyboard window's
             background = android.graphics.drawable.GradientDrawable().apply {
                 cornerRadius = px(PANEL_RADIUS_DP).toFloat()
                 setColor(Contrast.withAlpha(android.graphics.Color.WHITE, Design.ALPHA_FAINT_LINE))
                 setStroke(max(2, px(1f)), Contrast.withAlpha(android.graphics.Color.WHITE, Design.ALPHA_FAINT_STRONG))
             }
-            val pad = px(if (compactCard) Design.SPACE_M else Design.SPACE_L)
-            val padV = px(if (short) Design.SPACE_XS else if (compactCard) Design.SPACE_S else Design.SPACE_L)   // the shortest screens need every dp for the keyboard
             setPadding(pad, padV, pad, padV)
-            addView(content, lpMatchWrap())
+            if (shared != null && !compactCard) addView(LinearLayout(context).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                addView(badgeLine(HintText.parse("hold $shared")))
+                addView(TextView(context).apply {
+                    text = "and press"; textSize = Design.TYPE_CAPTION; typeface = SettingsStyle.regular; setTextColor(SettingsStyle.textSecondary)
+                }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { marginStart = px(Design.SPACE_S) })
+            }, lpMatchWrap().apply { bottomMargin = px(Design.SPACE_M) })
+            addView(stage, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
             if (!compactCard) addView(foot, lpMatchWrap(topMargin = Design.SPACE_M))
         }
         if (compactCard) { foot.removeView(pips); lead.addView(pips, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { marginStart = px(Design.SPACE_S) }) }
-        rows.addView(box, lpMatchWrap().apply { marginStart = -box.paddingLeft })
+        rows.addView(box, lpMatchWrap())
         val c = Card(content, badges, action, detail, sequence, pips, next, steps)
         card = c
-        allowMarkerMargin()
-        // One height for every step of the page: the tallest step's (so the card never jumps as the steps change, and
-        // the progress row keeps one place). A fixed height, never a stretching spacer: that filled the whole column
-        val room = (wordsWidthOverride ?: (if (header != null && columnRegular >= 0) wordsWidthFor(pages[page].demo) else null)
-            ?: if (words.width > 0) words.width - words.paddingLeft - words.paddingRight else resources.displayMetrics.widthPixels - 2 * px(Design.SPACE_XXL)) - box.paddingRight
+        cardFresh = true
+        // One height for every step of the page: the tallest step's, so the words and the dots never jump as the steps change
         var tallest = 0
         steps.indices.forEach { k ->
             setCaption(k)
-            content.measure(View.MeasureSpec.makeMeasureSpec(room, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED))
+            content.measure(View.MeasureSpec.makeMeasureSpec(inner, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED))
             tallest = maxOf(tallest, content.measuredHeight)
         }
         content.minimumHeight = tallest
         setCaption(0)
+        fitCardToPanel()
     }
+
+    /**
+     * Beside the keyboard the card always shares the keyboard window's foot, and its top sits on a line of the window
+     * too, chosen once per screen so it's the same on every page:
+     *  1. the window's top, when the card fits beside the whole window under every page's words
+     *  2. else the keyboard's top, just under the text box
+     *  3. else as tall as the room under the longest page's words (still on the window's foot)
+     */
+    enum class CardTop { WINDOW, KEYBOARD, ROOM }
+    private var cardRoom = -1
+    internal val cardTop: CardTop get() {
+        val room = cardRoom
+        return when {
+            room < 0 || panel.height <= room -> CardTop.WINDOW
+            keyboardTopInPanel().let { panel.height - it <= room } -> CardTop.KEYBOARD
+            else -> CardTop.ROOM
+        }
+    }
+    private fun keyboardTopInPanel(): Int {
+        var y = 0; var v: View? = keyboardBox
+        while (v != null && v !== panel) { y += v.top; v = v.parent as? View }
+        return y
+    }
+    private fun fitCardToPanel() {
+        if (!split) return
+        val box = cardBox() ?: return
+        if (panel.height <= 0) return
+        val h = when (cardTop) {
+            CardTop.WINDOW -> panel.height
+            CardTop.KEYBOARD -> panel.height - keyboardTopInPanel()
+            CardTop.ROOM -> cardRoom
+        }
+        if (box.minimumHeight != h) { box.minimumHeight = h; box.requestLayout() }
+    }
+
+    /** For the checks: the card's words now, the step the demo is on, and whether the card is fully shown. */
+    internal fun cardForCheck(): Triple<String, String?, Boolean>? {
+        val c = card ?: return null
+        val row = rowLight?.current?.takeIf { it >= 0 } ?: return null
+        val shown = c.content.alpha == 1f && c.content.translationY == 0f && words.alpha == 1f && words.translationX == 0f
+        return Triple(c.action.text.toString().substringBefore(" · "), c.steps.getOrNull(row)?.action, shown)
+    }
+
+    /** For the checks, at any moment: the card's words, the steps of the page on show, and how faded the card's words are. */
+    internal fun cardNowForCheck(): Triple<String, List<String>, Float>? {
+        val c = card ?: return null
+        return Triple(c.action.text.toString().substringBefore(" · "), c.steps.map { it.action }, c.content.alpha)
+    }
+
+    /** The card itself (its outer panel). */
+    private fun cardBox(): View? = rows.findViewWithTag(CARD_TAG)
+
+    /** The card's inside width, and whether its buttons sit above the words (both one per page). */
+    private var cardInner = 0
+    private var cardStacked = false
+
+    /** A new card shows its first step at once: it arrives with the page, never fading in a second time. */
+    private var cardFresh = false
 
     private fun pip(on: Boolean) = android.graphics.drawable.GradientDrawable().apply {
         shape = android.graphics.drawable.GradientDrawable.OVAL
@@ -964,9 +1052,17 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
         val c = card ?: return
         val st = c.steps.getOrNull(i) ?: return
         c.badges.removeAllViews()
-        c.badges.addView(BadgeLineView(this, if (compactCard) st.full else st.buttons, settings.buttonStyle, Design.TYPE_CAPTION, SettingsStyle.textSecondary,
-            badgeScale = cardBadgeScale, gapBadgeToBadge = BADGE_GAP, gapBadgeToText = TEXT_GAP),
-            FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+        c.badges.addView(cardBadges(if (compactCard) st.full else st.buttons),
+            FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.CENTER_VERTICAL or Gravity.START))
+        // The buttons on the card's left edge (in line with a held button above them), the words straight after them;
+        // the detail or the mini-steps under the words, or from the card's edge when their line doesn't fit there
+        if (!compactCard) {
+            val under = if (cardStacked) 0 else cardBadges(st.buttons).naturalWidth() + px(Design.SPACE_M)
+            (c.detail.layoutParams as ViewGroup.MarginLayoutParams).marginStart = under
+            (c.sequence.layoutParams as ViewGroup.MarginLayoutParams).marginStart =
+                if (st.sequence.isEmpty() || sequenceWidth(st.sequence) <= cardInner - under) under else 0
+            c.detail.requestLayout(); c.sequence.requestLayout()
+        }
         // The compact card keeps it to one line: the detail follows the action, quieter, as the row said it
         c.action.text = if (compactCard && st.said != null) android.text.SpannableString("${st.action} · ${st.said}").apply {
             setSpan(android.text.style.ForegroundColorSpan(SettingsStyle.textSecondary), st.action.length, length, 0) } else st.action
@@ -980,6 +1076,15 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
         for (k in 0 until c.pips.childCount) c.pips.getChildAt(k).background = pip(k == i)
         val nxt = c.steps.getOrNull(i + 1)
         c.next.text = nxt?.let { "Next: ${it.action}" }.orEmpty()
+    }
+
+    /** How wide a line of mini-steps is (each one's dot and words, and the gaps between). */
+    private fun sequenceWidth(labels: List<String>): Int {
+        val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        labels.forEachIndexed { k, label -> row.addView(sequenceChip(k, label, true),
+            LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { if (k > 0) marginStart = px(Design.SPACE_M) }) }
+        row.measure(View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED), View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED))
+        return row.measuredWidth
     }
 
     /** One numbered mini-step: a small numbered dot and its words; the one happening now is lit. */
@@ -998,6 +1103,7 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
         }, LinearLayout.LayoutParams(size, size))
         addView(TextView(context).apply {
             text = label; textSize = Design.TYPE_CAPTION; typeface = if (on) SettingsStyle.medium else SettingsStyle.regular
+            maxLines = 1; isSingleLine = true
             setTextColor(if (on) SettingsStyle.textPrimary else SettingsStyle.textSecondary); includeFontPadding = false
         }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { marginStart = px(Design.SPACE_XS) })
     }
@@ -1030,10 +1136,12 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
     private fun lightRow(i: Int) {
         val moving = WhatsNew.motionAllowed()
         caption?.let { c ->
-            if (!moving) { setCaption(i); return }
+            c.content.animate().cancel()
+            if (!moving || cardFresh) { cardFresh = false; c.content.alpha = 1f; c.content.translationY = 0f; setCaption(i); return }
             val lift = px(CAPTION_LIFT_DP).toFloat()
             c.content.animate().cancel()
             c.content.animate().alpha(0f).translationY(-lift).setDuration(Design.MOTION_FADE / 2).setInterpolator(Design.EASE_IN).withEndAction {
+                if (card !== c) return@withEndAction            // the page changed meanwhile: this card is gone
                 setCaption(i)
                 c.content.translationY = lift
                 c.content.animate().alpha(1f).translationY(0f).setDuration(Design.MOTION_FADE).setInterpolator(Design.EASE_OUT).start()
@@ -1116,17 +1224,19 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
     internal fun captionOverflow(): List<String> {
         val c = card ?: return emptyList()
         val box = rows.findViewWithTag<View>(CARD_TAG) ?: return emptyList()
-        val room = box.width - box.paddingLeft - box.paddingRight
-        if (room <= 0) return emptyList()
-        fun lines(t: String, paint: android.text.TextPaint) = android.text.StaticLayout.Builder.obtain(t, 0, t.length, paint, room)
+        val inner = box.width - box.paddingLeft - box.paddingRight
+        if (inner <= 0) return emptyList()
+        // The room each part really has: the words beside the button column, the mini-steps from where they start
+        val room = if (c.action.width > 0) c.action.width else inner
+        val detailRoom = inner - ((c.detail.layoutParams as? ViewGroup.MarginLayoutParams)?.marginStart ?: 0)
+        val seqRoom = inner - ((c.sequence.layoutParams as? ViewGroup.MarginLayoutParams)?.marginStart ?: 0)
+        fun lines(t: String, paint: android.text.TextPaint, w: Int = room) = android.text.StaticLayout.Builder.obtain(t, 0, t.length, paint, w)
             .setBreakStrategy(android.text.Layout.BREAK_STRATEGY_BALANCED).build().lineCount
         return c.steps.mapIndexedNotNull { i, st ->
             when {
                 lines(st.action, android.text.TextPaint(c.action.paint)) > 2 -> "\"${st.action}\" takes more than two lines"
-                st.detail != null && lines(st.detail, android.text.TextPaint(c.detail.paint)) > 1 -> "\"${st.detail}\" takes more than one line"
-                st.sequence.isNotEmpty() && run {
-                    setCaption(i); c.sequence.measure(View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED), View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED))
-                    c.sequence.measuredWidth > room } -> "the steps of \"${st.action}\" don't fit one line"
+                st.detail != null && lines(st.detail, android.text.TextPaint(c.detail.paint), detailRoom) > 1 -> "\"${st.detail}\" takes more than one line"
+                st.sequence.isNotEmpty() && sequenceWidth(st.sequence) > seqRoom -> "the steps of \"${st.action}\" don't fit one line"
                 else -> null
             }
         }.also { setCaption(rowLight?.current?.coerceAtLeast(0) ?: 0) }
@@ -1228,7 +1338,7 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
     /** Upright screens: a page too tall for its room scrolls just far enough that its step card shows whole. */
     private fun cardIntoView() {
         val sv = wordsScroll ?: return
-        val box = card?.content?.parent as? View ?: return
+        val box = cardBox() ?: return
         sv.post {
             var y = 0; var v: View? = box
             while (v != null && v !== sv) { y += v.top; v = v.parent as? View }
@@ -1256,7 +1366,16 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
                 words.measuredHeight - words.paddingTop > room
             }
             splitCaption = tooTall
-            reserveDebug = "room $room at height ${words.height}, caption $tooTall"
+            // The card's height for this screen (one rule for every page, see [CardTop]): the tallest page's sentence
+            // decides how much room is left under the words
+            var textMost = 0
+            pages.filter { it.rows.isNotEmpty() }.forEach { p ->     // pages without steps have no card: their words may take the column
+                title.text = p.title; body.text = p.body; buildRows(emptyList()); rowsPane.visibility = View.GONE
+                words.measure(View.MeasureSpec.makeMeasureSpec(words.width, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED))
+                textMost = maxOf(textMost, words.measuredHeight - words.paddingTop)
+            }
+            cardRoom = words.height - words.paddingTop - textMost - (rows.layoutParams as ViewGroup.MarginLayoutParams).topMargin
+            reserveDebug = "room $room at height ${words.height}, caption $tooTall, card room $cardRoom"
             wordsHeight = words.height
             val p = pages[now]
             title.text = p.title; body.text = p.body; buildRows(p.rows)
@@ -1361,12 +1480,12 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
 
     /** For the checks: the pieces whose placement TourMarkerTest measures. */
     internal class LayoutCheck(val title: View, val words: View, val header: View?, val pictureCol: View, val picture: View, val side: Int,
-                                val panel: View, val controls: View, val split: Boolean)
+                                val panel: View, val controls: View, val split: Boolean, val keyboard: View)
     /** For the checks: the device columns beside the words (small screens), and what the showcase column wanted. */
     internal fun columnsForCheck() = Triple(columnRegular, columnShowcase, if (header != null && !deviceBesideKeyboard) run {
         val content = resources.displayMetrics.widthPixels - 2 * px(Design.SPACE_XL); (content * DEVICE_HEADER_MAX_SHARE).roundToInt() } else 0)
     internal fun layoutForCheck() = LayoutCheck(title, words, header, pictureCol, picture, px(if (short) Design.SPACE_XL else Design.SPACE_XXL),
-        panel, controlBar, split)
+        panel, controlBar, split, keyboardBox)
 
     /** For the checks: each page's own words height on this screen. */
     internal val measuredPages = mutableMapOf<Int, Int>()
@@ -1438,6 +1557,13 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
     // THE KEYBOARD ACTS OUT EACH PAGE (silently: no sounds, no vibration)
     // =====================================================================
     private var typed = ""
+    /** For the checks: report anything the demo does that the screen doesn't show (see [KeyGridView.truthCheck]). */
+    internal fun watchTruth(report: (String) -> Unit) { demo.truthCheck = report }
+    /** For the checks: draws the demo keyboard, as a frame on screen would (the highlight is set up when it's first drawn). */
+    internal fun drawDemoForCheck(c: android.graphics.Canvas) = demo.draw(c)
+    /** For the checks: the demo's text, and the word suggestions over it. */
+    internal val typedForCheck get() = typed
+    internal val wordsForCheck get() = demo.wordsForCheck()
 
     /** What the text box shows: text before the cursor, selected text, text after. */
     private fun showText(before: String, selected: String = "", after: String = "") {
@@ -1664,10 +1790,10 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
     }
 
     /** D-pad steps ([stepMs] each) until [step] says it's there, then a press if [press], then [wait]. */
-    private fun walk(press: Boolean, wait: Long, stepMs: Long = STEP_MS, step: () -> Boolean?) = Act({
+    private fun walk(press: Boolean, wait: Long, stepMs: Long = STEP_MS, pressed: () -> Unit = {}, step: () -> Boolean?) = Act({
         var n = 0
         while (n < MAX_WALK && step() == false) n++
-        if (press) demo.pressSelected()
+        if (press) demo.pressSelected()       // a dry run (timing only): [pressed] changes what shows, so it waits for the real run
         n * stepMs + wait
     }) {
         var walked = 0
@@ -1675,16 +1801,16 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
         val p: () -> Long? = {
             if (arrived) null else when (if (walked >= MAX_WALK) null else step()) {
                 false -> { walked++; stepMs }
-                else -> { arrived = true; if (press) demo.pressSelected(); wait }
+                else -> { arrived = true; if (press) { demo.pressSelected(); pressed() }; wait }
             }
         }
         p
     }
 
-    /** Types [text] key by key. */
+    /** Types [text] key by key; [after] runs the moment each letter is typed (the suggestions follow it, never a beat late). */
     private fun typeActs(text: String, after: (Int) -> Unit = {}) = text.mapIndexed { i, ch ->
-        listOf(walk(press = true, wait = PRESS_MS) { demo.stepTowards(ch.toString()) }, act(0L) { after(i) })
-    }.flatten()
+        walk(press = true, wait = PRESS_MS, pressed = { after(i) }) { demo.stepTowards(ch.toString()) }
+    }
 
     private fun rowWords(row: Int) = shownRows.getOrNull(row)?.first.orEmpty()
     private fun leadMs(row: Int) = (BEAT_LEAD_BASE_MS + rowWords(row).length * BEAT_LEAD_PER_LETTER_MS).coerceIn(BEAT_LEAD_MIN_MS, BEAT_LEAD_MAX_MS)
@@ -1964,7 +2090,7 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
         val t = texts
         val guesses = t.wordOthers + listOf(t.wordGuesses)
         val keys = keysOfRow(row)
-        val take = if ("RS" in keys) listOf(act(0L) { picture.flash("RS", 420); demo.bestWord()?.let { onWord(it) } })
+        val take = if ("RS" in keys) listOf(act(0L) { picture.flash("RS", 420); demo.bestWord()?.let { demo.noteBestWordTaken(it); onWord(it) } })
         else listOf(act(WORD_UP_MS, both = { demo.focusBestWord() }) { picture.flash("Dup", 300) }) +
             (if (another) listOf(act(WORD_UP_MS, both = { demo.moveFocus(1, 0) })) else emptyList()) +
             act(0L) { demo.pressSelected() }
@@ -1972,7 +2098,7 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
             typeActs(t.wordTyped) { i ->
                 wordPrefix = typed.substringAfterLast(' ')
                 demo.setSuggestions(guesses.getOrElse(i) { t.wordGuesses }, wordPrefix)
-            } + take)
+            } + act(WORD_LOOK_MS) {} + take)   // the word it takes is on show first, so you see where it came from
     }
 
     /** Select, copy and paste: the cursor, Select, the selection grows, Select twice for all, then Copy and the clock. */
@@ -2278,6 +2404,8 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
         const val CARD_TAG = "step-card"
         const val CARD_BADGE = 1.35f                 // the card's buttons: this much bigger than a list row's
         const val CARD_BADGE_SHORT = 1.15f
+        const val WORD_LOOK_MS = 1000L               // the word suggestions, complete, on show (about a second) before one is taken
+        const val CARD_BADGE_COL_MAX = 0.4f          // the card's button column at most this share of its width (else the buttons sit above the words)
         const val SEQ_DOT_DP = 18f                   // a mini-step's numbered dot
         const val PIP_GAP_DP = 5f
         const val CAPTION_LIFT_DP = 4f               // the caption rises this far as it changes
