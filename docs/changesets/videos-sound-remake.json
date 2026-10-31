@@ -1,0 +1,378 @@
+{
+ "name": "videos-sound-remake",
+ "title": "Videos remade in the hero look, hero animation, sound packs retuned (31 Oct)",
+ "recorded": "2026-10-31",
+ "base": "HEAD",
+ "files": [
+  {
+   "path": "app/src/main/res/raw/felt_back.wav",
+   "before": "02439d715b30983a66a097ce7f242f07fa02ee39",
+   "after": "7de27ce6f8f635e34cf4d054c68a7c1108180883"
+  },
+  {
+   "path": "app/src/main/res/raw/felt_confirm.wav",
+   "before": "8363d47cffa86f07843119db0eb9778bdf6b2ae1",
+   "after": "565bd452fbff348b1eeea096944ff9a7c639317f"
+  },
+  {
+   "path": "app/src/main/res/raw/felt_delete.wav",
+   "before": "aeb88c83d8b017037ea0fa5b57b5d71b557ddff8",
+   "after": "3b7d132d082a07bf267bc40eb64631a3a345fe38"
+  },
+  {
+   "path": "app/src/main/res/raw/felt_lock.wav",
+   "before": "c06c75b8982f16ed7147ad7794c03f0375e625c8",
+   "after": "2ee49f1473d909829daf5c82ed594a92c1f5eab7"
+  },
+  {
+   "path": "app/src/main/res/raw/felt_move.wav",
+   "before": "28f4087bb7147466db6b1a50c2daf53fc3901358",
+   "after": "50ecf2aeda95d6b2b2c00b998725f4b695ee2d6f"
+  },
+  {
+   "path": "app/src/main/res/raw/felt_off.wav",
+   "before": "40c09fe03a0870167fcc289ccc6597e45c24def0",
+   "after": "66acf64f1179c2260514d07340e8dae1aac3a7e2"
+  },
+  {
+   "path": "app/src/main/res/raw/felt_on.wav",
+   "before": "ac1e4b9badcebdb1ad71223c6acb388e4eeddacb",
+   "after": "4685927211311339eb567dddb2c5c97bc7538db7"
+  },
+  {
+   "path": "app/src/main/res/raw/felt_select_all.wav",
+   "before": "e771ac64ac9d671e9a80830f09d8eaf008845930",
+   "after": "f47e799280e8e954789366348a5e62d13ca1164e"
+  },
+  {
+   "path": "app/src/main/res/raw/felt_space.wav",
+   "before": "0da5848fc20a43f215f787c7049090527ddda9f0",
+   "after": "cd28194bb40fc25134c9ff516caa56a2d4bda48b"
+  },
+  {
+   "path": "app/src/main/res/raw/felt_type.wav",
+   "before": "fb2cc0778f92fb1093349b063613f181f26e371b",
+   "after": "4875ce413fa26cd50041ecc327d52c85354a2c23"
+  },
+  {
+   "path": "app/src/main/res/raw/felt_type1.wav",
+   "before": "63a8cc6945e9d8ea74a741777a37cbf936b9b04a",
+   "after": "c63a0045495dcc3439f7136db9c65984a850a153"
+  },
+  {
+   "path": "app/src/main/res/raw/felt_type2.wav",
+   "before": "fba06daa99147e614f13f84e087bdbe1ef36d32b",
+   "after": "ad2c3434e71d06488de80d3a52009ba5157a3737"
+  },
+  {
+   "path": "app/src/main/res/raw/felt_type3.wav",
+   "before": "776b83795b6bb78f0cbfd05041e1d8e3c4d22600",
+   "after": "b6fa9628c13187f1a57cdb65c079aed10c7d54e3"
+  },
+  {
+   "path": "app/src/main/res/raw/retro_back.wav",
+   "before": "d5556467d6b19fcac8e9f98f55a9aed1661bb3b7",
+   "after": "3d3a4190c0a9784a12a0094f1dd675d56128edcc"
+  },
+  {
+   "path": "app/src/main/res/raw/retro_confirm.wav",
+   "before": "bedbf3aeff98145d6ef2463ede8bb780938f4c83",
+   "after": "029988c66e505249af3a089dc3808e699ea52bda"
+  },
+  {
+   "path": "app/src/main/res/raw/retro_delete.wav",
+   "before": "c83a39865e15441cd1a640240c03d496b1b9fe2f",
+   "after": "a1a0fd323bf7f8b02c6d0086fed6f4e519afe669"
+  },
+  {
+   "path": "app/src/main/res/raw/retro_lock.wav",
+   "before": "0ec3b0aec2ce10b8e9484cde0b9884266a9398e5",
+   "after": "06a929db616d89590dd97c1490dc98651813d8e9"
+  },
+  {
+   "path": "app/src/main/res/raw/retro_move.wav",
+   "before": "6d185345dd4b2b4909d144d61db7db84ca330bb7",
+   "after": "349bdf28375d5bdde4f7a597a8e921588233d305"
+  },
+  {
+   "path": "app/src/main/res/raw/retro_off.wav",
+   "before": "e223654e76cce2ac8327f60476f1634de108e7ea",
+   "after": "2f50b6f241e47492d4d80ae771195f864304b681"
+  },
+  {
+   "path": "app/src/main/res/raw/retro_on.wav",
+   "before": "964af599db30737c1b29b9723911561fef35d125",
+   "after": "47a322736f3539f1a224affd77a7daf3bfb6a5ff"
+  },
+  {
+   "path": "app/src/main/res/raw/retro_select_all.wav",
+   "before": "d4e5613993ff2b0249b447a2d311be3b3f038e19",
+   "after": "237ae1364522110d284a42fe60bbbbb6dfffd460"
+  },
+  {
+   "path": "app/src/main/res/raw/retro_space.wav",
+   "before": "3ca715d4bfb1b3de6b3c6cf854414d3cc307aa26",
+   "after": "81a4d79346a0e39225f79852e106ffe6df606218"
+  },
+  {
+   "path": "app/src/main/res/raw/retro_type.wav",
+   "before": "b658d0e8f28458db04485d621af320df2cc30cd9",
+   "after": "e825e4854745ed7a01cb5b201bdb8be6aea809a1"
+  },
+  {
+   "path": "app/src/main/res/raw/retro_type1.wav",
+   "before": "31b61dc7abe63ed924709c0ce8d66fc6eb38505f",
+   "after": "36218a851720e7b15cefcc2e848a79df8f64117d"
+  },
+  {
+   "path": "app/src/main/res/raw/retro_type2.wav",
+   "before": "47282e300af8a9638faa74052a9bff3d2997b65a",
+   "after": "5d01e449ea0227e63b4128eb59ba6a81d7e609d7"
+  },
+  {
+   "path": "app/src/main/res/raw/retro_type3.wav",
+   "before": "89d86820092cf9354bd374ce1108e51255ee51e2",
+   "after": "30a67d6c63f6abb507e7ee276e8cd746ac33f02e"
+  },
+  {
+   "path": "app/src/main/res/raw/soft_back.wav",
+   "before": "961e9a5c28032564c4158f7e0f0c1fb5bc590a89",
+   "after": "5655ceb3d33379838959ecd62a8d68253c8a3c61"
+  },
+  {
+   "path": "app/src/main/res/raw/soft_confirm.wav",
+   "before": "0713d910e5e9dcf79063a845a474dc5074b5c688",
+   "after": "7daa4ac14942a7ffa54b9fdf775faa36d17c136b"
+  },
+  {
+   "path": "app/src/main/res/raw/soft_delete.wav",
+   "before": "5a3577fd8bbcb5506ed2815759c16468f0ca6768",
+   "after": "5113a81070d664aa5248b3bb3cb483b4d2ed41a7"
+  },
+  {
+   "path": "app/src/main/res/raw/soft_lock.wav",
+   "before": "8b6e1fdd7aca64d503cdf3cc16812f0baff6a1b2",
+   "after": "cac090a75a8dda8ef4e735f42bf7b82d465b43cd"
+  },
+  {
+   "path": "app/src/main/res/raw/soft_move.wav",
+   "before": "86f20ada6c7a8e5759ce9adf428205851e443a0a",
+   "after": "54057398fae3abf69ac5bcf850e74cadee8bed2e"
+  },
+  {
+   "path": "app/src/main/res/raw/soft_off.wav",
+   "before": "5dbbb4eccb6747e816d46cd561f50494c2f28ee5",
+   "after": "944d887543e6334034d7d4ea7068dafeef5ecc9a"
+  },
+  {
+   "path": "app/src/main/res/raw/soft_on.wav",
+   "before": "0fd180ebcf95275a55cd94ca06ddaf72db7c7237",
+   "after": "9d3b7cdec98e5ccfc72db3471c41c5b38a37733e"
+  },
+  {
+   "path": "app/src/main/res/raw/soft_select_all.wav",
+   "before": "d8d039a92305d5580cb63d66261fc8974d4236b1",
+   "after": "37c7b4bc65f00da82ec5a91f5ea5e76537c2628c"
+  },
+  {
+   "path": "app/src/main/res/raw/soft_space.wav",
+   "before": "b6cc9805924682b52d9f6cb1e7030815568f2dba",
+   "after": "3db0bf05ee7bb306c4f94719bf7f7a0dee501349"
+  },
+  {
+   "path": "app/src/main/res/raw/soft_type.wav",
+   "before": "37a2a2a811d01398f2df98cb74fdff8940ebb42f",
+   "after": "727728ad93f750263fa076c617d67c90412f02fc"
+  },
+  {
+   "path": "app/src/main/res/raw/soft_type1.wav",
+   "before": "2719f33435da65699ec372c0e0d0c22bb2b5732b",
+   "after": "d75b0a64063fa8f88bbd5fb16d431bf0d7557f70"
+  },
+  {
+   "path": "app/src/main/res/raw/soft_type2.wav",
+   "before": "77ad411a9a032a1f5c700f81a8f86333c9a92be2",
+   "after": "598abce5449757ee39d5b2574fb1975674c29299"
+  },
+  {
+   "path": "app/src/main/res/raw/soft_type3.wav",
+   "before": "5d1075de02847bd196959e65ce847e9f0b39a4a4",
+   "after": "5e18533831f0b02b853a96a555d2badacf6b2282"
+  },
+  {
+   "path": "app/src/main/res/raw/thock_back.wav",
+   "before": "e3045d4fc5e8c9fb985a4a4be7233fdf65df0fe4",
+   "after": "18e53a4cb400b810ae0e02e66781e30cd2783d51"
+  },
+  {
+   "path": "app/src/main/res/raw/thock_confirm.wav",
+   "before": "11559dfea6e50d30725ef2f0a0823ce267bd1341",
+   "after": "e8e70ef3b007ad5fcb917db8a30453e2d7e24810"
+  },
+  {
+   "path": "app/src/main/res/raw/thock_delete.wav",
+   "before": "e7e7cb5016223dcb8114c42c0bc21e69b7098b60",
+   "after": "836f6ae0b497b2b82768630d717b51c2471ad123"
+  },
+  {
+   "path": "app/src/main/res/raw/thock_lock.wav",
+   "before": "ed274a9a85d1202d54750c9f2b1292a0570007e4",
+   "after": "580c7f537ed8d9aa5edf58cc5b339dc2c6f158f8"
+  },
+  {
+   "path": "app/src/main/res/raw/thock_move.wav",
+   "before": "b65f75714602cb7e6f50b32db2ba0b1eed26662a",
+   "after": "e208aa83117f3706ad8c58acbbf8ebdcef38fee7"
+  },
+  {
+   "path": "app/src/main/res/raw/thock_off.wav",
+   "before": "a71b4a423de81381aa3764460a7a880ec5dd6561",
+   "after": "a0aba1011b0a305e7617e1822f6e7460cdaaff8d"
+  },
+  {
+   "path": "app/src/main/res/raw/thock_on.wav",
+   "before": "3e0273bde85827d4bb6e964d1b987ea3e78dddf5",
+   "after": "dfca307c867bf65e30a38194024ef5874349a809"
+  },
+  {
+   "path": "app/src/main/res/raw/thock_select_all.wav",
+   "before": "a8fad7739a0e5b297efcd273defc309c373b96c8",
+   "after": "1f4c71ca11e5083137780dffd5d51c5208d7e48b"
+  },
+  {
+   "path": "app/src/main/res/raw/thock_space.wav",
+   "before": "69818691c5e5af55d49ce56b76649079c5822720",
+   "after": "96788f2baff48cd11f09e6d54bb0aedc5ee7f452"
+  },
+  {
+   "path": "app/src/main/res/raw/thock_type.wav",
+   "before": "8efa17b50d24da8218b96a6bcf4c28eec77897b1",
+   "after": "f71e0a31e6fe4e8e422c2dfbe4550af45d2409e0"
+  },
+  {
+   "path": "app/src/main/res/raw/thock_type1.wav",
+   "before": "8f7ae2cf6e9b787d9fe2c4642da826f58d84851e",
+   "after": "d4eeb238de72dab9ed0666475ae97e60b963e5ba"
+  },
+  {
+   "path": "app/src/main/res/raw/thock_type2.wav",
+   "before": "ddd3766d8e1023faaa1f6429666d50b8cd20f173",
+   "after": "c29b25956b2dcc8ded23f9c8e3546bdf96373829"
+  },
+  {
+   "path": "app/src/main/res/raw/thock_type3.wav",
+   "before": "3225b48f59aecd6c1d8837678e28e6aa2a407b0f",
+   "after": "155aa9b7262a502c46a2f371d09998a4f1f9de54"
+  },
+  {
+   "path": "app/src/test/java/com/example/gridime/VisualsVideo.kt",
+   "before": "c71ad652bcf9717cf5999343e7cb0684ea9169f0",
+   "after": "aa995f5808003d8beb9092e6616485ca45667f52"
+  },
+  {
+   "path": "docs/brand/SOUND.md",
+   "before": "8eadb3efedb6799206a934275c8fadad083e44f9",
+   "after": "dd3314591c8a3acb50b70da9a22fe5966fbef692"
+  },
+  {
+   "path": "docs/images/teaser.mp4",
+   "before": null,
+   "after": "8f7ba6e2c17c353dc55b1b0cb4ce0e26f01c84b5"
+  },
+  {
+   "path": "docs/images/whats-new-1.2.0.mp4",
+   "before": null,
+   "after": "f78f4bf8b778f49c906b2b300d51b1cc35cfb0bc"
+  },
+  {
+   "path": "docs/visuals-src/VISUAL_SYSTEM.md",
+   "before": "0ba11a2a0c86234eac090f25d4c466ff63fef146",
+   "after": "7a27c2f554064a23e333d7e6b278176b392d25ce"
+  },
+  {
+   "path": "docs/visuals-src/explore/v4-devices.js",
+   "before": null,
+   "after": "78349ec9e5ceb4316379c4838744daa3ccfd93b0"
+  },
+  {
+   "path": "docs/visuals-src/explore/video-v1.html",
+   "before": null,
+   "after": "32849be0d444576cc53f7eb42ff607054ef4efed"
+  },
+  {
+   "path": "docs/visuals-src/explore/video-v2.html",
+   "before": null,
+   "after": "133d387655531afdf899a922f3174f5449666e26"
+  },
+  {
+   "path": "docs/visuals-src/explore/video-v3.html",
+   "before": null,
+   "after": "c0bbc2ded23db346224d8fd2b7d7bc14c859ae06"
+  },
+  {
+   "path": "docs/visuals-src/explore/video-v4.html",
+   "before": null,
+   "after": "4d5b5f59d1cae184136fa99ae7272d86b9640ec9"
+  },
+  {
+   "path": "docs/visuals-src/finish-video.py",
+   "before": "bcfa730d3d46a53ad88c74c8043710618ba978ce",
+   "after": "d9ab081dee86481db14055d0bbf2ecad5efa99e0"
+  },
+  {
+   "path": "docs/visuals-src/hero-devices.py",
+   "before": "00797f00e7d2401f66ed061301176741f095ac08",
+   "after": "6794599f8833281d0731f0fea5c8335a6fdf5349"
+  },
+  {
+   "path": "docs/visuals-src/hero-final.html",
+   "before": "570d7428216a803375d18b03aa6c2b79499c99fe",
+   "after": "12ef9884374a2e5abf6c81e4b8457578c6dd1018"
+  },
+  {
+   "path": "docs/visuals-src/logo-anim.py",
+   "before": null,
+   "after": "6e92bcd469928d429f50fbabb35c50faf7b8fc37"
+  },
+  {
+   "path": "docs/visuals-src/pic-boxes.py",
+   "before": "356006d651410708db7033eb0cef883ac1adffa7",
+   "after": "e124f8b2dc9298b66ebb00448187bf6ea673a9a5"
+  },
+  {
+   "path": "docs/visuals-src/render-video.js",
+   "before": "8d0486668a87657acb479f94bc654da3ae7745fe",
+   "after": "8331c6168da5f1241e6dfee294c9faf27ff6632c"
+  },
+  {
+   "path": "docs/visuals-src/shoot-hero-anim.js",
+   "before": null,
+   "after": "1468d020baead6bc670cab980ec7db833d8a3090"
+  },
+  {
+   "path": "docs/visuals-src/teaser.plan.json",
+   "before": "c43090ef43397b587df3d5a2096d5f169591d406",
+   "after": "9e8da6551d11604da18dd1eb37083935d13cc0a3"
+  },
+  {
+   "path": "docs/visuals-src/video-devices.py",
+   "before": null,
+   "after": "febbaf3df3c339378254f2adb8085d73632297e2"
+  },
+  {
+   "path": "docs/visuals-src/video.html",
+   "before": "407df33f3437c1c52b37c58b0f8fe6ac3da8802b",
+   "after": "c918549d2f4273f4cd43c420480a0fdb85f5cf74"
+  },
+  {
+   "path": "docs/visuals-src/whats-new.plan.json",
+   "before": "ce569f0bfdc487c7c9e26428913523875d56c30f",
+   "after": "f134d75c00e13f113440304acb846dbe88091da3"
+  },
+  {
+   "path": "tools/sounds.py",
+   "before": "1b350ac90726ac79780e10f99554b1b45c92e265",
+   "after": "8691a3924e04d76ee12181bff06045123333accc"
+  }
+ ]
+}

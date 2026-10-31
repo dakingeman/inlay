@@ -1056,11 +1056,11 @@ class BadgeLineView(
     /** How many lines it was drawn on (for checks). */
     val lineCount get() = lines.size
     /**
-     * False if a line doesn't fit the room it got. A line is drawn 1 px in, and its last pixel needs 1 px of room for its
-     * soft edge, so it needs its own width plus 2 px: with just its width (rounded down) the badges' right edges were
-     * cut off in the tour on the Odin (30 Oct 2026). For checks.
+     * False if a line doesn't fit the room it got. A line is drawn 1 dp in and needs 1 dp after it, so it needs its own
+     * width plus 2 dp: with just its width (rounded down) the badges' right edges were cut off in the tour on the Odin
+     * (30 Oct 2026). For checks; BadgeInkTest checks the drawn pixels themselves.
      */
-    val fits get() = lines.all { painter.measureLine(it, text) + 2f <= width }
+    val fits get() = lines.all { painter.measureLine(it, text) + 2 * dp <= width + 0.5f }
 
     override fun onMeasure(widthSpec: Int, heightSpec: Int) {
         val full = painter.measureLine(parts, text) + 2 * dp
@@ -1104,10 +1104,10 @@ class BadgeLineView(
     override fun onDraw(canvas: Canvas) {
         if (lines.size == 1) {
             val w = painter.measureLine(parts, text)
-            painter.drawLine(canvas, parts, if (alignEnd) width - 1f - w else 1f, height / 2f, text)
+            painter.drawLine(canvas, parts, if (alignEnd) width - dp - w else dp, height / 2f, text)   // the 1 dp margin each side the width includes
             return
         }
-        lines.forEachIndexed { i, line -> painter.drawLine(canvas, line, 1f, 2 * dp + rowHeight / 2 + i * rowStep, text) }
+        lines.forEachIndexed { i, line -> painter.drawLine(canvas, line, dp, 2 * dp + rowHeight / 2 + i * rowStep, text) }
     }
 }
 

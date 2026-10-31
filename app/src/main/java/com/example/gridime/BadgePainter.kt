@@ -139,7 +139,10 @@ class BadgePainter(private val dp: Float) {
         ring.color = edge
         ring.strokeWidth = Design.STROKE_HAIRLINE * dp * scale
         canvas.drawRoundRect(box, r, r, fill)
-        if (edged) canvas.drawRoundRect(box, r, r, ring)      // inside a HOLD capsule the capsule's edge is enough
+        // The edge is drawn inside the badge's box (inset by half its width), never across it: drawn on the box line,
+        // half the stroke stuck out, and anything sized to the box cut it off (the video's button names, 31 Oct 2026)
+        val e = ring.strokeWidth / 2f
+        if (edged) canvas.drawRoundRect(box.left + e, box.top + e, box.right - e, box.bottom - e, r - e, r - e, ring)   // inside a HOLD capsule the capsule's edge is enough
 
         if (presses > 1) {
             val p = countPaint().apply { color = Contrast.withAlpha(Design.BADGE_INK, Design.ALPHA_INK_STRONG) }
@@ -289,7 +292,8 @@ class BadgePainter(private val dp: Float) {
             val w = chipWidth(parts, text)
             val box = RectF(x, cy - h / 2f, x + w, cy + h / 2f)
             canvas.drawRoundRect(box, h / 2f, h / 2f, chipFill)
-            canvas.drawRoundRect(box, h / 2f, h / 2f, chipEdge)
+            val e = chipEdge.strokeWidth / 2f                                    // the edge inside the chip, as on every badge
+            canvas.drawRoundRect(box.left + e, box.top + e, box.right - e, box.bottom - e, h / 2f - e, h / 2f - e, chipEdge)
             drawLine(canvas, parts, x + chipPad, cy, text)
             x += w + chipGap
         }

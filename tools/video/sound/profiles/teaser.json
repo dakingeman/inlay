@@ -1,0 +1,75 @@
+{
+ "video": "teaser",
+ "fx_pack": "felt",
+ "note": "A6, approved 31 Oct 2026: rise to a peak across Undo and Accents, momentum, gentle descent, home chord on the end card",
+ "levels": {
+  "hero": 0,
+  "buttons": 1,
+  "words": 2,
+  "holdrt": 2,
+  "copy": 3,
+  "undo": 4,
+  "accents": 4,
+  "devices": 3,
+  "tv": 3,
+  "outro": 2
+ },
+ "curves": {
+  "bed": [
+   [
+    "hero",
+    -5.0
+   ],
+   [
+    "copy",
+    -1.5
+   ],
+   [
+    "undo",
+    0.0
+   ],
+   [
+    "devices",
+    0.0
+   ],
+   [
+    "tv",
+    -1.5
+   ],
+   [
+    "outro",
+    -3.0
+   ]
+  ],
+  "kick": [
+   [
+    "buttons",
+    -10.0
+   ],
+   [
+    "copy",
+    -2.0
+   ],
+   [
+    "undo",
+    0.0
+   ],
+   [
+    "accents",
+    -1.0
+   ],
+   [
+    "devices",
+    -4.0
+   ],
+   [
+    "tv",
+    -7.0
+   ],
+   [
+    "outro",
+    -11.0
+   ]
+  ]
+ }
+}

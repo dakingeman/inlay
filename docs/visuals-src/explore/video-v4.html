@@ -1,0 +1,69 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="../inlay.css">
+<script src="../../../design/tokens.js"></script><script src="../parts.js"></script><script src="../backdrop.js"></script><script src="v4-devices.js"></script>
+<!-- Video round V4 (31 Oct 2026): V3-D (the device with no card) and the rule that places any device in its slot.
+     ?d=controller-xbox | wide-xbox | vertical-xbox | remote -->
+<style>
+.abs{position:absolute}
+.win{border-radius:20px;overflow:hidden;background:#0A0B0D;box-shadow:0 0 0 2px var(--track);box-sizing:border-box}
+.hl{font-size:76px;white-space:nowrap}
+.sl{font-size:32px;margin-top:18px;color:#C9CCD3}
+#slot{position:relative;flex:none;overflow:hidden}
+#slot svg{position:absolute;overflow:visible}
+</style></head><body>
+<div id="c" class="canvas" style="width:1920px;height:1080px"></div>
+<script>
+const q=new URLSearchParams(location.search), D=q.get('d')||'wide-xbox', dev=DEVS[D];
+const BTN=k=>`<img src="../renders/btn-xbox-${k}.png" style="height:32px;vertical-align:-5px;margin:0 2px">`;
+const TITLE='Word suggestions that learn', SUB=`Press ${BTN('R3')} for the first one. Your games come first.`;
+const WINDOW=(ww,text,kb)=>{ const p=Math.round(ww*0.016);
+  return `<div class="win m" style="width:${ww}px;padding:${p}px ${p}px 0">
+   <div class="field" style="height:${Math.round(ww*0.064)}px;font-size:${Math.round(ww*0.027)}px;padding:0 ${Math.round(ww*0.022)}px;white-space:pre">${text}<span class="cur" style="height:${Math.round(ww*0.031)}px"></span></div>
+   <img src="../renders/${kb}" style="width:${ww-2*p}px;margin-top:${Math.round(ww*0.011)}px;display:block"></div>`; };
+// ---- The device slot rule ----------------------------------------------------------------------------------------
+// 0. One scale for all (31 Oct, Emre: no device may stick out): every device is about 200 px tall and its face buttons
+//    about 21-24 px, so they all look the same size whichever one a scene shows.
+// 1. The slot: 460 x 208 px, right of the words; its right edge is the window's right edge, its middle the words' middle.
+// 2. The body: the drawing's ink without the floating shoulder keys (as pic-boxes.py: the biggest run of inked rows).
+// 3. Whole device when it reads: scaled to fit the slot, it must fill at least 60 % of the slot's width and its face
+//    buttons must come out at least 18 px. Otherwise (the tall devices) it is zoomed so a face button is 24 px.
+// 4. Zoomed: the controls (every button, stick and the D-pad in the app's own layout, shoulders left out) sit in the
+//    slot's middle; the view never runs past the body's end (no empty space), and every edge where the body is cut fades
+//    out over 22 % of the slot.
+// 5. Placement: the visible ink is set against the slot's right edge (one line with the window), centred up and down.
+// 6. One scale and position per device for a whole scene, so nothing moves while it types.
+const SW=460, SH=208, FILL=.6, MIN=18, ZOOM=24, FADE=.22;
+const SHOULDERS=['LB','RB','LT','RT'];
+function bodyBox(svgText){ return new Promise(res=>{ const img=new Image(), vb=svgText.match(/viewBox="([^"]+)"/)[1].split(/\s+/).map(Number), S=2;
+  img.onload=()=>{ const cv=document.createElement('canvas'); cv.width=vb[2]*S; cv.height=vb[3]*S; const g=cv.getContext('2d'); g.drawImage(img,0,0,cv.width,cv.height);
+    const a=g.getImageData(0,0,cv.width,cv.height).data, rows=[]; for(let y=0;y<cv.height;y++){ let on=false; for(let x=0;x<cv.width;x++) if(a[(y*cv.width+x)*4+3]>160){on=true;break;} rows.push(on); }
+    let runs=[],y=0; while(y<rows.length){ if(rows[y]){ const s=y; while(y<rows.length&&rows[y]) y++; runs.push([s,y]); } y++; }
+    const [t,b]=runs.reduce((m,r)=>r[1]-r[0]>m[1]-m[0]?r:m); let l=1e9,r=-1; for(let yy=t;yy<b;yy++) for(let x=0;x<cv.width;x++) if(a[(yy*cv.width+x)*4+3]>160){ l=Math.min(l,x); r=Math.max(r,x); }
+    res({vb, l:vb[0]+l/S, t:vb[1]+t/S, r:vb[0]+(r+1)/S, b:vb[1]+b/S}); };
+  img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svgText.replace(/<svg([^>]*?) width="[^"]+" height="[^"]+"/,'<svg$1 width="'+vb[2]*S+'" height="'+vb[3]*S+'"')); }); }
+async function place(){
+  const B=await bodyBox(dev.svg), geo=dev.geo, face=geo.A||geo.OK;
+  const ctl=Object.entries(geo).filter(([k,v])=>k!=='_'&&v&&v.w&&!SHOULDERS.includes(k)).map(([k,v])=>v);
+  const C={l:Math.min(...ctl.map(v=>v.x)),t:Math.min(...ctl.map(v=>v.y)),r:Math.max(...ctl.map(v=>v.x+v.w)),b:Math.max(...ctl.map(v=>v.y+v.h))};
+  const P=4, bw=B.r-B.l, bh=B.b-B.t, kFit=Math.min((SW-2*P)/bw,(SH-2*P)/bh);   // P: room for the outline's own width
+  const whole=bw*kFit>=FILL*SW&&face.w*kFit>=MIN, k=whole?kFit:ZOOM/face.w;
+  // the view (in drawing units): the slot's size; whole = the body, zoomed = around the controls, kept on the body
+  const vw=SW/k, vh=SH/k; let x0, y0;
+  if(whole){ x0=B.r+P/k-vw; y0=(B.t+B.b)/2-vh/2; }
+  else { x0=(C.l+C.r)/2-vw/2; y0=(C.t+C.b)/2-vh/2;
+    if(bw<=vw) x0=B.r+P/k-vw; else x0=Math.max(B.l,Math.min(B.r-vw,x0));
+    if(bh<=vh) y0=(B.t+B.b)/2-vh/2; else y0=Math.max(B.t,Math.min(B.b-vh,y0)); }
+  const cut={top:y0>B.t+.5, bottom:y0+vh<B.b-.5, left:x0>B.l+.5, right:x0+vw<B.r-.5};
+  const slot=document.getElementById('slot'); slot.innerHTML=dev.svg;
+  const s=slot.querySelector('svg'); s.setAttribute('viewBox',`${x0} ${y0} ${vw} ${vh}`); s.setAttribute('width',SW); s.setAttribute('height',SH); s.style.left='0'; s.style.top='0'; s.style.overflow='hidden';
+  const f=FADE*100, mv=`linear-gradient(to bottom,${cut.top?`transparent 0,#000 ${f}%`:'#000 0'},${cut.bottom?`#000 ${100-f}%,transparent 100%`:'#000 100%'})`,
+        mh=`linear-gradient(to right,${cut.left?`transparent 0,#000 ${f}%`:'#000 0'},${cut.right?`#000 ${100-f}%,transparent 100%`:'#000 100%'})`;
+  slot.style.webkitMaskImage=mv+','+mh; slot.style.webkitMaskComposite='source-in'; slot.style.maskImage=mv+','+mh; slot.style.maskComposite='intersect';
+  return {whole, k:+k.toFixed(3), facePx:+(face.w*k).toFixed(1), fill:+(Math.min(bw*k,SW)/SW).toFixed(2), cut:Object.keys(cut).filter(e=>cut[e])};
+}
+const ww=1520;
+document.getElementById('c').innerHTML=COVER_DEFS+`<div class="abs" style="inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center"><div style="width:${ww}px;display:flex;align-items:center;justify-content:space-between">
+   <div class="m"><div class="h1 hl">${TITLE}</div><div class="body sl">${SUB}</div></div><div id="slot" class="m" style="width:${SW}px;height:${SH}px"></div></div><div style="height:56px"></div>${WINDOW(ww,'crimson sk','kb-x-crimson.png')}</div>`;
+document.fonts.ready.then(()=>Promise.all([...document.images].map(i=>i.decode().catch(()=>{})))).then(place).then(rep=>{
+  inlayBackdrop(document.getElementById('c'),'v4',1,{motif:'none'});
+  window.REPORT=rep; document.title='done'; });
+</script></body></html>

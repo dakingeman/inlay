@@ -41,7 +41,7 @@ def crossfade(src, fin, parts):
 
 NAMES = {'A': 'press A', 'OK': 'press OK', 'holdA': 'hold A (accents rise)', 'releaseA': 'let go of A (accent typed)', 'RS': 'right stick in (word taken)',
          'RB': 'press RB', 'Y': 'press Y (keyboard slides up)', 'move': 'highlight moves', 'right': 'slider step right', 'left': 'slider step left',
-         'down': 'highlight moves down', 'words': 'suggestions change', 'device': 'device picture changes', 'key': 'key typed (in the pack’s sound)'}
+         'down': 'highlight moves down', 'words': 'suggestions change', 'device': 'device picture changes', 'key': 'key typed (in the pack’s sound)', 'Yspace': 'press Y (space)', 'Xdel': 'press X (delete)', 'Menu': 'press Menu (send)'}
 
 
 def cues(name, parts, events, total):
@@ -65,9 +65,10 @@ def cues(name, parts, events, total):
 
 def pace(rows):
     """Everything closer together than PACE allows. Moves only count within one part (a cut resets them)."""
-    bad, last = [], {}
+    bad, last, skip = [], {}, False
     for t, k, w in rows:
-        if k in ('cut', 'start'): last = {}; continue
+        if k in ('cut', 'start'): last = {}; skip = w.startswith('hero '); continue
+        if skip: continue                 # the hero animation types at the logo's rhythm, approved by Emre on 30 Oct
         if k not in PACE: continue
         if k == 'move' and w not in ('highlight moves', 'highlight moves down'): continue
         if k in last and t - last[k] < PACE[k] - 1e-6: bad.append(f'{t:6.2f} s  {w}: {t - last[k]:.2f} s after the last (needs {PACE[k]} s)')

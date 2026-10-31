@@ -1,0 +1,238 @@
+{
+ "name": "videos-music-final",
+ "title": "No cut-off badges (app fix + checks), videos re-rendered, music A6 with Felt, adaptive music system",
+ "recorded": "2026-10-31",
+ "base": "HEAD",
+ "files": [
+  {
+   "path": "app/src/main/java/com/example/gridime/BadgePainter.kt",
+   "before": "1e7078c4eb445c8db19e242f7aa63054b2fde7ec",
+   "after": "27020abf2dc355ff443b3b7fd5f8bda8e94a0cdb"
+  },
+  {
+   "path": "app/src/main/java/com/example/gridime/SettingsViews.kt",
+   "before": "be8d9123aa089b0adebfe521e56daae0fa8474ea",
+   "after": "518ac0a7e05901daa713757810e773d57e735f3b"
+  },
+  {
+   "path": "app/src/test/java/com/example/gridime/BadgeInkTest.kt",
+   "before": null,
+   "after": "bd75f550f60cc7e83a61aa57503174eaf9e5b45c"
+  },
+  {
+   "path": "docs/brand/MUSIC.md",
+   "before": null,
+   "after": "8e9c13475af6f8d9cd334eccb2f871c1bfb9d507"
+  },
+  {
+   "path": "docs/images/pack/accents.png",
+   "before": "beab646dc1c06c2104679cabd597840937ad4bf8",
+   "after": "8ea25ca376074121798dff8a4c97a054f5c71022"
+  },
+  {
+   "path": "docs/images/pack/controls.png",
+   "before": "f4cc631d096dd93c161eb96877244b0e79975f45",
+   "after": "7b4bfc9f439c23d088aa913f3ba0eee5b02cfdde"
+  },
+  {
+   "path": "docs/images/pack/editing.png",
+   "before": "57e7454d078f762a563bd34b0f2549dd4f818470",
+   "after": "1fe45a60c24724eba2a3739d14448f79be3c474b"
+  },
+  {
+   "path": "docs/images/pack/hero.png",
+   "before": "6d87bc874bd81877f58a1fc92c439fde1e4d6da9",
+   "after": "b8ac2ed0caa5da810f3af266f38e6b7be565522d"
+  },
+  {
+   "path": "docs/images/pack/hold.png",
+   "before": "123f13d867005a9e851b250d60e4b44ea9640374",
+   "after": "c2cd606f7e0ba62db1738a68cb627d7f488c6942"
+  },
+  {
+   "path": "docs/images/pack/icons.png",
+   "before": "7f8aababc15c9c4bdae3de52a7d88e79487a1d00",
+   "after": "528c894bddf09d4009f628436411a56cf2d35aaa"
+  },
+  {
+   "path": "docs/images/pack/languages.png",
+   "before": "2e467deebaa5b0d095bb80acc4468ef7c73af0d4",
+   "after": "2d07e047339fb6e11a679f15b3e77006061dee38"
+  },
+  {
+   "path": "docs/images/pack/looks.png",
+   "before": "fa2fe88e499f9cc09c6e7320a5bbce6911f18fb4",
+   "after": "ec340cbf5e7ccba2dbfae41a501331aa5b09db87"
+  },
+  {
+   "path": "docs/images/pack/settings.png",
+   "before": "a0115e060ff6b92d2f080c6550b828b2d9bcbb1e",
+   "after": "c54a9dead2199fa1f07bacacf0204dc711fa2059"
+  },
+  {
+   "path": "docs/images/pack/sound-packs.png",
+   "before": "7a8dad4fda7f47330ab8b1af7a660e18731c1b46",
+   "after": "c5ae9bec30c28f094f56bcb01339b7eb85f03440"
+  },
+  {
+   "path": "docs/images/pack/tidy.png",
+   "before": "fb9a54b8c19c39f6eb23edaf3fbd21a62bc1c070",
+   "after": "aea3464d33ce6dc609f2041bfd27eb7c98409e29"
+  },
+  {
+   "path": "docs/images/pack/tour.png",
+   "before": "ca1cf7af5acf2427832b2039dc042d544ed0d9c1",
+   "after": "ca7df3e89ea9fbe774ed3315f5bd08f89e777e84"
+  },
+  {
+   "path": "docs/images/pack/tv-mode.png",
+   "before": "558ce0ab95d33486bee586c204205f534ab4f22c",
+   "after": "42668ab5c3e4a19209556904a362d9c8b7a99be9"
+  },
+  {
+   "path": "docs/images/pack/typing.png",
+   "before": "801e36e11da55cf29f3c561a384cf0eaceea57ec",
+   "after": "62580c146263ff6770ca1142cf86444ed58f1c8c"
+  },
+  {
+   "path": "docs/images/pack/words.png",
+   "before": "cecc95070010521e7a5b227ce1341ec2fb2c25bb",
+   "after": "7888f910639a628e09e9c4e91895b39bd59c5e98"
+  },
+  {
+   "path": "docs/images/social-preview.png",
+   "before": "92c8fae5f8abe8a51a8954b9cf3336d6cc2c0149",
+   "after": "a0a2364de9aea2810b1cd9a671bdf2221a144560"
+  },
+  {
+   "path": "docs/images/teaser.mp4",
+   "before": "8f7ba6e2c17c353dc55b1b0cb4ce0e26f01c84b5",
+   "after": "6fdbb57acfa3a5171ea325f66f5c9b1a955e84fc"
+  },
+  {
+   "path": "docs/images/whats-new-1.2.0.mp4",
+   "before": "f78f4bf8b778f49c906b2b300d51b1cc35cfb0bc",
+   "after": "417b69eda02de4ac7971f8594ca6c881a98731df"
+  },
+  {
+   "path": "docs/visuals-src/VISUAL_SYSTEM.md",
+   "before": "7a27c2f554064a23e333d7e6b278176b392d25ce",
+   "after": "f1c348003d29224284494061aec8deff2213a687"
+  },
+  {
+   "path": "docs/visuals-src/render-video.js",
+   "before": "8331c6168da5f1241e6dfee294c9faf27ff6632c",
+   "after": "14dd5ae04cb1ac6cc615a2a23940d7abfe05b5f8"
+  },
+  {
+   "path": "docs/visuals-src/trim.py",
+   "before": "a2f6bef15ffc5789a6bda477cb5bc70632b4561b",
+   "after": "a23ef8c1fa67e26c541035cfeb1a434b52c8bcb6"
+  },
+  {
+   "path": "docs/visuals-src/video.html",
+   "before": "c918549d2f4273f4cd43c420480a0fdb85f5cf74",
+   "after": "3ce7aa1e08b8ab841fa779af0aec4864f132620c"
+  },
+  {
+   "path": "tools/video/sound/README.md",
+   "before": null,
+   "after": "38322b9488dec10730c37ec360de37a99a3298fd"
+  },
+  {
+   "path": "tools/video/sound/arrange.py",
+   "before": null,
+   "after": "018438121680400eb933bd13e2b37db83305c0f9"
+  },
+  {
+   "path": "tools/video/sound/audit.py",
+   "before": null,
+   "after": "bb784ad8dd6b96ab72c5ca5d8b0fc670ed6b0ea3"
+  },
+  {
+   "path": "tools/video/sound/bloom.py",
+   "before": null,
+   "after": "0a58faa2731b1d648091d44fcf3faece501f7cd5"
+  },
+  {
+   "path": "tools/video/sound/cues.md",
+   "before": null,
+   "after": "741993f9ce7242b827b166e764b3922fd90532e6"
+  },
+  {
+   "path": "tools/video/sound/depth.py",
+   "before": null,
+   "after": "24d4bfe51cd70ff9eab3229c5125feabe138f2f0"
+  },
+  {
+   "path": "tools/video/sound/energy.py",
+   "before": null,
+   "after": "e59dadb9410660d64c3b02f4e1ace13a11cad32c"
+  },
+  {
+   "path": "tools/video/sound/groove2.py",
+   "before": null,
+   "after": "46dba169baccc2f2fff680561bd25771cdb225eb"
+  },
+  {
+   "path": "tools/video/sound/layers.py",
+   "before": null,
+   "after": "c70c1484cf029e29115b137d4504534b54d643a0"
+  },
+  {
+   "path": "tools/video/sound/master.py",
+   "before": null,
+   "after": "f3c0a8061cbe90f25dbf22ac5d706abfca1444a2"
+  },
+  {
+   "path": "tools/video/sound/master6.py",
+   "before": null,
+   "after": "3bfe0253d4499c87f3a1d12b91eb8211ade515db"
+  },
+  {
+   "path": "tools/video/sound/motifdeep.py",
+   "before": null,
+   "after": "259665997278c53302c8189fa62781592d2f760a"
+  },
+  {
+   "path": "tools/video/sound/mux.py",
+   "before": null,
+   "after": "ca9da1f0fa296094cb8aa45ef41cbb7775e5e521"
+  },
+  {
+   "path": "tools/video/sound/profiles/teaser.json",
+   "before": null,
+   "after": "f8028829dce21bf469b892970446ae624cafb62f"
+  },
+  {
+   "path": "tools/video/sound/profiles/whats-new.json",
+   "before": null,
+   "after": "40d19ceb743b849aad4ee0c145567c107f60c97b"
+  },
+  {
+   "path": "tools/video/sound/rubscan.py",
+   "before": null,
+   "after": "79fd49f446febbfcede6b9971eaaff98c8f1c685"
+  },
+  {
+   "path": "tools/video/sound/stems.py",
+   "before": null,
+   "after": "c956e9be5cc464ed475a4eef688080d8f4d5da24"
+  },
+  {
+   "path": "tools/video/sound/stems5.py",
+   "before": null,
+   "after": "644f590c732dcecf9ac892728d0fa10894d96aac"
+  },
+  {
+   "path": "tools/video/sound/stems6.py",
+   "before": null,
+   "after": "91a1db59501b6f3dae9d3c793a7b330f53c9c4d8"
+  },
+  {
+   "path": "tools/video/sound/videosound.py",
+   "before": null,
+   "after": "75610d5c4151d95ee65d710a47717f514a63fe58"
+  }
+ ]
+}

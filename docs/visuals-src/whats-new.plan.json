@@ -1,11 +1,75 @@
-[{"card":"new","ms":2500,"version":"1.2.0","title":"Words, accents, sounds and the device in your hands"},
- {"scene":"words","from":25,"to":195,"title":"Word suggestions that learn","sub":"Games and names you use come first."},
- {"scene":"accents","from":30,"to":165,"title":"Hold A for accents","sub":"Move to the one you want and let go."},
- {"scene":"devices","from":18,"to":218,"title":"Made for what you hold"},
- {"screen":"auto","from":0,"to":90,"title":"Knows your handheld by name","sub":"Automatic recognises the AYN Odin and more."},
- {"screen":"packrow","from":1,"to":261,"title":"Nine sound packs, all remade","sub":"Step through them in Settings → Sound & haptics."},
- {"screen":"colour","from":15,"to":140,"title":"Your own highlight colour","sub":"Colour, Strength and Brightness."},
- {"screen":"tourlook","from":0,"to":90,"title":"The tour follows your colour","sub":"So does What’s new."},
- {"scene":"tv","from":100,"to":262,"title":"TV mode","sub":"A big line you can read from the sofa."},
- {"screen":"settings","from":15,"to":145,"title":"Settings made for the controller","sub":"LB and RB switch tabs. Y shows the keyboard."},
- {"card":"outro","ms":4600}]
+[
+{
+"card": "new",
+"ms": 2500,
+"version": "1.2.0",
+"title": "Words, accents, sounds and the device in your hands"
+},
+{
+"scene": "words",
+"from": 25,
+"to": 195,
+"title": "Word suggestions that learn",
+"sub": "Games and names you use come first."
+},
+{
+"scene": "accents",
+"from": 30,
+"to": 165,
+"title": "Hold {A} for accents",
+"sub": "Move to the one you want and let go."
+},
+{
+"scene": "devices",
+"from": 18,
+"to": 218,
+"title": "Made for what you hold",
+"sub": "Controllers, handhelds and TV remotes."
+},
+{
+"screen": "auto",
+"from": 0,
+"to": 90,
+"title": "Knows your handheld by name",
+"sub": "Automatic recognises the AYN Odin and more."
+},
+{
+"screen": "packrow",
+"from": 1,
+"to": 261,
+"title": "Nine sound packs, all remade",
+"sub": "Step through them in Settings \u2192 Sound & haptics."
+},
+{
+"screen": "colour",
+"from": 15,
+"to": 140,
+"title": "Your own highlight colour",
+"sub": "Colour, Strength and Brightness."
+},
+{
+"screen": "tourlook",
+"from": 0,
+"to": 90,
+"title": "The tour follows your colour",
+"sub": "So does What\u2019s new."
+},
+{
+"scene": "tv",
+"from": 45,
+"to": 262,
+"title": "TV mode",
+"sub": "A big line you can read from the sofa."
+},
+{
+"screen": "settings",
+"from": 15,
+"to": 145,
+"title": "Settings made for the controller",
+"sub": "{L1} and {R1} switch tabs. {Y} shows the keyboard."
+},
+{
+"card": "outro",
+"ms": 7000
+}
+]

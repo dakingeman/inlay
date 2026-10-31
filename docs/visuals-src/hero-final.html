@@ -18,8 +18,8 @@
 const q=new URLSearchParams(location.search), C=+(q.get('c')||1), SCR=q.get('s')||'kb', POL=q.get('polish')!=='0', PW=+(q.get('pw')||0.6);
 const LOGO=h=>`<img src="../brand/inlay-lockup-clear-dark.svg" style="display:block;height:${h}px">`;
 const WINDOW=ww=>{ const p=Math.round(ww*0.016); return `<div class="win" style="width:${ww}px;padding:${p}px ${p}px 0;box-sizing:border-box;background:#0A0B0D">
-   <div class="field" style="height:${Math.round(ww*0.064)}px;font-size:${Math.round(ww*0.027)}px;padding:0 ${Math.round(ww*0.022)}px">Type with your contr<span class="cur" style="height:${Math.round(ww*0.031)}px"></span><span style="color:#9A9DA5;opacity:.62">oller</span></div>
-   <img src="renders/kb-tag.png" style="width:${ww-2*p}px;margin-top:${Math.round(ww*0.011)}px;display:block"></div>`; };
+   <div class="field" id="fld" style="height:${Math.round(ww*0.064)}px;font-size:${Math.round(ww*0.027)}px;padding:0 ${Math.round(ww*0.022)}px;white-space:pre">Type with your contr<span class="cur" style="height:${Math.round(ww*0.031)}px"></span><span style="color:#9A9DA5;opacity:.62">oller</span></div>
+   <img id="kbimg" src="renders/kb-tag.png" style="width:${ww-2*p}px;margin-top:${Math.round(ww*0.011)}px;display:block"></div>`; };
 // The app's own drawings, each in its platform's buttons. vb = viewBox; btn = face-button size in drawing units (from the
 // app's layout files); focus = the drawing point (units) set in the frame's middle. Scale: the face buttons come out
 // nearly the same size, and the line weight with them (PW 0 = same scale for all, 1 = identical buttons).
@@ -72,5 +72,15 @@ document.fonts.ready.then(()=>Promise.all([...document.images].map(i=>i.decode()
   inlayBackdrop(document.getElementById('c'),'l19'+C,0,{motif:'none',grain:true});
   // the backdrop's own fine grain stays behind the content: the logo, the keyboard and the cards are never filtered
   const gr=[...document.querySelectorAll('svg')].find(e=>e.querySelector('#ib-n')); if(gr){ gr.style.zIndex=0; document.querySelectorAll('#c > .abs').forEach(e=>e.style.zIndex=1); }
+  // The animation (shoot-hero-anim.js): each frame sets what's typed, the keyboard as the app drew it, and the cursor.
+  // The rest of "controller" shows faint only while the keyboard offers it (at "contr"), as in the still.
+  const fld=document.getElementById('fld'), curH=fld.querySelector('.cur').style.height;
+  window.setFrame=(t,kbSrc,curOn,ghostOk=true,lit=null)=>new Promise(async res=>{
+    // lit: the button the keyboard is using right now; each device card lights its own version of it
+    if(lit!==null) await Promise.all([...document.querySelectorAll('img[src*="renders/dev3-"]')].map(im=>{ const base=im.getAttribute('src').replace(/-(none|A|X|RS|Dup|Ddown|Dleft|Dright)\.svg$/,'').replace(/\.svg$/,''); const want=`${base}-${lit}.svg`;
+      if(im.getAttribute('src')===want) return null; return new Promise(r=>{ im.onload=r; im.onerror=()=>{console.error('missing '+want);r();}; setTimeout(r,3000); im.src=want; }); })); const esc=x=>x.replace(/&/g,'&amp;').replace(/</g,'&lt;');
+    const ghost=ghostOk&&/contr$/i.test(t)?'<span style="color:#9A9DA5;opacity:.62">oller</span>':'';
+    fld.innerHTML=`${esc(t)}<span class="cur" style="height:${curH};visibility:${curOn?'visible':'hidden'}"></span>${ghost}`;
+    const im=document.getElementById('kbimg'); if(im.getAttribute('src')===kbSrc){res();return;} im.onload=()=>res(); im.src=kbSrc; });
   document.title='done'; });
 </script></body></html>

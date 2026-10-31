@@ -1,4 +1,4 @@
-"""Inlay sound packs (1.2). Makes every file in app/src/main/res/raw/<pack>_<cue>.wav.
+"""Inlay sound packs (1.2; Soft, Thock, Felt and Retro retuned on 31 Oct 2026). Makes every file in app/src/main/res/raw/<pack>_<cue>.wav.
 
 One script for all nine packs, so they share one recipe, one meter and one set of rules
 (see docs/brand/SOUND.md). Run from the project folder:
@@ -92,24 +92,6 @@ def contact(seed, n, f=2500, amt=0.12, ms=0.6):
 def soft_key(seed, weight=1.0, body=(210, 690), click=(1800, 2700), cl=1.0, ms=55, decay=2.6, glint=None):
     return press(seed=seed, thud=weight, thud_f=body, thud_decay=decay, click_f=click, click=cl,
                  glint_f=glint, glint=0.3 if glint else 0, glint_decay=5, ms=ms)
-def SOFT():
-    cues = {
-        'move': press(seed=1, thud=0.12, thud_f=(420, 900), thud_decay=1.2, click_f=(1500, 2200),
-                      click_decay=(1.3, 0.9), air=0.0, ms=24),
-        'type': soft_key(2, 0.9),
-        'space': soft_key(3, 1.3, (190, 600), (1600, 2500), 0.85, decay=3.0),
-        'delete': soft_key(4, 1.1, (200, 620), (1450, 2250), 0.85),
-        'on': soft_key(5, 1.5, (200, 640), (2200, 3300), 1.1, 70, 3.2),
-        'off': soft_key(6, 1.3, (185, 560), (1450, 2150), 0.7, 70, 2.9),
-        'lock': soft_key(7, 1.8, (180, 600), (2100, 3150), 1.1, 90, 3.8, glint=4300),
-        'select_all': soft_key(8, 1.2, (210, 690), (2400, 3500), 1.0, 80, glint=5300),
-        'confirm': press(seed=9, thud=1.5, thud_f=(200, 640), thud_decay=3.3, click_f=(1150, 1850),
-                         click=0.9, click_decay=(2.8, 1.8), ms=80),
-        'back': press(seed=10, thud=1.1, thud_f=(190, 560), click_f=(1250, 1950), click=0.45, air=0.03, ms=55),
-    }
-    takes = [soft_key(30 + i, 0.9, (210 * (1 + 0.012 * (i - 1)), 690),
-                      (1800 * (1 + 0.02 * (i - 1)), 2700 * (1 + 0.02 * (i - 1)))) for i in range(3)]
-    return cues, takes
 
 # ---------------------------------------------------------------- THOCK
 def thock_key(seed, f=420, weight=1.0, top=1700, topamt=0.7, ms=60, dec=6, knockf=2600):
@@ -122,21 +104,6 @@ def thock_key(seed, f=420, weight=1.0, top=1700, topamt=0.7, ms=60, dec=6, knock
                      + 0.25 * np.sin(2 * np.pi * 3 * f * t) * np.exp(-t / 0.003)) * env
     top = f * max(2, round(top / f))
     return hp(lp(body + topamt * bp(e, top, 4) * 4 + 0.3 * lp(e, knockf), 7000), 150)
-def THOCK():
-    cues = {
-        'move': thock_key(1, f=700, weight=0.2, top=2300, topamt=0.7, ms=32, dec=2),
-        'type': thock_key(2),
-        'space': thock_key(3, f=330, weight=1.3, top=1350, dec=8, ms=70),
-        'delete': thock_key(4, f=370, weight=1.1, top=1500),
-        'on': thock_key(5, f=495, weight=1.4, top=1900, dec=8, ms=75),
-        'off': thock_key(6, f=330, weight=1.25, top=1300, topamt=0.55, dec=7, ms=70),
-        'lock': thock_key(7, f=294, weight=1.8, top=1600, topamt=0.75, dec=11, ms=95),
-        'select_all': thock_key(8, f=528, weight=1.1, top=2100, dec=7, ms=70),
-        'confirm': thock_key(9, f=330, weight=1.6, top=1200, topamt=0.6, dec=11, ms=90),
-        'back': thock_key(10, f=294, weight=1.0, top=1100, topamt=0.35, dec=6),
-    }
-    takes = [thock_key(40 + i, f=420 * (1 + 0.015 * (i - 1)), top=1700 * (1 + 0.03 * (i - 1))) for i in range(3)]
-    return cues, takes
 
 # ---------------------------------------------------------------- TACTILE
 def tclick(seed, body=0.35, f=(1250, 2300), dec=(1.4, 0.9), bodyf=700, bdec=2.0, ms=32, amt=1.0):
@@ -190,20 +157,7 @@ def TYPEWRITER():
     takes = [tw_strike(40 + i, bright=1 + 0.03 * (i - 1)) for i in range(3)]
     return cues, takes
 
-# ---------------------------------------------------------------- FELT (night)
-def tap(seed, weight=1.0, f=(160, 520), ms=50, decay=2.4):
-    return press(seed=seed, thud=weight, thud_f=f, thud_decay=decay, click_f=(900, 1300), click=0.18,
-                 click_decay=(1.8, 1.2), air=0.0, ms=ms)
-def FELT():
-    cues = {
-        'move': tap(21, 0.5, f=(260, 720), ms=30, decay=1.2),
-        'type': tap(22), 'space': tap(23, 1.3, f=(150, 470), decay=3.0), 'delete': tap(24, 1.1, f=(150, 500)),
-        'on': tap(25, 1.5, f=(170, 600), ms=60, decay=3.2), 'off': tap(26, 1.3, f=(140, 440), ms=60, decay=2.8),
-        'lock': tap(27, 1.8, f=(130, 480), ms=80, decay=3.8), 'select_all': tap(28, 1.3, f=(180, 620), ms=60),
-        'confirm': tap(29, 1.5, f=(150, 540), ms=70, decay=3.4), 'back': tap(30, 1.0, f=(130, 420), ms=50),
-    }
-    takes = [tap(50 + i, f=(160 * (1 + 0.02 * (i - 1)), 520)) for i in range(3)]
-    return cues, takes
+# ---------------------------------------------------------------- SOFT, THOCK, FELT, RETRO: see the retuned recipes below
 
 # ---------------------------------------------------------------- CHIME (wooden mallet)
 def mallet(f, dec=30, ms=None, seed=1, soft=1.0):
@@ -281,18 +235,6 @@ def blip(f, ms, *, glide=0.0, harm=7, decay=None, click=0.15, seed=1):
     s = sum(np.sin(k * ph) / k for k in range(1, harm + 1, 2)) * rise(t, 1.5) * np.exp(-t / (d / 1000))
     s += click * hp(noise(seed, len(t)), 3000) * np.exp(-t / 0.0006)
     return hp(lp(s, 7000), 140)
-def RETRO():
-    cues = {
-        'move': blip(note("C", 6), 14, harm=3, decay=4, click=0.05),
-        'type': blip(note("C", 5), 26, harm=5, decay=9), 'space': blip(note("G", 4), 34, decay=12),
-        'delete': blip(note("A", 4), 30, glide=-5, decay=10),
-        'on': blip(note("C", 5), 46, glide=7, decay=16), 'off': blip(note("G", 5), 46, glide=-7, decay=16),
-        'lock': blip(note("C", 4), 70, glide=12, harm=9, decay=26),
-        'select_all': blip(note("A", 5), 56, glide=5, decay=20),
-        'confirm': blip(note("G", 4), 70, glide=5, decay=26), 'back': blip(note("C", 5), 50, glide=-12, decay=16),
-    }
-    takes = [blip(note(n, 5), 26, harm=5, decay=9, seed=30 + i) for i, n in enumerate(["D", "G", "A"])]
-    return cues, takes
 
 # ---------------------------------------------------------------- NEW PACKS
 # How to add a pack that's as polished as the rest:
@@ -317,6 +259,76 @@ def TEMPLATE():
         'confirm': key(9, 1.5, 0.65, 80), 'back': key(10, 1.1, 0.65),  # Enter rounder, back softer
     }
     takes = [key(30 + i, 0.9, 1 + 0.02 * (i - 1)) for i in range(3)]   # small timbre changes only
+    return cues, takes
+
+# ---------------------------------------------------------------- the retune: more room between the packs (31 Oct 2026, Emre: yes)
+# Measured on the 1.2 letters: Thock and Felt nearly the same (brightness 1270 vs 1350 Hz, 53 vs 54 % body), Soft the
+# brightest pack of all (about 4 kHz) though it is the gentle default, Retro no brighter than the wooden Chime.
+def SOFT():
+    """Soft, warmer: the same thud, the click a little lower and rounder, almost no air."""
+    def key(seed, weight=1.0, body=(210, 690), click=(1550, 2350), cl=0.85, ms=55, decay=2.8, glint=None):
+        return press(seed=seed, thud=weight, thud_f=body, thud_decay=decay, click_f=click, click=cl,
+                     glint_f=glint, glint=0.25 if glint else 0, glint_decay=5, air=0.03, ms=ms)
+    cues = {
+        'move': press(seed=1, thud=0.14, thud_f=(400, 860), thud_decay=1.2, click_f=(1350, 2000),
+                      click_decay=(1.3, 0.9), air=0.0, ms=24),
+        'type': key(2, 0.95),
+        'space': key(3, 1.3, (190, 600), (1400, 2150), 0.75, decay=3.1),
+        'delete': key(4, 1.1, (200, 620), (1300, 1950), 0.75),
+        'on': key(5, 1.5, (200, 640), (1900, 2850), 0.95, 70, 3.3),
+        'off': key(6, 1.3, (185, 560), (1300, 1900), 0.6, 70, 3.0),
+        'lock': key(7, 1.8, (180, 600), (1850, 2750), 0.95, 90, 3.9, glint=3900),
+        'select_all': key(8, 1.2, (210, 690), (2050, 3050), 0.9, 80, glint=4700),
+        'confirm': press(seed=9, thud=1.5, thud_f=(200, 640), thud_decay=3.4, click_f=(1050, 1700),
+                         click=0.8, click_decay=(2.8, 1.8), air=0.02, ms=80),
+        'back': press(seed=10, thud=1.1, thud_f=(190, 560), click_f=(1150, 1800), click=0.4, air=0.0, ms=55),
+    }
+    takes = [key(30 + i, 0.95, (210 * (1 + 0.012 * (i - 1)), 690),
+                 (1550 * (1 + 0.025 * (i - 1)), 2350 * (1 + 0.025 * (i - 1)))) for i in range(3)]
+    return cues, takes
+
+def THOCK():
+    """Thock, deeper and woodier: the case tok a step lower and a touch longer, so it rings like a hollow wooden key."""
+    k = lambda seed, f, w, top, topamt=0.7, ms=64, dec=7.5: thock_key(seed, f=f, weight=w, top=top, topamt=topamt, ms=ms, dec=dec, knockf=2100)
+    cues = {
+        'move': thock_key(1, f=620, weight=0.2, top=2000, topamt=0.6, ms=32, dec=2, knockf=2100),
+        'type': k(2, 370, 1.0, 1500), 'space': k(3, 294, 1.3, 1200, dec=9.5, ms=76), 'delete': k(4, 330, 1.1, 1320),
+        'on': k(5, 440, 1.4, 1750, dec=9, ms=80), 'off': k(6, 294, 1.25, 1150, 0.55, dec=8.5, ms=76),
+        'lock': k(7, 262, 1.8, 1400, 0.75, dec=12, ms=100), 'select_all': k(8, 495, 1.1, 1900, dec=8, ms=74),
+        'confirm': k(9, 294, 1.6, 1100, 0.6, dec=12, ms=96), 'back': k(10, 262, 1.0, 1000, 0.35),
+    }
+    takes = [k(40 + i, 370 * (1 + 0.015 * (i - 1)), 1.0, 1500 * (1 + 0.03 * (i - 1))) for i in range(3)]
+    return cues, takes
+
+def FELT():
+    """Felt, quieter in colour too: a padded, muffled press with no click to speak of, like typing through a cloth."""
+    def pad(seed, weight=1.0, f=(140, 430), ms=55, decay=2.8):
+        x = press(seed=seed, thud=weight, thud_f=f, thud_decay=decay, click_f=(650, 950), click=0.07,
+                  click_decay=(1.6, 1.1), air=0.0, ms=ms)
+        return lp(x, 1500)
+    cues = {
+        'move': pad(21, 0.45, f=(230, 620), ms=30, decay=1.2),
+        'type': pad(22), 'space': pad(23, 1.3, f=(130, 400), decay=3.3), 'delete': pad(24, 1.1, f=(130, 420)),
+        'on': pad(25, 1.5, f=(150, 520), ms=64, decay=3.4), 'off': pad(26, 1.3, f=(120, 380), ms=64, decay=3.0),
+        'lock': pad(27, 1.8, f=(115, 410), ms=84, decay=4.0), 'select_all': pad(28, 1.3, f=(160, 540), ms=64),
+        'confirm': pad(29, 1.5, f=(130, 460), ms=74, decay=3.6), 'back': pad(30, 1.0, f=(115, 360), ms=55),
+    }
+    takes = [pad(50 + i, f=(140 * (1 + 0.025 * (i - 1)), 430)) for i in range(3)]
+    return cues, takes
+
+def RETRO():
+    """Retro, brighter and squarer: the letters an octave up with more harmonics, like a handheld's menu blips."""
+    b = lambda f, ms, **kw: blip(f, ms, **kw)
+    cues = {
+        'move': b(note("C", 7), 12, harm=3, decay=3.5, click=0.04),
+        'type': b(note("C", 6), 24, harm=9, decay=8), 'space': b(note("G", 5), 32, harm=9, decay=11),
+        'delete': b(note("A", 5), 28, glide=-5, harm=9, decay=9),
+        'on': b(note("C", 6), 44, glide=7, harm=9, decay=15), 'off': b(note("G", 6), 44, glide=-7, harm=9, decay=15),
+        'lock': b(note("C", 6), 70, glide=12, harm=11, decay=26),   # bends up the octave onto C6
+        'select_all': b(note("A", 6), 52, glide=5, harm=9, decay=18),
+        'confirm': b(note("G", 5), 66, glide=5, harm=9, decay=24), 'back': b(note("C", 6), 48, glide=-12, harm=9, decay=15),
+    }
+    takes = [b(note(n, 6), 24, harm=9, decay=8, seed=30 + i) for i, n in enumerate(["D", "G", "A"])]
     return cues, takes
 
 # The packs in Settings order, with their level offset (Felt is the quieter night pack)

@@ -1,9 +1,51 @@
-[{"card":"intro","ms":2800},
- {"scene":"words","from":25,"to":195},
- {"scene":"accents","from":30,"to":165},
- {"scene":"devices","from":18,"to":218},
- {"screen":"packrow","from":1,"to":110},
- {"screen":"colour","from":15,"to":125},
- {"scene":"tv","from":100,"to":262},
- {"screen":"settings","from":15,"to":150},
- {"card":"outro","ms":4600}]
+[
+{
+"hero": "heroanim",
+"from": 1,
+"to": 255
+},
+{
+"scene": "buttons",
+"from": 20,
+"to": 268
+},
+{
+"scene": "words",
+"from": 25,
+"to": 195
+},
+{
+"scene": "holdrt",
+"from": 0,
+"to": 176
+},
+{
+"scene": "copy",
+"from": 15,
+"to": 232
+},
+{
+"scene": "undo",
+"from": 10,
+"to": 183
+},
+{
+"scene": "accents",
+"from": 30,
+"to": 165
+},
+{
+"scene": "devices",
+"from": 18,
+"to": 218
+},
+{
+"scene": "tv",
+"from": 45,
+"to": 262
+},
+{
+"card": "outro",
+"ms": 7000
+}
+]

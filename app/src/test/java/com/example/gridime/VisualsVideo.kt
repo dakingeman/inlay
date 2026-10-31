@@ -47,7 +47,7 @@ class VisualsVideo {
             wordSuggestions = true, holdAccents = true, numberRow = numberRow).prep()
         val kb = KeyGridView(context).apply { applySettings(settings); setField(FieldKind.TEXT); listener = this@Rec }
         val pic = DevicePictureView(context).apply {
-            accent = android.graphics.Color.parseColor("#72D6E8"); maxHeightDp = 300f; tallBoost = false; show(kind, style, sticks)
+            accent = android.graphics.Color.parseColor("#72D6E8"); maxHeightDp = 300f; tallBoost = false; shouldersWhenUsed = true; show(kind, style, sticks)
         }
         init {
             kb.onDemoInput = { key, held ->
@@ -306,6 +306,74 @@ class VisualsVideo {
         until(dels.last() + 0.28)
     }
 
+    /**
+     * The README hero, animated (locked still: docs/visuals-src/hero-final.html, 31 Oct 2026). The tagline is typed the
+     * way you really would: the highlight travels key to key (round the row's edges when that's shorter), A presses each
+     * letter, the space bar takes A too, at the logo animation's rhythm (docs/brand/BRAND.md: 235 ms between letters on
+     * a hand change, 307 ms on the same hand, 144 ms more at a syllable break). The app's own suggestions follow every
+     * letter; at "contr" the row offers controller · control · contract (the still), R3 takes it. The line rests, then X
+     * is held (the app's real hold-to-delete: letters speeding up, then whole words) and the loop starts where it ends.
+     */
+    @Test fun sHeroAnim() = scene("heroanim") {
+        cap = "hero"; tidy = true
+        val lang = Language.ENGLISH
+        var ready = false
+        val suggester = WordSuggester(context, lang) { ready = true }
+        var g = 0; while (!ready && g++ < 200) { Thread.sleep(20); idle(10) }
+        val mine = UserWords(context)
+        val firstAt = mapOf("contr" to listOf("controller", "control", "contract"))
+        var typing = true                                // the hand-set row is only for the way in, never while deleting
+        fun suggest() { prefix = before.substringAfterLast(' '); val low = prefix.lowercase(); kb.setSuggestions(when {
+            prefix.isEmpty() -> emptyList()
+            typing && low in firstAt -> firstAt.getValue(low)
+            else -> suggester.suggest(prefix, 3, mine.matching(lang, low, suggester::knows)) }, prefix) }
+        val frame = 1000L / 30
+        // every button the keyboard reports goes into the frame log too, so the device cards can light the same buttons
+        val toPic = kb.onDemoInput
+        kb.onDemoInput = { key, held -> toPic?.invoke(key, held); mark(when (held) { null -> "in:$key"; true -> "down:$key"; false -> "up:$key" }) }
+        var f = 0
+        fun until(t: Double) { val at = Math.round(t * 30).toInt(); if (at > f) { hold((at - f) * frame); f = at } }
+        fun walkAndPress(t: Double, n: Int, step: () -> Unit, press: () -> Unit) {
+            val at = Math.round(t * 30).toInt()
+            val frames = minOf(n, maxOf(1, at - f - 2))
+            until((at - frames - 1) / 30.0)
+            for (k in 0 until frames) { repeat((n * (k + 1)) / frames - (n * k) / frames) { step() }; mark("move"); hold(frame); f++ }
+            until(t); press()
+        }
+        // where the loop starts and ends: the box empty, the highlight on "r", the keyboard settled
+        show(""); var guard = 0; while (guard++ < 40 && kb.stepTowards("r") == false) { }
+        kb.holdButton("X", true); kb.setSuggestions(listOf("type"), "t"); kb.setSuggestions(emptyList(), ""); kb.holdButton("X", false)
+        idle(300)
+        val left = "qwertasdfgzxcvb"
+        val text = "type with your contr"
+        var t = 0.8; var prev = ' '
+        for ((i, c) in text.withIndex()) {
+            val label = c.toString()
+            if (i > 0) t += when {
+                c == ' ' || prev == ' ' -> 0.307
+                text.substring(0, i).endsWith("con") && c == 't' -> 0.307 + 0.144      // con·troller
+                (prev in left) == (c in left) -> 0.307
+                else -> 0.235 }
+            walkAndPress(t, kb.stepsTo(label, wrap = true), { kb.stepTowards(label, wrap = true) }) { mark(pressName); kb.pressSelected(); suggest(); mark("words") }
+            prev = c
+        }
+        t += 0.9; until(t)                                                              // the row offers it, long enough to read
+        mark("RS"); pic.flash("RS", 400); kb.bestWord()?.let { onWord(it) }
+        t += 2.2; until(t)                                                              // the finished line rests
+        // Hold X, exactly as GridKeyboardService does: one delete, a 320 ms wait, letters from 100 ms speeding up by
+        // 7 ms a time to 50 ms, and from the 20th repeat whole words every 160 ms
+        typing = false
+        kb.holdButton("X", true); mark("X")
+        fun del(n: Int) {
+            before = if (n < 20) before.dropLast(1) else before.trimEnd().let { s -> s.dropLast(s.length - (s.lastIndexOf(' ') + 1)) }
+            suggest(); kb.setPreview(before, sel, after)
+        }
+        del(0); hold(320); f += Math.round(320 * 30 / 1000.0).toInt(); var n = 1
+        while (before.isNotEmpty()) { val ms = if (n < 20) maxOf(50L, 100L - n * 7L) else 160L; del(n); hold(ms); f += Math.round(ms * 30 / 1000.0).toInt(); n++ }
+        kb.holdButton("X", false); kb.setSuggestions(emptyList(), "")
+        hold(360)                                        // under 400 ms: the cursor is still solid, as on the first frame
+    }
+
     /** Hold A on a letter: the accents rise, move to one, let go. */
     @Test fun sAccents() = scene("accents") {
         cap = "accents"; show("viva pi"); hold(800)
@@ -325,21 +393,56 @@ class VisualsVideo {
         hold(1200)
     }
 
+    /**
+     * Every button has a job (teaser, 31 Oct 2026): letters with the D-pad and A, Y for space, X fixing a typo, Menu to send.
+     * Paced for video: presses at least 0.3 s apart.
+     */
+    @Test fun sButtons() = scene("buttons") {
+        cap = "buttons"; show(""); hold(800)
+        type("jet", 110, 320); hold(250)
+        mark("Yspace"); kb.pressShortcut("Y", KeyType.SPACE); hold(500)
+        type("sey", 110, 320); hold(500)
+        mark("Xdel"); kb.pressShortcut("X", KeyType.DELETE); kb.setPreview(before, sel, after); hold(500)
+        type("t", 110, 320); hold(250)
+        mark("Yspace"); kb.pressShortcut("Y", KeyType.SPACE); hold(450)
+        mark("Menu"); kb.pressShortcut("START", KeyType.ENTER); hold(1600)
+    }
+
+    /**
+     * Undo (31 Oct 2026): holding X deletes a whole title by accident (the app's own repeat: slow, then faster, whole
+     * words), then RT + X brings it back. Paced for video.
+     */
+    @Test fun sUndo() = scene("undo") {
+        cap = "undo"; val full = "metal gear solid"; before = full; kb.setPreview(before, "", ""); hold(900)
+        mark("Xhold"); kb.holdButton("X", true)
+        var t = 0; var n = 0
+        while (before.isNotEmpty()) {
+            val word = n >= 9
+            before = if (word) before.trimEnd().let { it.substring(0, (it.lastIndexOf(' ') + 1).coerceAtLeast(0)) } else before.dropLast(1)
+            kb.setPreview(before, "", ""); n++
+            hold(if (n == 1) 320L else if (word) 220L else 110L)
+        }
+        kb.holdButton("X", false); hold(700)
+        kb.holdButton("RT", true); kb.setHeldShift(true); hold(500)
+        mark("undo"); kb.pressShortcut("X", KeyType.EMPTY); before = full; kb.setPreview(before, "", ""); hold(900)
+        kb.holdButton("RT", false); kb.setHeldShift(false); hold(1500)
+    }
+
     /** Select with View, grow with RB, Copy, then the clipboard. */
     @Test fun sCopy() = scene("copy") {
         cap = "copy"
         val words = listOf("conker", " live", " and", " reloaded")
         before = ""; sel = ""; after = words.joinToString(""); hold(900)
         for (i in 1..words.size) {
-            pic.flash(if (i == 1) "SELECT" else "RB", 320)
+            val b = if (i == 1) "SELECT" else "RB"; mark(if (i == 1) "View" else "RBgrow"); pic.flash(b, 320)
             sel = words.take(i).joinToString(""); after = words.drop(i).joinToString(""); kb.setSelecting(true, sel.length); hold(700)
         }
         hold(500)
         var g = 0; while (g++ < 30 && kb.stepToTool(Tool.COPY) == false) hold(170)
-        kb.pressSelected(); kb.setSelecting(false, 0); before = words.joinToString(""); sel = ""; after = ""
+        mark("copy"); kb.pressSelected(); kb.setSelecting(false, 0); before = words.joinToString(""); sel = ""; after = ""
         kb.setClips(listOf(before, "jet set radio future", "github.com/dakingeman/inlay", "ninja gaiden")); hold(800)
         g = 0; while (g++ < 30 && kb.stepToTool(Tool.HISTORY) == false) hold(170)
-        cap = "clips"; kb.pressSelected(); hold(2400)
+        cap = "clips"; mark("clips"); kb.pressSelected(); hold(2400)
     }
 
     /** Tidies up as you type. */

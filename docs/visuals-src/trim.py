@@ -7,7 +7,7 @@ for f in glob.glob(os.path.join(src, '*.png')):
     im = Image.open(f)
     if name.startswith(('pic-', 'dev-', 'icons-pic-', 'badge-')):
         bb = im.getchannel('A').getbbox()
-        pad = 0 if name.startswith('badge-') else 12
+        pad = 2 if name.startswith('badge-') else 12      # badges keep 2 px of clear room all round (31 Oct: nothing may touch an edge)
         bb = (max(0, bb[0] - pad), max(0, bb[1] - pad), min(im.size[0], bb[2] + pad), min(im.size[1], bb[3] + pad))
         im = im.crop(bb)
     im.save(dst)

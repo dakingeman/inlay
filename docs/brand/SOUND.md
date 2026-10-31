@@ -16,7 +16,7 @@ Physical packs sound like real keys and have no notes. Tonal packs play short no
 | **Thock** | Physical | A deep, rounded mechanical key | A hollow case "tok" tuned to a harmonic of the body, plus a muffled bottom-out |
 | **Tactile** | Physical | Dry, crisp switch clicks | A short contact through two small plastic resonances, almost no body |
 | **Typewriter** | Physical | A metal strike; Enter is the carriage-return bell | The Soft recipe with a harder strike and a faint metal glint; the bell is root, octave and double octave only |
-| **Felt** | Physical | Very soft taps for night, 3 dB quieter | The thud only, with a whisper of click |
+| **Felt** | Physical | Very soft taps for night, 3 dB quieter | A padded thud, muffled as if through cloth (low-passed at 1.5 kHz), almost no click |
 | **Chime** | Tonal | Wooden mallet notes, warm and low | A wooden bar: partials at 1×, 4× and 10× (a marimba's tuning), G4–C6 |
 | **Glass** | Tonal | Tiny tuned taps on glass | Pure partials 1×, 2×, 4×; switches bend a fifth or an octave; C5–A6 |
 | **Pop** | Tonal | Round little drops, each on its own note | A sine that settles onto its note in 6–14 ms, with a soft contact click |
@@ -116,3 +116,4 @@ A good new pack has **one clear material or idea** (wood, rubber, water, metal),
 - A bend measured in semitones lands slightly out of tune with pure-ratio notes; bends now settle on the exact scale note.
 - Mastering must remove the DC offset before the fade, or the file ends on a tiny step instead of silence.
 - Emre doesn't need to hear small differences; the checks guarantee the floor, and his ear picks the character.
+- Packs need room between them, measured, not just named (31 Oct 2026): Thock and Felt had nearly the same brightness (1,270 vs 1,350 Hz) and body (53 vs 54 % below 500 Hz), Soft was the brightest pack though it's the gentle default (about 4 kHz), Retro no brighter than the wooden Chime. Retuned: Soft warmer (3.1 kHz), Thock's tok a step lower and longer, Felt padded and dark (1.0 kHz), Retro an octave up with more harmonics (2.9 kHz). Check a new pack's letter brightness and body against the others before shipping it.

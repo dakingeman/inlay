@@ -1,0 +1,52 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="../inlay.css">
+<script src="../../../design/tokens.js"></script><script src="../parts.js"></script><script src="../backdrop.js"></script>
+<!-- Video round V2 (31 Oct 2026): the device in V1-C, zoomed. ?v=A whole · B the side in use · C split, two cards · D split, one card. Round V1: style frames for the remade teaser and What's new, in the locked hero's look.
+     ?v=A one big window, words centred on top · B device card beside the window · C words and device on one line above the window -->
+<style>
+.abs{position:absolute}
+.win{border-radius:20px;overflow:hidden;background:#0A0B0D;box-shadow:0 0 0 2px var(--track);box-sizing:border-box}
+.cardv{position:relative;overflow:hidden;border-radius:20px;background:#14161A}
+.ring{position:absolute;inset:0;border-radius:20px;box-shadow:inset 0 0 0 2px var(--track);pointer-events:none}
+.recess{position:absolute;inset:0;border-radius:20px;box-shadow:inset 0 10px 18px -6px rgba(0,0,0,.75),inset 0 -1px 0 rgba(255,255,255,.05)}
+.hl{font-size:76px;white-space:nowrap}
+.sl{font-size:32px;margin-top:18px;color:#C9CCD3}
+</style></head><body>
+<div id="c" class="canvas" style="width:1920px;height:1080px"></div>
+<script>
+const q=new URLSearchParams(location.search), V=q.get('v')||'A';
+const BTN=k=>`<img src="../renders/btn-xbox-${k}.png" style="height:32px;vertical-align:-5px;margin:0 2px">`;
+const TITLE='Word suggestions that learn', SUB=`Press ${BTN('R3')} for the first one. Your games come first.`;
+// the hero's window: the field and the app's keyboard, every size taken from the window's width
+const WINDOW=(ww,text,kb)=>{ const p=Math.round(ww*0.016);
+  return `<div class="win m" style="width:${ww}px;padding:${p}px ${p}px 0">
+   <div class="field" style="height:${Math.round(ww*0.064)}px;font-size:${Math.round(ww*0.027)}px;padding:0 ${Math.round(ww*0.022)}px;white-space:pre">${text}<span class="cur" style="height:${Math.round(ww*0.031)}px"></span></div>
+   <img src="../renders/${kb}" style="width:${ww-2*p}px;margin-top:${Math.round(ww*0.011)}px;display:block"></div>`; };
+const winH=ww=>{ const p=Math.round(ww*0.016); return p+Math.round(ww*0.064)+Math.round(ww*0.011)+Math.round((ww-2*p)*534/1920); };
+// the device as the app draws it (lit), set into a hero card
+const DEVCARD=(w,h,pic,pw)=>`<div class="cardv m" style="width:${w}px;height:${h}px"><img src="../renders/${pic}" style="position:absolute;width:${pw}px;left:${(w-pw)/2}px;top:${(h-pw*594/1429)/2}px"><div class="recess"></div><div class="ring"></div></div>`;
+const words=(align,w)=>`<div class="m" style="text-align:${align};${w?`width:${w}px`:''}"><div class="h1 hl">${TITLE}</div><div class="body sl">${SUB}</div></div>`;
+let h='';
+// a crop of the app's own drawing (1429 x 594) in a hero card: fx, fy = the source point set in the card's middle, k = scale
+const Z=.58;
+const crop=(w,h,pic,fx,fy,k=Z)=>`<div style="position:absolute;left:0;top:0;width:${w}px;height:${h}px;overflow:hidden"><img src="../renders/${pic}" style="position:absolute;width:${1429*k}px;left:${w/2-fx*k}px;top:${h/2-fy*k}px"></div>`;
+const card=(w,h,inner)=>`<div class="cardv m" style="width:${w}px;height:${h}px;flex:none">${inner}<div class="recess"></div><div class="ring"></div></div>`;
+const ww=1440, CH=240, CW=360;
+let dev='', pic=V==='B'?'pic-words.png':'pic-type.png';
+if(V==='A') dev=`<img class="m" src="../renders/${pic}" style="width:${CW}px;display:block;margin-bottom:6px">`;
+if(V==='B') dev=card(CW,CH,crop(CW,CH,pic,1250,330));
+if(V==='C'){ const cw=(CW-16)/2; dev=`<div style="display:flex;gap:16px">${card(cw,CH,crop(cw,CH,pic,148,330))}${card(cw,CH,crop(cw,CH,pic,1285,330))}</div>`; }
+if(V==='D'){ const hw=CW/2; dev=card(CW,CH,`<div style="position:absolute;left:0;top:0;width:${hw}px;height:${CH}px;overflow:hidden">${crop(hw,CH,pic,148,330)}</div>
+   <div style="position:absolute;left:${hw}px;top:0;width:${hw}px;height:${CH}px;overflow:hidden">${crop(hw,CH,pic,1288,330)}</div>
+   <div style="position:absolute;left:${hw-1}px;top:0;width:2px;height:${CH}px;background:var(--track)"></div>`); }
+h=`<div class="abs" style="inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center"><div style="width:${ww}px;display:flex;align-items:center;justify-content:space-between">
+   ${words('left')}${dev}</div><div style="height:56px"></div>${WINDOW(ww,'crimson sk','kb-x-crimson.png')}</div>`;
+document.getElementById('c').innerHTML=COVER_DEFS+h;
+document.fonts.ready.then(()=>Promise.all([...document.images].map(i=>i.decode().catch(()=>{})))).then(()=>{
+  inlayBackdrop(document.getElementById('c'),'v2'+V,1,{motif:'none'});
+  // measured: every pair of visible pieces and the frame edge
+  const cr=document.getElementById('c').getBoundingClientRect(), B=[...document.querySelectorAll('.m')].map(e=>e.getBoundingClientRect());
+  let gap=1e9; for(let i=0;i<B.length;i++){ const a=B[i]; gap=Math.min(gap,a.left-cr.left,cr.right-a.right,a.top-cr.top,cr.bottom-a.bottom);
+    for(let j=i+1;j<B.length;j++){ const b=B[j]; const dx=Math.max(b.left-a.right,a.left-b.right), dy=Math.max(b.top-a.bottom,a.top-b.bottom); gap=Math.min(gap,Math.max(dx,dy)); } }
+  window.REPORT={smallestGap:Math.round(gap), blocks:B.map(b=>[Math.round(b.left),Math.round(b.top),Math.round(b.right),Math.round(b.bottom)])};
+  document.title='done'; });
+</script></body></html>
