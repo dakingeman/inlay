@@ -147,25 +147,32 @@ Settings → Button guide shows the same list in your controller's own icons, an
 
 ## Questions
 
-**How do I type with a controller on Android?**
+### How do I type with a controller on Android?
+
 Install Inlay, turn it on in **About → Turn on Inlay** and make it your keyboard with **About → Switch keyboard**. From then on, every text box opens Inlay: move with the D-pad or left stick and press A to type. Y is space, X deletes and Start is enter.
 
-**Does it work on my gaming handheld?**
+### Does it work on my gaming handheld?
+
 It's made for them. Automatic recognises handhelds from AYN (Odin), Retroid, Anbernic, AYANEO, GPD and others, including vertical ones, and shows your own buttons. Anything with Android 10 or newer and built-in controls or a connected gamepad works.
 
-**Which controllers work?**
+### Which controllers work?
+
 Anything Android sees as a gamepad: built-in handheld controls, and USB or Bluetooth controllers. Inlay can show Xbox, PlayStation or Nintendo Switch button icons.
 
-**Can I use it on Android TV or Google TV with the remote?**
+### Can I use it on Android TV or Google TV with the remote?
+
 Yes. TV mode turns on by itself: a compact keyboard floating over the app with a big line showing what you type. OK types and Back closes, no controller needed.
 
-**Does it work in my launcher, emulator or game?**
+### Does it work in my launcher, emulator or game?
+
 It works in any app that opens Android's keyboard. A game that draws its own on-screen keyboard instead won't call it.
 
-**Is it safe for passwords?**
+### Is it safe for passwords?
+
 Inlay has no internet permission, so nothing you type can leave your device through it. It never learns words from password, web address or email boxes, and clipboard copies marked as sensitive are never kept.
 
-**Is it really free?**
+### Is it really free?
+
 Yes. No ads, no in-app purchases, no account. The code is open source under GPL-3.0.
 
 ## Tested on
