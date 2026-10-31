@@ -32,9 +32,9 @@ It's a real system keyboard, so it works wherever you type: searching your game 
 
 Free and open source. No ads, no tracking, no internet permission.
 
-<p align="center"><a href="docs/images/teaser.mp4"><img src="docs/images/teaser-poster.png" alt="Watch the one-minute teaser of Inlay, the Android controller keyboard" width="100%"></a></p>
+https://github.com/user-attachments/assets/723c8fae-523f-497d-ab7a-cccda66b2d7c
 
-<p align="center"><a href="docs/images/teaser.mp4"><b>▶ Watch the teaser (1:04, with sound)</b></a> · <a href="docs/images/whats-new-1.2.0.mp4">What's new in 1.2.0 (0:54)</a></p>
+<p align="center"><b>The one-minute teaser</b> (turn the sound on) · <a href="../../releases/tag/v1.2.0">What's new in 1.2.0</a></p>
 <p align="center"><sub>The keyboard, the screens and the devices in these pictures and videos are drawn by the app's own code, and every sound is the app's own.</sub></p>
 
 <br>
