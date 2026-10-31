@@ -1,13 +1,11 @@
+<h1 align="center">Inlay: a keyboard for your game controller on Android</h1>
+
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark) and (prefers-reduced-motion: reduce)" srcset="docs/brand/readme/header-dark-still.png">
-    <source media="(prefers-color-scheme: light) and (prefers-reduced-motion: reduce)" srcset="docs/brand/readme/header-light-still.png">
-    <source media="(prefers-color-scheme: dark)" srcset="docs/brand/readme/header-dark.gif">
-    <img src="docs/brand/readme/header-light.gif" alt="inlay: a keyboard for your controller" width="606">
+    <source media="(prefers-reduced-motion: reduce)" srcset="docs/images/hero-locked.png">
+    <img src="docs/images/hero.gif" alt="Inlay, an Android keyboard you type on with a game controller: the words 'Type with your controller' typed with the D-pad and A button, the right stick taking the suggested word, above a controller, a handheld, a vertical handheld and a TV remote" width="100%">
   </picture>
 </p>
-
-<p align="center"><img src="docs/images/hero.gif" alt="Inlay: type with your controller. The keyboard suggests words, shows hold-RT tips, selects text and works in TV mode, on a controller, a handheld, a vertical handheld and a TV remote"></p>
 
 <p align="center">
   <a href="../../releases/latest"><img src="https://img.shields.io/github/v/release/dakingeman/inlay?style=flat-square&color=2A2C35&labelColor=16171D&label=release" alt="Latest release"></a>
@@ -23,19 +21,21 @@
 </p>
 
 <p align="center">
-  <a href="#install">Install</a> · <a href="#features">Features</a> · <a href="#controls">Controls</a> · <a href="#tested-on">Tested on</a> · <a href="CHANGELOG.md">Changelog</a> · <a href="../../issues/new/choose">Report a problem</a>
+  <a href="#install">Install</a> · <a href="#features">Features</a> · <a href="#controls">Controls</a> · <a href="#questions">Questions</a> · <a href="#tested-on">Tested on</a> · <a href="CHANGELOG.md">Changelog</a> · <a href="../../issues/new/choose">Report a problem</a>
 </p>
 
 <br>
 
-Inlay is a keyboard you drive with the controller, not your thumbs on the glass. Move with the D-pad or stick, press A to type, and never reach for the touchscreen again. It's made for handhelds like the AYN Odin and Retroid Pocket, and works on any Android device with a gamepad connected.
+**Inlay is a free, open-source keyboard for Android that you type on with a game controller.** Move with the D-pad or stick, press A to type, and never reach for the touchscreen. It's made for Android gaming handhelds like the AYN Odin, Retroid Pocket, Anbernic and AYANEO, works on any Android phone or tablet with a gamepad connected, and on Android TV and Google TV with just the remote.
+
+It's a real system keyboard, so it works wherever you type: searching your game library, logging in, Wi-Fi passwords, chats and web addresses. Word suggestions, accents, copy and paste and undo are all on the controller.
 
 Free and open source. No ads, no tracking, no internet permission.
 
-<p align="center"><img src="docs/images/teaser.gif" alt="Inlay in 38 seconds" width="100%"></p>
+<p align="center"><a href="docs/images/teaser.mp4"><img src="docs/images/teaser-poster.png" alt="Watch the one-minute teaser of Inlay, the Android controller keyboard" width="100%"></a></p>
 
-<p align="center"><a href="https://youtu.be/9xe894Hsr6M"><b>▶ Watch the full video (1:22)</b></a> · <a href="docs/images/demo.gif">A real screen recording from my Odin 2 Portal</a></p>
-<p align="center"><sub>The keyboard and the devices in these pictures are drawn by the app's own code.</sub></p>
+<p align="center"><a href="docs/images/teaser.mp4"><b>▶ Watch the teaser (1:04, with sound)</b></a> · <a href="docs/images/whats-new-1.2.0.mp4">What's new in 1.2.0 (0:54)</a></p>
+<p align="center"><sub>The keyboard, the screens and the devices in these pictures and videos are drawn by the app's own code, and every sound is the app's own.</sub></p>
 
 <br>
 
@@ -144,6 +144,29 @@ A one-minute tour opens the first time, and you can replay it any time from **Ab
 Settings → Button guide shows the same list in your controller's own icons, and leaves out anything you've switched off.
 
 </details>
+
+## Questions
+
+**How do I type with a controller on Android?**
+Install Inlay, turn it on in **About → Turn on Inlay** and make it your keyboard with **About → Switch keyboard**. From then on, every text box opens Inlay: move with the D-pad or left stick and press A to type. Y is space, X deletes and Start is enter.
+
+**Does it work on my gaming handheld?**
+It's made for them. Automatic recognises handhelds from AYN (Odin), Retroid, Anbernic, AYANEO, GPD and others, including vertical ones, and shows your own buttons. Anything with Android 10 or newer and built-in controls or a connected gamepad works.
+
+**Which controllers work?**
+Anything Android sees as a gamepad: built-in handheld controls, and USB or Bluetooth controllers. Inlay can show Xbox, PlayStation or Nintendo Switch button icons.
+
+**Can I use it on Android TV or Google TV with the remote?**
+Yes. TV mode turns on by itself: a compact keyboard floating over the app with a big line showing what you type. OK types and Back closes, no controller needed.
+
+**Does it work in my launcher, emulator or game?**
+It works in any app that opens Android's keyboard. A game that draws its own on-screen keyboard instead won't call it.
+
+**Is it safe for passwords?**
+Inlay has no internet permission, so nothing you type can leave your device through it. It never learns words from password, web address or email boxes, and clipboard copies marked as sensitive are never kept.
+
+**Is it really free?**
+Yes. No ads, no in-app purchases, no account. The code is open source under GPL-3.0.
 
 ## Tested on
 

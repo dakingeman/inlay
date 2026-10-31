@@ -22,6 +22,7 @@ The biggest update so far. Inlay now suggests words and learns yours, puts accen
 
 **Sound**
 - **Nine sound packs, all remade.** Soft (still the default), Thock, Tactile, Typewriter and Felt sound like real keys. Chime, Glass, Pop and Retro play notes from one musical scale, so nothing ever clashes. Thock replaces Soft Deep (if you used Soft Deep, you now get Thock), and Glass and Pop are new.
+- **Every pack has its own place.** Soft is a little warmer, Thock's knock a step deeper, Felt padded and muffled like typing through cloth, and Retro brighter, an octave up, so no two packs sound alike.
 - **Every sound was checked** against the same rules: it starts the instant you press, plays once and gets out of the way, never sounds sharp or piercing, and keeps its place on headphones, a handheld speaker and a phone speaker. Caps lock no longer gets quieter than a letter on small speakers.
 - **Four sounds for every letter in every pack**, so fast typing never sounds like a machine gun. Tactile and Chime had only one.
 - **A more even volume slider.** Every step is the same change in loudness, and the default leaves room to go louder.
@@ -67,6 +68,7 @@ The biggest update so far. Inlay now suggests words and learns yours, puts accen
 - Pressing a stick in no longer acts as A in Settings and the tour.
 - Scrolling back to the top of a Settings page shows the first row whole again.
 - Settings rows are never cut off at the edge of the screen; a hidden row glides into view.
+- Button badges are never cut off: their edge is now drawn inside the badge, so nothing that sizes itself to a badge can clip it (it could lose a sliver on its left side).
 - The keyboard preview in Settings slides in as a panel, with no ghost image behind it.
 - Your highlight colour never leaks into a page that should show another.
 
