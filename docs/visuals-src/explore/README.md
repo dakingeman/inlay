@@ -1,0 +1,1 @@
+Exploration from the hero chat (30–31 Oct 2026): every direction tried before the hero was locked (hero-final.html). Kept for reference only; not built, and the pages expect to sit one folder up (move one back to open it).

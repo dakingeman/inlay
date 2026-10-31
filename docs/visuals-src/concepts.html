@@ -1,0 +1,59 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="inlay.css">
+<script src="../../design/tokens.js"></script><script src="parts.js"></script><script src="backdrop.js"></script>
+<!-- Launch round L1: three directions for the README / Reddit set, each shown as a hero and one feature image (30 Oct 2026). -->
+<style>
+.abs{position:absolute}
+.screen{box-shadow:0 0 0 2px var(--track),0 2px 4px rgba(0,0,0,.3),0 24px 60px rgba(0,0,0,.45)!important}
+.win{border-radius:26px;overflow:hidden;box-shadow:0 0 0 2px var(--track),0 2px 4px rgba(0,0,0,.3),0 24px 60px rgba(0,0,0,.45)}
+.win img{display:block;width:100%}
+.A{font-family:A}
+.h{font-family:A;font-weight:700;letter-spacing:-.01em;line-height:1.1;color:var(--paper)}
+.b{font-family:A;color:#C9CCD3;line-height:1.45}
+.teal{color:var(--teal)}
+.chip{display:inline-flex;align-items:center;gap:12px;padding:10px 18px;border-radius:999px;background:rgba(255,255,255,.06);box-shadow:inset 0 0 0 2px rgba(255,255,255,.12);font-family:A;font-size:22px;color:var(--paper)}
+.crop{overflow:hidden;border-radius:22px;background:#000;box-shadow:0 0 0 2px var(--track),0 24px 60px rgba(0,0,0,.45)}
+</style></head><body>
+<div id="c" class="canvas"></div>
+<script>
+const q=new URLSearchParams(location.search), C=q.get('c'), F=q.get('f');
+const W=1600, H=900; Object.assign(document.getElementById('c').style,{width:W+'px',height:H+'px'});
+const LOGO=(h)=>`<img class="m" src="../brand/inlay-lockup-clear-dark.svg" style="display:block;height:${h}px">`;
+let html=COVER_DEFS;
+if(C==='a'){
+  // L1-A Refresh: today's system, the new app and logo, Atkinson for every word, calmer (no tiles)
+  const scr=libScreen({x:680,y:0,w:824,kb:F==='hero'?'renders/kb-suggest.png':'renders/kb-accents.png',kbAspect:1920/534,
+    field:F==='hero'?{before:'knights of the old rep'}:{before:'viva piñ'}});
+  const top=Math.round((H-scr.h)/2); html+=scr.html.replace('top:0px',`top:${top}px`);
+  if(F==='hero') html+=`<div class="abs" style="left:96px;top:96px">${LOGO(56)}</div>`;
+  html+=`<div class="abs" style="left:96px;top:${F==='hero'?190:140}px;width:540px"><div class="h m" style="font-size:${F==='hero'?52:46}px">${F==='hero'?'Type with your <span class="teal">controller</span>':'Hold A for accents'}</div>
+    <div class="b m" style="font-size:22px;margin-top:16px">${F==='hero'?'A free keyboard for Android handhelds, controllers and TV.':'Hold A on a letter and its accents rise into the top row. Move to one and let go.'}</div></div>`;
+  html+=`<img class="abs m pic" src="renders/${F==='hero'?'pic-hero':'pic-accents'}.png" style="left:96px;bottom:${H-top-scr.h}px;width:${F==='hero'?420:500}px">`;
+}
+if(C==='b'){
+  // L1-B The tour itself: every image is a page of the app's own tour / What's new, in a window; the words are the app's
+  const src=F==='hero'?'concept/tour-welcome.png':'concept/wn-accents.png';
+  if(F==='hero'){
+    html+=`<div class="abs" style="left:0;top:64px;width:${W}px;display:flex;flex-direction:column;align-items:center">${LOGO(56)}
+      <div class="h m" style="font-size:52px;margin-top:22px">Type with your <span class="teal">controller</span></div></div>`;
+    html+=`<div class="abs win m" style="left:${(W-1180)/2}px;top:268px;width:1180px;height:588px"><img src="${src}"></div>`;
+  } else html+=`<div class="abs win m" style="left:${(W-1360)/2}px;top:${(H-678)/2}px;width:1360px"><img src="${src}"></div>`;
+}
+if(C==='c'){
+  // L1-C One big moment: the action, close up and huge, one short line, and the button that does it
+  if(F==='hero'){
+    html+=`<div class="abs" style="left:0;top:96px;width:${W}px;display:flex;flex-direction:column;align-items:center">${LOGO(112)}
+      <div class="b m" style="font-size:30px;margin-top:30px">A free keyboard you drive with your controller.</div></div>`;
+    html+=`<div class="abs crop m" style="left:150px;top:430px;width:1300px;height:361px"><img src="renders/kb-suggest.png" style="width:1300px;display:block"></div>`;
+  } else {
+    html+=`<div class="abs" style="left:96px;top:96px;width:520px"><div class="h m" style="font-size:72px">Hold <span class="teal">A</span><br>for accents</div>
+      <div class="b m" style="font-size:26px;margin-top:22px">Move to one and let go.</div></div>`;
+    // close-up: the accent tray and the two rows under it, at 1.6 × the README size
+    // cut in the gap between two key columns, so no key is sliced
+    html+=`<div class="abs crop m" style="left:684px;top:140px;width:820px;height:392px"><img src="renders/kb-accents.png" style="width:1409px;display:block;margin-left:-589px"></div>`;
+    html+=`<img class="abs m pic" src="renders/pic-accents.png" style="left:96px;top:520px;width:420px">`;
+  }
+}
+document.getElementById('c').innerHTML=html;
+document.fonts.ready.then(()=>Promise.all([...document.images].map(i=>i.decode().catch(()=>{})))).then(()=>{
+  inlayBackdrop(document.getElementById('c'), C+F, F==='hero'?0:3, {motif:'none', grain:true}); document.title='done'; });
+</script></body></html>

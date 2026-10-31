@@ -1,0 +1,98 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="inlay.css">
+<script src="../../design/tokens.js"></script><script src="parts.js"></script><script src="backdrop.js"></script>
+<!-- Hero round L15 (31 Oct 2026): back to what worked (the tiled surface, the device row, game titles, the big name over the
+     typing window) and to who it's for (tinkerers who game, emulate and tune every setting). ?c=1..5 -->
+<style>
+.abs{position:absolute}
+.win{border-radius:20px;overflow:hidden;background:#000;box-shadow:0 0 0 2px var(--track),0 2px 4px rgba(0,0,0,.3),0 24px 60px rgba(0,0,0,.45)}
+.win img{display:block}
+.t{font-family:A;color:#C9CCD3;letter-spacing:.005em}
+.h{font-family:A;font-weight:700;color:var(--paper);letter-spacing:-.015em}
+.lab{font-family:A;font-size:17px;color:#8E929B}
+.chip{display:inline-flex;align-items:center;height:40px;padding:0 16px;border-radius:12px;font-family:A;font-size:18px;color:#C9CCD3;box-shadow:inset 0 0 0 2px #2A2D34}
+.chip.on{color:#0B0C0E;background:var(--teal);box-shadow:none}
+.sw{width:36px;height:36px;border-radius:10px;display:inline-block}
+.call{position:absolute;font-family:A;font-size:21px;color:var(--paper);white-space:nowrap}
+.call small{display:block;font-size:16px;color:#8E929B;margin-top:3px}
+</style></head><body>
+<div id="c" class="canvas" style="width:1600px;height:900px"></div>
+<script>
+const q=new URLSearchParams(location.search), C=+q.get('c');
+const LOGO=h=>`<img src="../brand/inlay-lockup-clear-dark.svg" style="display:block;height:${h}px">`;
+const KB=(src,w,ar=1920/534)=>`<div class="win" style="width:${w}px"><img src="renders/${src}" style="width:${w}px;height:${Math.round(w/ar)}px"></div>`;
+function tiles({P,G,x0,y0,skip,lit=[],fade=true}){ let s='';
+  for(let c=Math.floor(-x0/P)-1;c<=Math.ceil((1600-x0)/P);c++) for(let r=Math.floor(-y0/P)-1;r<=Math.ceil((900-y0)/P);r++){
+    const x=x0+c*P, y=y0+r*P; if(skip(x,y,P-G)) continue;
+    const on=lit.some(([a,b])=>a===c&&b===r), d=fade?Math.min(1,Math.hypot((x+P/2-800)/800,(y+P/2-450)/450)):0;
+    s+=on?`<rect x="${x}" y="${y}" width="${P-G}" height="${P-G}" rx="10" fill="#72D6E8"/>`
+         :`<rect x="${x+.5}" y="${y+.5}" width="${P-G-1}" height="${P-G-1}" rx="10" fill="rgba(255,255,255,.04)" stroke="rgba(255,255,255,${(.13*(1-0.55*d)).toFixed(3)})"/>`; }
+  return `<svg class="abs" style="left:0;top:0" width="1600" height="900">${s}</svg>`; }
+const inside=(x,y,w,[l,t,r,b])=>x+w>l&&x<r&&y+w>t&&y<b;
+
+const DEV=[['c-controller-xbox-lit.svg','Controller',523/353],['c-wide-xbox-lit.svg','Handheld',589/243],['c-vsplit-xbox-a.svg','Vertical handheld',321/475],['c-remote-lit.svg','TV remote',148/558]];
+// a typing window: the field, then the keyboard, as in the name-and-window hero
+const WINDOW=(ww,text,ghost,kb='hero-solid.png')=>`<div class="win" style="width:${ww}px;padding:${Math.round(ww*0.016)}px ${Math.round(ww*0.016)}px 0;box-sizing:border-box;background:#0A0B0D">
+   <div class="field" style="height:${Math.round(ww*0.064)}px;font-size:${Math.round(ww*0.027)}px;padding:0 ${Math.round(ww*0.022)}px">${text}<span class="cur" style="height:${Math.round(ww*0.031)}px"></span><span style="color:#9A9DA5;opacity:.62">${ghost}</span></div>
+   <img src="renders/${kb}" style="width:${ww-2*Math.round(ww*0.016)}px;margin-top:${Math.round(ww*0.011)}px;display:block"></div>`;
+let html=COVER_DEFS;
+if(C===1){ // 1A · Tiles with the devices set in: each device sits in its own 2×2 patch of the surface, the keyboard in the middle
+  const W=900, P=W*0.098, G=P*0.16, kx=(1600-W)/2, ky=200, kh=Math.round(W*534/1920);
+  const x0=kx+P*0.02, y0=ky+kh*0.288-P/2;
+  const slots=[1,3,5,7].map((c,i)=>({c,r:4,i}));   // four 2×2 patches in a row under the keyboard, on its own columns
+  const slotBox=s=>[x0+s.c*P-2,y0+s.r*P-2,x0+(s.c+2)*P-G+2,y0+(s.r+2)*P-G+2];
+  const box=[kx-14,ky-14,kx+W+14,ky+kh+14], head=[400,10,1200,150];
+  html+=tiles({P,G,x0,y0,skip:(x,y,w)=>inside(x,y,w,box)||inside(x,y,w,head)||slots.some(s=>inside(x,y,w,slotBox(s)))});
+  slots.forEach(s=>{ const [l,t,r,b]=slotBox(s), [f,n,ar]=DEV[s.i], on=s.i===1, bw=r-l-4, bh=b-t-4;
+    const iw=Math.min(bw*0.72, bh*0.62*ar), ih=iw/ar;
+    html+=`<div class="abs" style="left:${l+2}px;top:${t+2}px;width:${bw}px;height:${bh}px;border-radius:14px;background:${on?'rgba(114,214,232,.10)':'rgba(255,255,255,.04)'};box-shadow:inset 0 0 0 ${on?2:1}px ${on?'#72D6E8':'rgba(255,255,255,.13)'};display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px">
+      <img src="hero-parts/${f}" style="width:${iw}px;height:${ih}px;opacity:${on?1:.5}"><div class="t" style="font-size:15px;${on?'color:var(--paper)':''}">${n}</div></div>`; });
+  html+=`<div class="abs" style="left:${kx}px;top:${ky}px">${KB('kb-l10-i.png',W)}</div>
+    <div class="abs" style="left:0;top:40px;width:1600px;display:flex;justify-content:center">${LOGO(84)}</div>`;
+}
+if(C===2){ // 1B · The logo sits in the surface: the real lockup, scaled so its six keys land exactly on six tiles of the grid
+  // grid: tile = the logo's key (13 units), pitch 17.25 units; lockup coords: symbol origin at (-1281.4,-796.5), 20.1136 per unit
+  const P=76, G=P*4.25/17.25, R=P*3.8/17.25, k=P/(17.25*20.1136), LW=4148*k, LH=1481*k;
+  const c0=4, r0=1, x0=800-P*10.5+G/2, y0=40;                      // the symbol's top-left key sits on tile (c0,r0)
+  const lx=x0+c0*P-(-1281.4+1543)*k, ly=y0+r0*P-(-796.5+1058)*k;
+  const W=1000, kx=(1600-W)/2, ky=y0+5*P+12, kh=Math.round(W*534/1920);
+  const lbox=[lx+(-1281.4+1543)*k-2, ly, lx+LW, ly+LH], box=[kx-14,ky-14,kx+W+14,ky+kh+14];
+  let t=''; for(let c=-2;c<24;c++) for(let r=0;r<12;r++){ const x=x0+c*P, y=y0+r*P; if(x>1600||y>900) continue;
+    if(inside(x,y,P-G,box)||inside(x,y,P-G,[lbox[0],lbox[1]+(-796.5+1058)*k-4,lbox[2],lbox[1]+(-796.5+1058)*k+3*P-G+4])) continue;
+    const d=Math.min(1,Math.hypot((x-800)/800,(y-450)/450));
+    t+=`<rect x="${x+.5}" y="${y+.5}" width="${P-G-1}" height="${P-G-1}" rx="${R}" fill="rgba(255,255,255,.035)" stroke="rgba(255,255,255,${(.12*(1-.6*d)).toFixed(3)})"/>`; }
+  html+=`<svg class="abs" style="left:0;top:0" width="1600" height="900">${t}</svg>
+    <img class="abs" src="../brand/inlay-lockup-clear-dark.svg" style="left:${lx}px;top:${ly}px;width:${LW}px;height:${LH}px">
+    <div class="abs" style="left:${kx}px;top:${ky}px">${KB('kb-l10-i.png',W)}</div>`;
+}
+if(C===3){ // 1C · A quieter surface: only two rings of tiles hug the keyboard and fade, so the keyboard reads as set into a small plate
+  const W=1060, P=W*0.098, G=P*0.16, kx=(1600-W)/2, ky=330, kh=Math.round(W*534/1920);
+  const x0=kx+P*0.02, y0=ky+kh*0.288-P/2; let s='';
+  for(let c=-3;c<13;c++) for(let r=-2;r<6;r++){ const x=x0+c*P, y=y0+r*P; if(inside(x,y,P-G,[kx-14,ky-14,kx+W+14,ky+kh+14])) continue;
+    const dc=Math.max(0,-c-0, c-9), dr=Math.max(0,-r,r-3), ring=Math.max(dc,dr); if(ring>2) continue;
+    const lit=(c===-2&&r===1)||(c===11&&r===2);
+    s+=lit?`<rect x="${x}" y="${y}" width="${P-G}" height="${P-G}" rx="10" fill="#72D6E8"/>`:`<rect x="${x+.5}" y="${y+.5}" width="${P-G-1}" height="${P-G-1}" rx="10" fill="rgba(255,255,255,.04)" stroke="rgba(255,255,255,${ring>1?.06:.13})"/>`; }
+  html+=`<svg class="abs" style="left:0;top:0" width="1600" height="900">${s}</svg><div class="abs" style="left:${kx}px;top:${ky}px">${KB('kb-l10-i.png',W)}</div>
+    <div class="abs" style="left:0;top:64px;width:1600px;display:flex;justify-content:center">${LOGO(100)}</div>`;
+}
+if(C===4){ // 3A · Side by side: the name, line and device row on the left, the typing window on the right
+  html+=`<div class="abs" style="left:120px;top:0;height:900px;display:flex;flex-direction:column;justify-content:center">${LOGO(110)}
+     <div class="t" style="font-size:26px;margin-top:28px">Type with your controller</div>
+     <div style="display:flex;gap:36px;margin-top:64px;align-items:flex-end">${DEV.map(([f,n,ar],i)=>`<div style="display:flex;flex-direction:column;align-items:center;gap:10px;opacity:${i===1?1:.45}"><img src="hero-parts/${f}" style="height:${i===1?62:62}px"><div class="t" style="font-size:15px;${i===1?'color:var(--paper);font-weight:700':''}">${n.replace('Vertical handheld','Vertical')}</div></div>`).join('')}</div></div>
+   <div class="abs" style="left:700px;top:${(900-420)/2}px">${WINDOW(800,'metal gear sol','id')}</div>`;
+}
+if(C===5){ // 3B · The device switcher: the devices as tabs above the window, the way the app's own settings pick a device
+  html+=`<div class="abs" style="left:0;top:60px;width:1600px;display:flex;flex-direction:column;align-items:center">${LOGO(100)}
+    <div style="display:flex;gap:6px;margin-top:40px;padding:6px;border-radius:16px;background:#121418;box-shadow:inset 0 0 0 2px #24272D">${DEV.map(([f,n,ar],i)=>`<div style="display:flex;align-items:center;gap:12px;height:56px;padding:0 20px;border-radius:12px;${i===1?'background:#22252B;box-shadow:inset 0 0 0 2px #72D6E8':''}"><img src="hero-parts/${f}" style="height:30px;opacity:${i===1?1:.55}"><span class="t" style="font-size:18px;${i===1?'color:var(--paper)':''}">${n}</span></div>`).join('')}</div>
+    <div style="margin-top:30px">${WINDOW(880,'metal gear sol','id')}</div></div>`;
+}
+if(C===6){ // 3C · The active device holds the window: the handheld drawn big with the typing on its screen, the others small beside it
+  const D=1100, dh=D*243/589;
+  html+=`<div class="abs" style="left:0;top:56px;width:1600px;display:flex;justify-content:center">${LOGO(96)}</div>
+   <div class="abs" style="left:${(1600-D)/2}px;top:220px;width:${D}px;height:${dh}px"><img src="hero-parts/c-wide-xbox-lit.svg" style="width:${D}px;display:block">
+     <div style="position:absolute;left:${D*0.262}px;top:${dh*0.135}px;width:${D*0.472}px">${WINDOW(D*0.472,'metal gear sol','id')}</div></div>
+   <div class="abs" style="left:0;top:730px;width:1600px;display:flex;justify-content:center;gap:60px">${[0,2,3].map(i=>`<div style="display:flex;flex-direction:column;align-items:center;gap:8px;opacity:.45"><img src="hero-parts/${DEV[i][0]}" style="height:56px"><div class="t" style="font-size:15px">${DEV[i][1]}</div></div>`).join('')}</div>`;
+}
+document.getElementById('c').innerHTML=html;
+document.fonts.ready.then(()=>Promise.all([...document.images].map(i=>i.decode().catch(()=>{})))).then(()=>{
+  inlayBackdrop(document.getElementById('c'),'l16'+C,0,{motif:'none',grain:true}); document.title='done'; });
+</script></body></html>

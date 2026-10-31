@@ -1072,14 +1072,14 @@ class KeyGridView(context: Context) : View(context) {
     }
 
     /** One D-pad step towards the first key of [type] (Shift, ?123). True when it's there, null if there's none. */
-    fun stepToKey(type: KeyType): Boolean? {
+    fun stepToKey(type: KeyType, wrap: Boolean = false): Boolean? {
         val rows = allRows()
         val r = rows.indexOfFirst { row -> row.any { it.type == type } }
         if (r < 0) return null
         val c = rows[r].indexOfFirst { it.type == type }
         clampFocus()
         if (selRow != r) { moveFocus(0, if (r > selRow) 1 else -1); return false }
-        if (selCol != c) { moveFocus(if (c > selCol) 1 else -1, 0); return false }
+        if (selCol != c) { moveFocus(sideways(rows[r].size, c, wrap), 0); return false }
         return true
     }
     private var quiet = false
@@ -1149,7 +1149,7 @@ class KeyGridView(context: Context) : View(context) {
      * Returns true when the highlight is already on it, null if the key isn't on this layer.
      * Used by the tour to type real words.
      */
-    fun stepTowards(label: String): Boolean? {
+    fun stepTowards(label: String, wrap: Boolean = false): Boolean? {
         val rows = allRows()
         var targetRow = -1
         var targetCol = -1
@@ -1163,8 +1163,29 @@ class KeyGridView(context: Context) : View(context) {
         if (targetRow < 0) return null
         clampFocus()
         if (selRow != targetRow) { moveFocus(0, if (targetRow > selRow) 1 else -1); return false }
-        if (selCol != targetCol) { moveFocus(if (targetCol > selCol) 1 else -1, 0); return false }
+        if (selCol != targetCol) { moveFocus(sideways(rows[selRow].size, targetCol, wrap), 0); return false }
         return true
+    }
+
+    /** Left or right towards [targetCol]; with [wrap], whichever way is shorter going round the row's edge. */
+    private fun sideways(size: Int, targetCol: Int, wrap: Boolean): Int {
+        if (!wrap) return if (targetCol > selCol) 1 else -1
+        val right = (targetCol - selCol + size) % size
+        return if (right <= size - right) 1 else -1
+    }
+
+    /** Demos: how many D-pad steps [stepTowards] will take to reach [label] from here (0 = already on it). */
+    internal fun stepsTo(label: String, wrap: Boolean = false): Int = countSteps { stepTowards(label, wrap) }
+
+    /** Demos: how many D-pad steps to the first key of [type] (the Delete key, say). */
+    internal fun stepsToKey(type: KeyType, wrap: Boolean = false): Int = countSteps { stepToKey(type, wrap) }
+
+    private fun countSteps(step: () -> Boolean?): Int {
+        // a dry run: nothing drawn, no device input, and everything put back
+        val r0 = selRow; val c0 = selCol; val p0 = preferredCentre; val q0 = quiet; var n = 0
+        quiet = true
+        try { while (n < 60 && step() == false) n++ } finally { quiet = q0; selRow = r0; selCol = c0; preferredCentre = p0 }
+        return n
     }
 
     /** One D-pad step towards a tool in the top row (Copy, the clipboard clock…). True when it's there. */

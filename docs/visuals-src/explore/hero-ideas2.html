@@ -1,0 +1,86 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="inlay.css">
+<script src="../../design/tokens.js"></script><script src="parts.js"></script><script src="backdrop.js"></script>
+<!-- Hero round L11 (31 Oct 2026): eight more directions, each from one question about what Inlay is. ?c=1..8 -->
+<style>
+.abs{position:absolute}
+.col{position:absolute;left:0;top:0;width:1600px;height:900px;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.win{border-radius:20px;overflow:hidden;background:#000;box-shadow:0 0 0 2px var(--track),0 2px 4px rgba(0,0,0,.3),0 24px 60px rgba(0,0,0,.45)}
+.win img{display:block}
+.t{font-family:A;color:#C9CCD3;letter-spacing:.005em}
+.h{font-family:A;font-weight:700;color:var(--paper);letter-spacing:-.01em}
+.inl{display:inline-flex;align-items:center;gap:.32em}
+.cap{position:absolute;border-radius:14px}
+.ar{font-family:A;font-weight:700;color:#C9CCD3;font-size:30px;line-height:1}
+.line{stroke:#3B3F48;stroke-width:3;fill:none}
+</style></head><body>
+<div id="c" class="canvas" style="width:1600px;height:900px"></div>
+<script>
+const q=new URLSearchParams(location.search), C=+q.get('c');
+const LOGO=h=>`<img src="../brand/inlay-lockup-clear-dark.svg" style="display:block;height:${h}px">`;
+const KB=(src,w,ar=1920/534)=>`<div class="win" style="width:${w}px"><img src="renders/${src}" style="width:${w}px;height:${Math.round(w/ar)}px"></div>`;
+const B=(k,h,st='xbox')=>`<img src="renders/btn-${st}-${k}.png" style="height:${h}px;display:inline-block;vertical-align:middle">`;
+// a keyboard drawn as plain keycaps (no labels unless given): rows of [label, width units]
+const ROWS=[['q','w','e','r','t','y','u','i','o','p'],['a','s','d','f','g','h','j','k','l',"'"],['⇧','z','x','c','v','b','n','m','⌫'],['?123',',','space','.','↵']];
+const WID={'⇧':1.5,'⌫':1.5,'?123':1.5,'space':5,'↵':1.5};
+function caps({x,y,u,gap,style,labels=true,font=0.42}){ let out='';
+  ROWS.forEach((row,r)=>{ let cx=x; const total=row.reduce((s,k)=>s+(WID[k]||1),0); cx=x+(10-total)*u/2*0;
+    row.forEach((k,c)=>{ const w=(WID[k]||1)*u-gap, st=style(k,r,c);
+      out+=`<div class="cap" style="left:${cx}px;top:${y+r*u}px;width:${w}px;height:${u-gap}px;${st.css||''}">${labels&&st.label!==false&&k!=='space'?`<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:A;font-weight:${st.bold?700:500};font-size:${u*font}px;color:${st.ink||'#8E929B'}">${k}</div>`:''}</div>`;
+      cx+=(WID[k]||1)*u; }); }); return out; }
+let html=COVER_DEFS;
+if(C===1){ // Title screen. Q: what does a game show first? Its name and "Press start". Inlay's first screen is the same moment.
+  html+=`<div class="col" style="justify-content:flex-start;padding-top:290px">${LOGO(170)}
+    <div class="t inl" style="font-size:30px;margin-top:70px;color:var(--paper)">Press ${B('A',42)} to type</div></div>
+    <div class="abs" style="left:${(1600-1100)/2}px;top:806px;opacity:.55">${KB('kb-l10-i.png',1100)}</div>`;
+}
+if(C===2){ // The logo is the keyboard. Q: where does the symbol come from? It is six keys and a space bar, lifted out of this keyboard.
+  const u=104, x=(1600-10*u)/2, y=300;
+  const inLogo=(k,r,c)=>(r<2&&c>=4&&c<=6)||k==='space';
+  html+=`<div class="abs" style="left:0;top:680px;width:1600px;display:flex;justify-content:center"><div class="h" style="font-size:56px">inlay</div></div>`;
+  html+=caps({x,y:y-60,u,gap:14,style:(k,r,c)=>inLogo(k,r,c)
+    ? {css:`background:${k==='h'?'var(--teal)':'#F2F3F5'}`,label:false}
+    : {css:'box-shadow:inset 0 0 0 2px #2A2D34',ink:'#3E424B'}});
+  html+=`<div class="abs" style="left:0;top:128px;width:1600px;display:flex;justify-content:center"><div class="t" style="font-size:26px">Type with your controller</div></div>`;
+}
+if(C===3){ // The frame is the handheld. Q: what tells you "handheld" without drawing one? Two sticks, a D-pad and four buttons at the edges of the picture.
+  html+=`<svg class="abs" style="left:0;top:0" width="1600" height="900">
+    <circle class="line" cx="120" cy="330" r="92"/><circle class="line" cx="120" cy="330" r="62" stroke-opacity=".5"/>
+    <path class="line" d="M96 520h48v-48h40v48h48v40h-48v48h-40v-48h-48z" transform="translate(-60,40)"/>
+    <circle class="line" cx="1480" cy="600" r="92"/><circle class="line" cx="1480" cy="600" r="62" stroke-opacity=".5"/>
+    ${[[1480,290],[1420,350],[1540,350],[1480,410]].map(([cx,cy],i)=>`<circle cx="${cx}" cy="${cy}" r="27" fill="${i===3?'#6FD3E3':'none'}" class="${i===3?'':'line'}"/>`).join('')}</svg>
+    <div class="col">${LOGO(108)}<div style="height:56px"></div>${KB('kb-tag.png',1040)}</div>`;
+}
+if(C===4){ // The input notation. Q: how do gamers write moves down? As inputs, like a fighting game's move list.
+  const seq=[['i','↑ ↑ ←'],['n','↓ ↓ ←'],['l','↑ → →'],['a','→ →'],['y','↑ → → → → →']];
+  html+=`<div class="col">${LOGO(150)}<div style="height:80px"></div><div style="display:flex;gap:46px;align-items:flex-start">
+    ${seq.map(([l,a])=>`<div style="display:flex;flex-direction:column;align-items:center;gap:18px"><div class="h" style="font-size:40px;color:var(--teal)">${l}</div>
+      <div class="inl ar" style="gap:12px;white-space:nowrap">${a}<span style="margin-left:6px">${B('A',40)}</span></div></div>`).join('')}</div>
+    <div class="t" style="font-size:24px;margin-top:64px">Type with your controller</div></div>`;
+}
+if(C===5){ // Inlay, literally. Q: what does the name mean? Something set into a surface. The keyboard set into the page itself.
+  const u=230, x=-60, y=200;
+  html+=caps({x,y,u,gap:26,font:0.34,style:(k,r,c)=>({css:`background:linear-gradient(#0D0E11,#121317);box-shadow:inset 0 6px 14px rgba(0,0,0,.75),inset 0 -2px 0 rgba(255,255,255,.05),0 1px 0 rgba(255,255,255,.04)${k==='a'?';background:#0E1A1D;box-shadow:inset 0 0 0 3px #6FD3E3,0 0 60px rgba(111,211,227,.25)':''}`,ink:k==='a'?'#6FD3E3':'#4A4E57',bold:true})});
+  html+=`<div class="abs" style="left:96px;top:72px">${LOGO(70)}</div>`;
+}
+if(C===6){ // The player's view. Q: what does the person actually see? Their hands' device from above, the keyboard on its screen.
+  html+=`<div class="abs" style="left:0;top:70px;width:1600px;display:flex;justify-content:center">${LOGO(96)}</div>
+    <div class="abs" style="left:${(1600-2000)/2}px;top:300px;width:2000px"><img src="renders/dev-wide.png" style="width:2000px;display:block">
+      <img src="renders/kb-tag.png" style="position:absolute;left:${2000*80/375}px;top:${2000*(594/1429)*(78/156)-2000*(214/375)*534/1920/2}px;width:${2000*214/375}px;border-radius:8px"></div>`;
+}
+if(C===7){ // Across the room. Q: where is a controller used? On the sofa, three metres from the TV. Near: the controller. Far: the keyboard.
+  html+=`<div class="abs" style="left:620px;top:120px;width:880px"><div style="border-radius:14px;box-shadow:0 0 0 10px #15171B,0 0 0 12px #2A2D34,0 40px 80px rgba(0,0,0,.5);overflow:hidden">
+      <img src="renders/kb-tv.png" style="width:880px;display:block"></div></div>
+    <img class="abs" src="renders/dev-controller.png" style="left:-40px;top:520px;width:620px;filter:drop-shadow(0 30px 40px rgba(0,0,0,.6))">
+    <div class="abs" style="left:96px;top:96px">${LOGO(74)}</div><div class="abs t" style="left:96px;top:200px;font-size:26px">Type from the sofa</div>`;
+}
+if(C===8){ // The moment it's needed. Q: when does a handheld player have to type? The Wi-Fi password, before anything else works.
+  html+=`<div class="col"><div class="t" style="font-size:24px;align-self:flex-start;margin-left:${(1600-1000)/2}px;margin-bottom:16px">Wi-Fi password</div>
+    <div style="width:1000px;height:84px;border-radius:16px;background:#16181C;box-shadow:inset 0 0 0 2px #2A2D34;display:flex;align-items:center;padding:0 30px;box-sizing:border-box">
+      <span class="h" style="font-size:40px;letter-spacing:.18em">••••••••••</span><span class="h" style="font-size:40px">r</span><span style="width:3px;height:44px;background:var(--teal);margin-left:3px;border-radius:2px"></span></div>
+    <div style="height:40px"></div>${KB('kb-l10-i.png',1000)}
+    <div style="margin-top:56px">${LOGO(64)}</div></div>`;
+}
+document.getElementById('c').innerHTML=html;
+document.fonts.ready.then(()=>Promise.all([...document.images].map(i=>i.decode().catch(()=>{})))).then(()=>{
+  inlayBackdrop(document.getElementById('c'),'l11'+C,0,{motif:'none',grain:true}); document.title='done'; });
+</script></body></html>

@@ -1,0 +1,77 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="inlay.css">
+<script src="../../design/tokens.js"></script><script src="parts.js"></script><script src="backdrop.js"></script>
+<!-- Hero round L12 (31 Oct 2026): eight more directions. ?c=1..8 -->
+<style>
+.abs{position:absolute}
+.col{position:absolute;left:0;top:0;width:1600px;height:900px;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.win{border-radius:20px;overflow:hidden;background:#000;box-shadow:0 0 0 2px var(--track),0 2px 4px rgba(0,0,0,.3),0 24px 60px rgba(0,0,0,.45)}
+.win img{display:block}
+.t{font-family:A;color:#C9CCD3;letter-spacing:.005em}
+.h{font-family:A;font-weight:700;color:var(--paper);letter-spacing:-.015em}
+.inl{display:inline-flex;align-items:center;gap:.32em}
+.lab{position:absolute;font-family:A;font-size:24px;color:var(--paper);white-space:nowrap}
+.lab small{display:block;font-size:17px;color:#8E929B;margin-top:4px}
+.chip{display:flex;align-items:center;gap:18px;height:68px;padding:0 22px 0 30px;border-radius:34px;background:#1A1C21;box-shadow:inset 0 0 0 2px #262930;font-family:R;font-weight:500;font-size:28px;color:var(--paper)}
+</style></head><body>
+<div id="c" class="canvas" style="width:1600px;height:900px"></div>
+<script>
+const q=new URLSearchParams(location.search), C=+q.get('c');
+const LOGO=h=>`<img src="../brand/inlay-lockup-clear-dark.svg" style="display:block;height:${h}px">`;
+const KB=(src,w,ar=1920/534)=>`<div class="win" style="width:${w}px"><img src="renders/${src}" style="width:${w}px;height:${Math.round(w/ar)}px"></div>`;
+const B=(k,h,st='xbox')=>`<img src="renders/btn-${st}-${k}.png" style="height:${h}px;display:inline-block;vertical-align:middle">`;
+let html=COVER_DEFS, after=null;
+if(C===1){ // The controls page. Q: where did every gamer first learn what the buttons do? The manual's controls diagram.
+  const W=640, x0=(1600-W)/2, y0=300, H=W*691/1008, P=(u,v)=>[x0+W*u/375, y0+H*v/255];
+  const L=[['Move',[95,75],'left',[330,380]],['Move a key at a time',[140,135],'left',[330,620]],
+           ['Space',[285,48],'right',[1270,300]],['Delete',[257,75],'right',[1270,420]],['Type',[285,102],'right',[1270,540]],['Take the word',[237,132],'right',[1270,660]],['Enter',[215,75],'right',[1270,780]]];
+  html+=`<div class="abs" style="left:96px;top:80px">${LOGO(70)}</div><img class="abs" src="renders/dev-controller.png" style="left:${x0}px;top:${y0}px;width:${W}px">
+   <svg class="abs" style="left:0;top:0" width="1600" height="900">${L.map(([t,p,side,[lx,ly]])=>{const [px,py]=P(...p);
+     return `<path d="M${px} ${py} L${side==='left'?lx+24:lx-24} ${ly}" stroke="#4A4E57" stroke-width="2" fill="none"/><circle cx="${px}" cy="${py}" r="5" fill="#6FD3E3"/>`}).join('')}</svg>`+
+   L.map(([t,p,side,[lx,ly]])=>`<div class="lab" style="${side==='left'?`right:${1600-lx}px`:`left:${lx}px`};top:${ly-16}px;text-align:${side}">${t}</div>`).join('');
+}
+if(C===2){ // The cursor. Q: what is the smallest thing that means "type here"? The blinking cursor, which is also in the logo.
+  html+=`<div class="col"><div style="display:flex;align-items:center;gap:0"><div style="width:18px;height:300px;border-radius:9px;background:var(--teal)"></div>
+     <div class="h" style="font-size:120px;color:#3A3D45;margin-left:30px">Type with your controller</div></div>
+     <div style="margin-top:110px">${LOGO(70)}</div></div>`;
+}
+if(C===3){ // Your words. Q: what makes it feel like yours? It learns the names you type: game titles, friends, places.
+  const W=['Halo: Combat Evolved','Jet Set Radio Future','Crimson Skies','Ōkami','Shenmue II','Panzer Dragoon Orta'];
+  html+=`<div class="abs" style="left:150px;top:0;height:900px;display:flex;flex-direction:column;justify-content:center">${LOGO(96)}
+     <div class="t" style="font-size:30px;margin-top:40px;max-width:520px;line-height:1.4">It learns the words you type,<br>like the names of your games.</div></div>
+   <div class="abs" style="left:880px;top:0;height:900px;display:flex;flex-direction:column;justify-content:center;gap:22px">
+     ${W.map((w,i)=>`<div class="chip" style="opacity:${[1,.85,.7,.55,.4,.25][i]};margin-left:${[0,40,80,40,0,40][i]}px">${w}${i===0?B('R3',38):''}</div>`).join('')}</div>`;
+}
+if(C===4){ // Big type. Q: what is the product actually for? Words. Let the words be the picture and the keyboard sign them off.
+  html+=`<div class="abs" style="left:96px;top:110px;width:1408px"><div class="h" style="font-size:150px;line-height:1.02">Type with<br>your contr<span style="color:#4A4E57">oller</span><span style="display:inline-block;width:10px;height:130px;background:var(--teal);border-radius:5px;margin-left:8px;vertical-align:-14px"></span></div></div>
+   <div class="abs" style="right:96px;bottom:80px">${KB('kb-tag.png',560)}</div><div class="abs" style="left:96px;bottom:96px">${LOGO(56)}</div>`;
+}
+if(C===5){ // Long exposure. Q: what does typing with a stick look like over time? A trail of light through the keys.
+  const w=1240, h=Math.round(w*534/1920);
+  html+=`<div class="col">${LOGO(110)}<div style="height:60px"></div><div id="kb" style="position:relative">${KB('kb-l10-i.png',w)}
+     <svg style="position:absolute;left:0;top:0" width="${w}" height="${h}"><defs><filter id="g" x="-20%" y="-50%" width="140%" height="200%"><feGaussianBlur stdDeviation="9"/></filter></defs><g id="trail"></g></svg></div></div>`;
+  after=()=>{ const X=c=>w*(0.059+c*0.098), Y=r=>h*(0.288+r*0.197);
+    const d=`M${X(7)} ${Y(0)} L${X(7)} ${Y(2)} L${X(6)} ${Y(2)} L${X(6)} ${Y(1)} L${X(9.6)} ${Y(1)} M${X(-0.6)} ${Y(1)} L${X(0)} ${Y(1)} L${X(0)} ${Y(0)} L${X(5)} ${Y(0)}`;
+    document.getElementById('trail').innerHTML=`<path d="${d}" stroke="#6FD3E3" stroke-width="22" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity=".55" filter="url(#g)"/>
+      <path d="${d}" stroke="#DDF6FA" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity=".9"/>`; };
+}
+if(C===6){ // The object. Q: what if the keyboard were a thing you could hold? Tilt it, light it, give it depth.
+  html+=`<div class="abs" style="left:96px;top:96px">${LOGO(80)}<div class="t" style="font-size:26px;margin-top:28px">Type with your controller</div></div>
+   <div class="abs" style="left:520px;top:260px;transform:perspective(1800px) rotateX(48deg) rotateZ(-24deg);transform-origin:50% 50%">${KB('kb-tag.png',1100)}</div>`;
+}
+if(C===7){ // Thumbs. Q: where are you while typing? Your thumbs, resting on the sticks. Two soft circles say it without drawing hands.
+  html+=`<div class="abs" style="left:-170px;top:520px;width:520px;height:520px;border-radius:50%;background:radial-gradient(circle at 50% 50%,rgba(111,211,227,.22),rgba(111,211,227,0) 62%)"></div>
+   <div class="abs" style="left:1250px;top:520px;width:520px;height:520px;border-radius:50%;background:radial-gradient(circle at 50% 50%,rgba(255,255,255,.10),rgba(255,255,255,0) 62%)"></div>
+   <div class="abs" style="left:-20px;top:670px;width:220px;height:220px;border-radius:50%;box-shadow:inset 0 0 0 3px #3B3F48"></div>
+   <div class="abs" style="left:1400px;top:670px;width:220px;height:220px;border-radius:50%;box-shadow:inset 0 0 0 3px #3B3F48"></div>
+   <div class="col" style="justify-content:flex-start;padding-top:120px">${LOGO(100)}<div style="height:60px"></div>${KB('kb-tag.png',1000)}</div>`;
+}
+if(C===8){ // Wild card. Q: how do games say "well done"? A small notification sliding in. Inlay's: you never touched the screen.
+  html+=`<div class="col">${LOGO(120)}<div style="height:60px"></div>${KB('kb-tag-done.png',1000)}</div>
+   <div class="abs" style="left:${(1600-700)/2}px;top:60px;width:700px;height:96px;border-radius:48px;background:#1A1C21;box-shadow:inset 0 0 0 2px #2A2D34,0 20px 40px rgba(0,0,0,.4);display:flex;align-items:center;gap:22px;padding:0 34px;box-sizing:border-box">
+     <div style="width:52px;height:52px;border-radius:50%;background:var(--teal);display:flex;align-items:center;justify-content:center;font-family:A;font-weight:700;color:#0B0C0E;font-size:28px">✓</div>
+     <div><div class="t" style="font-size:18px;color:#8E929B">Achievement unlocked</div><div class="t" style="font-size:24px;color:var(--paper);margin-top:2px">A whole sentence, no touchscreen</div></div></div>`;
+}
+document.getElementById('c').innerHTML=html;
+document.fonts.ready.then(()=>Promise.all([...document.images].map(i=>i.decode().catch(()=>{})))).then(()=>{
+  if(after) after(); inlayBackdrop(document.getElementById('c'),'l12'+C,0,{motif:'none',grain:true}); document.title='done'; });
+</script></body></html>

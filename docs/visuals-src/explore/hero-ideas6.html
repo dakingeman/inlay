@@ -1,0 +1,86 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="inlay.css">
+<script src="../../design/tokens.js"></script><script src="parts.js"></script><script src="backdrop.js"></script>
+<!-- Hero round L15 (31 Oct 2026): back to what worked (the tiled surface, the device row, game titles, the big name over the
+     typing window) and to who it's for (tinkerers who game, emulate and tune every setting). ?c=1..5 -->
+<style>
+.abs{position:absolute}
+.win{border-radius:20px;overflow:hidden;background:#000;box-shadow:0 0 0 2px var(--track),0 2px 4px rgba(0,0,0,.3),0 24px 60px rgba(0,0,0,.45)}
+.win img{display:block}
+.t{font-family:A;color:#C9CCD3;letter-spacing:.005em}
+.h{font-family:A;font-weight:700;color:var(--paper);letter-spacing:-.015em}
+.lab{font-family:A;font-size:17px;color:#8E929B}
+.chip{display:inline-flex;align-items:center;height:40px;padding:0 16px;border-radius:12px;font-family:A;font-size:18px;color:#C9CCD3;box-shadow:inset 0 0 0 2px #2A2D34}
+.chip.on{color:#0B0C0E;background:var(--teal);box-shadow:none}
+.sw{width:36px;height:36px;border-radius:10px;display:inline-block}
+.call{position:absolute;font-family:A;font-size:21px;color:var(--paper);white-space:nowrap}
+.call small{display:block;font-size:16px;color:#8E929B;margin-top:3px}
+</style></head><body>
+<div id="c" class="canvas" style="width:1600px;height:900px"></div>
+<script>
+const q=new URLSearchParams(location.search), C=+q.get('c');
+const LOGO=h=>`<img src="../brand/inlay-lockup-clear-dark.svg" style="display:block;height:${h}px">`;
+const KB=(src,w,ar=1920/534)=>`<div class="win" style="width:${w}px"><img src="renders/${src}" style="width:${w}px;height:${Math.round(w/ar)}px"></div>`;
+// the tiled surface from the first hero: rounded tiles on a fixed pitch; [skip] says which tiles the content covers
+function tiles({P,G,x0,y0,skip,lit=[],fade=true}){ let s='';
+  for(let c=Math.floor(-x0/P)-1;c<=Math.ceil((1600-x0)/P);c++) for(let r=Math.floor(-y0/P)-1;r<=Math.ceil((900-y0)/P);r++){
+    const x=x0+c*P, y=y0+r*P; if(skip(x,y,P-G)) continue;
+    const on=lit.some(([a,b])=>a===c&&b===r), d=fade?Math.min(1,Math.hypot((x+P/2-800)/800,(y+P/2-450)/450)):0;
+    s+=on?`<rect x="${x}" y="${y}" width="${P-G}" height="${P-G}" rx="10" fill="#72D6E8"/>`
+         :`<rect x="${x+.5}" y="${y+.5}" width="${P-G-1}" height="${P-G-1}" rx="10" fill="rgba(255,255,255,.04)" stroke="rgba(255,255,255,${(.13*(1-0.55*d)).toFixed(3)})"/>`; }
+  return `<svg class="abs" style="left:0;top:0" width="1600" height="900">${s}</svg>`; }
+const inside=(x,y,w,[l,t,r,b])=>x+w>l&&x<r&&y+w>t&&y<b;
+let html=COVER_DEFS;
+if(C===1){ // The keyboard set into the surface: the tiles share its key pitch, so it reads as one more patch of keys
+  const W=980, kh=Math.round(W*534/1920), P=W*0.098, kx=(1600-W)/2, ky=330;
+  const box=[kx-14,ky-14,kx+W+14,ky+kh+14], head=[400,40,1200,280];
+  html+=tiles({P,G:P*0.16,x0:kx+P*0.02,y0:ky+(kh*0.288)-P/2,skip:(x,y,w)=>inside(x,y,w,box)||inside(x,y,w,head),lit:[[-3,1],[12,2]]});
+  html+=`<div class="abs" style="left:${kx}px;top:${ky}px">${KB('kb-l10-i.png',W)}</div>
+    <div class="abs" style="left:0;top:84px;width:1600px;display:flex;flex-direction:column;align-items:center">${LOGO(104)}<div class="t" style="font-size:26px;margin-top:26px">Type with your controller</div></div>`;
+}
+if(C===2){ // Make it yours: the tinkerer's hero, the keyboard and the handful of settings that change it most
+  html+=`<div class="abs" style="left:96px;top:96px">${LOGO(74)}<div class="t" style="font-size:26px;margin-top:22px">Type with your controller. Tune every part of it.</div></div>
+   <div class="abs" style="left:96px;top:290px;display:flex;flex-direction:column;gap:34px">
+     <div><div class="lab">Look</div><div style="display:flex;gap:10px;margin-top:10px"><span class="chip">Dark</span><span class="chip on">Forest</span><span class="chip">Mocha</span><span class="chip">Outline</span></div></div>
+     <div><div class="lab">Highlight</div><div style="display:flex;gap:10px;margin-top:10px">${['#72D6E8','#B6E35A','#FF8A80','#B39DFF','#FFC857'].map((c,i)=>`<span class="sw" style="background:${c};${i===1?'box-shadow:0 0 0 3px #0B0C0E,0 0 0 5px #B6E35A':''}"></span>`).join('')}</div></div>
+     <div><div class="lab">Keys</div><div style="display:flex;gap:10px;margin-top:10px"><span class="chip on">Round</span><span class="chip">Square</span></div></div>
+     <div><div class="lab">Number row</div><div style="display:flex;gap:10px;margin-top:10px"><span class="chip">On</span><span class="chip on">Off</span></div></div></div>
+   <div class="abs" style="left:600px;top:350px">${KB('look-forest-lime.png',904)}</div>`;
+}
+if(C===3){ // The name and the typing window you liked, with the device row from the first hero underneath
+  const ww=900, kh=Math.round(ww*534/1920);
+  const dev=[['c-controller-xbox-lit.svg','Controller',0],['c-wide-xbox-lit.svg','Handheld',1],['c-vsplit-xbox-a.svg','Vertical handheld',0],['c-remote-lit.svg','TV remote',0]];
+  html+=`<div class="abs" style="left:0;top:64px;width:1600px;display:flex;flex-direction:column;align-items:center">${LOGO(110)}
+     <div class="win" style="width:${ww}px;margin-top:44px;padding:14px 14px 0;box-sizing:border-box;background:#0A0B0D">
+       <div class="field" style="height:58px;font-size:24px;padding:0 20px">metal gear sol<span class="cur" style="height:28px"></span><span style="color:#9A9DA5;opacity:.62">id</span></div>
+       <img src="renders/hero-solid.png" style="width:${ww-28}px;margin-top:10px"></div>
+     <div style="display:flex;gap:70px;margin-top:42px;align-items:flex-end">${dev.map(([f,n,on])=>`<div style="display:flex;flex-direction:column;align-items:center;gap:12px;opacity:${on?1:.45}">
+       <img src="hero-parts/${f}" style="height:84px"><div class="t" style="font-size:18px;${on?'color:var(--paper);font-weight:700':''}">${n}</div></div>`).join('')}</div></div>`;
+}
+if(C===4){ // Your library, filtered: the tiles become game covers, and each letter typed dims everything that no longer matches
+  const P=118, G=16, x0=40, y0=36; let s='';
+  const names=['Metal Gear Solid','Silent Hill','Crash Bandicoot','Spyro','Tekken 3','Gran Turismo','Ape Escape','Vagrant Story'];
+  let i=0; for(let r=0;r<7;r++) for(let c=0;c<13;c++){ const x=x0+c*P, y=y0+r*P; if(inside(x,y,P-G,[300,330,1300,900])) continue;
+    const hit=(c===3&&r===1); const [base,tint]=GENERIC[(c*3+r*5)%GENERIC.length];
+    s+=`<div class="abs" style="left:${x}px;top:${y}px;width:${P-G}px;height:${P-G}px;border-radius:12px;overflow:hidden;opacity:${hit?1:0.13};${hit?'box-shadow:0 0 0 3px #72D6E8':''}">${thumbArt(c*3+r*5)}</div>`; i++; }
+  html+=s+`<div class="abs h" style="left:${x0+3*P}px;top:${y0+2*P-8}px;font-size:20px">Metal Gear Solid</div>
+    <div class="abs" style="left:300px;top:380px;width:1000px"><div class="field" style="height:64px;font-size:26px;padding:0 22px;margin-bottom:14px">metal gear sol<span class="cur" style="height:30px"></span><span style="margin-left:auto;font-size:18px;color:#8E929B">1 game</span></div>${KB('hero-solid.png',1000)}</div>`;
+}
+if(C===5){ // The spec sheet: for people who read the settings before they play, the keyboard drawn up like a technical drawing
+  const W=900, kx=350, ky=330, kh=Math.round(W*534/1920);
+  // [title, note, point on the keyboard (fractions), side]
+  const calls=[['Word suggestions','R3 takes the word',[0.20,0.07],'top'],['Hold A for accents','they rise into the top row',[0.5,0.29],'top'],['9 sound packs','a sound for every key',[0.84,0.29],'top'],
+    ['Hold RT','capitals and shortcuts',[0.085,0.655],'left'],['Your buttons','Xbox, PlayStation or Switch prompts',[0.965,0.57],'right'],['Any look','themes, colours, key shapes',[0.45,0.88],'bottom']];
+  let svg='', lab='';
+  calls.forEach(([t,n,[u,v],side])=>{ const px=kx+W*u, py=ky+kh*v;
+    if(side==='top'){ svg+=`<path d="M${px} ${py} V${ky-56}" class="ln"/>`; lab+=`<div class="call" style="left:${px-8}px;top:${ky-122}px">${t}<small>${n}</small></div>`; }
+    if(side==='bottom'){ svg+=`<path d="M${px} ${py} V${ky+kh+56}" class="ln"/>`; lab+=`<div class="call" style="left:${px-8}px;top:${ky+kh+66}px">${t}<small>${n}</small></div>`; }
+    if(side==='left'){ svg+=`<path d="M${px} ${py} H${kx-48}" class="ln"/>`; lab+=`<div class="call" style="right:${1600-kx+60}px;top:${py-22}px;text-align:right">${t}<small>${n}</small></div>`; }
+    if(side==='right'){ svg+=`<path d="M${px} ${py} H${kx+W+48}" class="ln"/>`; lab+=`<div class="call" style="left:${kx+W+60}px;top:${py-22}px">${t}<small>${n}</small></div>`; }
+    svg+=`<circle cx="${px}" cy="${py}" r="5" fill="#72D6E8"/>`; });
+  html+=`<div class="abs" style="left:${kx}px;top:${ky}px">${KB('kb-tag.png',W)}</div><svg class="abs" style="left:0;top:0" width="1600" height="900"><style>.ln{stroke:#5A5E68;stroke-width:1.5;fill:none}</style>${svg}</svg>${lab}
+    <div class="abs" style="left:96px;top:72px">${LOGO(64)}</div>`;
+}
+document.getElementById('c').innerHTML=html;
+document.fonts.ready.then(()=>Promise.all([...document.images].map(i=>i.decode().catch(()=>{})))).then(()=>{
+  inlayBackdrop(document.getElementById('c'),'l15'+C,0,{motif:'none',grain:true}); document.title='done'; });
+</script></body></html>

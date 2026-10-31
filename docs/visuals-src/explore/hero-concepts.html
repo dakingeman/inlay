@@ -1,0 +1,90 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="inlay.css">
+<script src="../../design/tokens.js"></script><script src="parts.js"></script><script src="backdrop.js"></script>
+<!-- Hero round L10 (30 Oct 2026): eight directions that tie the keyboard to the controller. One key frame each; the
+     motion each would have is described in the review, not drawn. ?c=1..8 -->
+<style>
+.abs{position:absolute}
+.col{position:absolute;left:0;top:0;width:1600px;height:900px;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.win{border-radius:20px;overflow:hidden;background:#000;box-shadow:0 0 0 2px var(--track),0 2px 4px rgba(0,0,0,.3),0 24px 60px rgba(0,0,0,.45)}
+.win img{display:block}
+.t{font-family:A;color:#C9CCD3;letter-spacing:.005em}
+.hint{display:flex;align-items:center;gap:14px;font-family:A;font-size:22px;color:#C9CCD3}
+.hint img{height:36px}
+.hint.on{color:var(--paper)}
+.slot{width:86px;display:flex;flex-direction:column;align-items:center;font-family:A;font-weight:700;font-size:84px;color:var(--paper);line-height:1}
+.slot i{display:block;width:70px;height:5px;border-radius:3px;background:#3A3D45;margin-top:14px}
+.slot.cur i{background:var(--teal)}
+.slot.empty{color:transparent}
+</style></head><body>
+<div id="c" class="canvas" style="width:1600px;height:900px"></div>
+<script>
+const q=new URLSearchParams(location.search), C=+q.get('c');
+const LOGO=h=>`<img src="../brand/inlay-lockup-clear-dark.svg" style="display:block;height:${h}px">`;
+const KB=(src,w)=>`<div class="win" style="width:${w}px"><img src="renders/${src}" style="width:${w}px;height:${Math.round(w*534/1920)}px"></div>`;
+const B=(k,h,st='xbox')=>`<img src="renders/btn-${st}-${k}.png" style="height:${h}px;display:block">`;
+let html=COVER_DEFS;
+if(C===1){ // Control hints: the game's own button-prompt bar, under the keyboard
+  html+=`<div class="col">${LOGO(132)}<div style="height:64px"></div>${KB('kb-tag.png',1000)}
+    <div style="display:flex;gap:44px;margin-top:40px">
+      <div class="hint on">${B('A',38)}Type</div><div class="hint on">${B('R3',38)}Take the word</div>
+      <div class="hint">${B('X',38)}Delete</div><div class="hint">${B('R2',38)}Capitals</div><div class="hint">${B('L1',38)}Move the cursor</div></div></div>`;
+}
+if(C===2){ // Cause and effect: the controller and the keyboard side by side, one thin line from the lit A to the key it pressed
+  html+=`<div class="abs" style="left:0;top:96px;width:1600px;display:flex;justify-content:center">${LOGO(110)}</div>
+    <img class="abs" id="pad" src="renders/dev-controller.png" style="left:120px;top:330px;width:400px">
+    <div class="abs" id="kb" style="left:620px;top:340px">${KB('kb-tag.png',860)}</div>
+    <svg class="abs" style="left:0;top:0" width="1600" height="900"><path id="ln" d="" fill="none" stroke="#6FD3E3" stroke-width="2.5" stroke-dasharray="2 9" stroke-linecap="round"/></svg>`;
+}
+if(C===3){ // Name entry: the arcade's enter-your-name screen, five slots filling with the name
+  html+=`<div class="col"><div style="display:flex;gap:22px">
+     ${['i','n','l','a',''].map((l,i)=>`<div class="slot${i===4?' cur empty':''}">${l||'y'}<i></i></div>`).join('')}</div>
+    <div class="t" style="font-size:24px;margin-top:34px">Type with your controller</div>
+    <div style="height:56px"></div>${KB('kb-l10-y.png',1000)}</div>`;
+}
+if(C===4){ // The path: the highlight's route through the keys drawn as one line, the way a stick would travel it
+  html+=`<div class="col">${LOGO(120)}<div style="height:60px"></div><div id="kb" style="position:relative">${KB('kb-l10-i.png',1180)}
+     <svg id="path" style="position:absolute;left:0;top:0" width="1180" height="328"></svg></div></div>`;
+}
+if(C===5){ // In the hand: the handheld drawn big, the keyboard on its screen, the name above
+  html+=`<div class="abs" style="left:0;top:80px;width:1600px;display:flex;justify-content:center">${LOGO(104)}</div>
+    <div class="abs" style="left:${(1600-1180)/2}px;top:280px;width:1180px">
+      <img src="renders/dev-wide.png" style="width:1180px;display:block">
+      <img id="scr" src="renders/kb-tag.png" style="position:absolute;border-radius:6px"></div>`;
+}
+if(C===6){ // Any controller: one keyboard, its button hints in whichever family you hold (here Xbox, cycling through)
+  html+=`<div class="col">${LOGO(120)}<div style="height:60px"></div>${KB('kb-x-jsrf.png',1000)}
+    <div style="display:flex;gap:56px;margin-top:40px">
+      ${[['xbox','Xbox',1],['playstation','PlayStation',0],['switch','Switch',0],['xbox','Android controllers',0]].map(([s,n,on])=>`<div class="hint${on?' on':''}" style="opacity:${on?1:.45}">${B('A',36,s)}${n}</div>`).join('')}</div></div>`;
+}
+if(C===7){ // Typographic: the line ends in the four face buttons instead of the word "controller"
+  html+=`<div class="col">${LOGO(96)}<div style="height:80px"></div>
+    <div style="display:flex;align-items:center;gap:36px"><div style="font-family:A;font-weight:700;font-size:96px;color:var(--paper);letter-spacing:-.01em">Type with</div>
+     <div style="position:relative;width:176px;height:176px">
+      <div style="position:absolute;left:58px;top:0">${B('Y',60)}</div><div style="position:absolute;left:0;top:58px">${B('X',60)}</div>
+      <div style="position:absolute;left:116px;top:58px">${B('B',60)}</div><div style="position:absolute;left:58px;top:116px">${B('A',60)}</div></div></div>
+    <div style="height:80px"></div>${KB('kb-tag.png',760)}</div>`;
+}
+if(C===8){ // In the game: the keyboard where it really lives, rising over a game library, the name above it all
+  const scr=libScreen({x:0,y:0,w:820,kb:'renders/kb-x-jsrf.png',kbAspect:1920/534,field:{before:'jet set radio fu'}});
+  html+=`<div class="abs" style="left:0;top:72px;width:1600px;display:flex;justify-content:center">${LOGO(96)}</div>
+    <div class="abs" style="left:${(1600-820)/2}px;top:220px">${scr.html.replace('top:0px','top:0px')}</div>`;
+}
+document.getElementById('c').innerHTML=html;
+document.fonts.ready.then(()=>Promise.all([...document.images].map(i=>i.decode().catch(()=>{})))).then(()=>{
+  if(C===2){ const pad=document.getElementById('pad').getBoundingClientRect(), kb=document.querySelector('#kb img').getBoundingClientRect();
+    // A on the drawing (its lit button) to the highlighted r key on the keyboard
+    const ax=pad.x+pad.width*(285/375)+20, ay=pad.y+pad.height*(102/255), kx=kb.x-14, ky=kb.y+kb.height*0.29;
+    document.getElementById('ln').setAttribute('d',`M${ax} ${ay} C ${ax+70} ${ay}, ${kx-70} ${ky}, ${kx} ${ky}`);
+    document.querySelector('svg.abs').style.zIndex=2; }
+  if(C===4){ const w=1180,h=328, X=c=>w*(0.052+c*0.0985), Y=r=>h*(0.235+r*0.205);
+    const pts=[[7,0],[6,2],[8,1],[9,1],[0,1],[5,0]], st=[];
+    // i, down to n, up-right to l, right to ', wrap to a, up to y
+    let d=`M${X(7)} ${Y(0)} L${X(7)} ${Y(2)} L${X(6)} ${Y(2)} L${X(6)} ${Y(1)} L${X(8)} ${Y(1)} L${X(9.55)} ${Y(1)} M${X(-0.55)} ${Y(1)} L${X(0)} ${Y(1)} L${X(0)} ${Y(0)} L${X(5)} ${Y(0)}`;
+    document.getElementById('path').innerHTML=`<path d="${d}" fill="none" stroke="#6FD3E3" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" opacity=".9"/>`+
+      [[7,0,'i'],[6,2,'n'],[8,1,'l'],[0,1,'a'],[5,0,'y']].map(([c,r],k)=>`<circle cx="${X(c)}" cy="${Y(r)}" r="${k===0?9:7}" fill="#6FD3E3"/>`).join(''); }
+  if(C===5){ const d=document.querySelector('.abs img[src*="dev-wide"]').getBoundingClientRect(), s=document.getElementById('scr');
+    // the screen opening in dev-wide.png: x 76..298 of 375, y 17..140 of 156 (measured on the drawing)
+    const sx=d.width*(80/375), sw=d.width*(214/375), sh=sw*534/1920, sy=d.height*(78/156)-sh/2;
+    Object.assign(s.style,{left:sx+'px',top:sy+'px',width:sw+'px',height:sh+'px'}); }
+  inlayBackdrop(document.getElementById('c'),'l10'+C,0,{motif:'none',grain:true}); document.title='done'; });
+</script></body></html>

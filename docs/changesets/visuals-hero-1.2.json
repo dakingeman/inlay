@@ -1,0 +1,383 @@
+{
+ "name": "visuals-hero-1.2",
+ "title": "Launch visuals 1.2: README image set (L3-B), link previews, locked README hero, shoulder rule in the device pictures, recording tools",
+ "recorded": "2026-10-31",
+ "base": "HEAD",
+ "files": [
+  {
+   "path": "app/src/main/java/com/example/gridime/DevicePicture.kt",
+   "before": "463fde84fe115a50db30b1e52661eed0ddcaddce",
+   "after": "8ddd9079ddb60800bab538790c2700a960725d53"
+  },
+  {
+   "path": "app/src/main/java/com/example/gridime/KeyGridView.kt",
+   "before": "38f865e77dacb5a837ca08ca822c8fdf72643b19",
+   "after": "8d0d35b4980d2f1e83917520fae879908e8f5150"
+  },
+  {
+   "path": "app/src/test/java/com/example/gridime/VisualsExport.kt",
+   "before": "0010389abda40237f867b55b46c22447f3c10b60",
+   "after": "2e84e18176e31dcf74c4e6e9b7973b4f57f37558"
+  },
+  {
+   "path": "app/src/test/java/com/example/gridime/VisualsVideo.kt",
+   "before": "b2ff7e972e17b662634b68511e4064d2889cb946",
+   "after": "c71ad652bcf9717cf5999343e7cb0684ea9169f0"
+  },
+  {
+   "path": "docs/images/hero-locked.png",
+   "before": null,
+   "after": "96c886208b76e78772fdca6fea3a3938571fb9ba"
+  },
+  {
+   "path": "docs/images/pack/accents.png",
+   "before": "965dcc926bb053ed71928b8aa4cb4c8651cf9686",
+   "after": "beab646dc1c06c2104679cabd597840937ad4bf8"
+  },
+  {
+   "path": "docs/images/pack/controls.png",
+   "before": "babb1cc8cab74c365899f78466e9cbbaaceb14b0",
+   "after": "f4cc631d096dd93c161eb96877244b0e79975f45"
+  },
+  {
+   "path": "docs/images/pack/devices.png",
+   "before": "7c5f4c0975aa053149a0bae222a181ebeb1a8d0f",
+   "after": "39ed18aee2e9154495b999cd1329e4ac61ae5428"
+  },
+  {
+   "path": "docs/images/pack/editing.png",
+   "before": "48bdd173bfc5b8806a3fe1653e7596c70b7b7899",
+   "after": "57e7454d078f762a563bd34b0f2549dd4f818470"
+  },
+  {
+   "path": "docs/images/pack/hero.png",
+   "before": "7bd5f680efdc2a649c986d015bae425e6afdce8c",
+   "after": "6d87bc874bd81877f58a1fc92c439fde1e4d6da9"
+  },
+  {
+   "path": "docs/images/pack/hold.png",
+   "before": "0d2533e665c43788ff2df32b3489fb4d352bc190",
+   "after": "123f13d867005a9e851b250d60e4b44ea9640374"
+  },
+  {
+   "path": "docs/images/pack/icons.png",
+   "before": "2687c4f2d27d77cf17c2476ac7c692b4180dc96e",
+   "after": "7f8aababc15c9c4bdae3de52a7d88e79487a1d00"
+  },
+  {
+   "path": "docs/images/pack/languages.png",
+   "before": "3d1445303ddf59ecfd044570f80ace8887c535b2",
+   "after": "2e467deebaa5b0d095bb80acc4468ef7c73af0d4"
+  },
+  {
+   "path": "docs/images/pack/looks.png",
+   "before": "84c995cd49f6d8d242b2e85977a2fbb3aabae4d1",
+   "after": "fa2fe88e499f9cc09c6e7320a5bbce6911f18fb4"
+  },
+  {
+   "path": "docs/images/pack/settings.png",
+   "before": "510c9435f20d50f87aa5cf6490783291eb6f3c78",
+   "after": "a0115e060ff6b92d2f080c6550b828b2d9bcbb1e"
+  },
+  {
+   "path": "docs/images/pack/sound-packs.png",
+   "before": "2627ef66c096b4e7faf4d321f147a6a9dd7955e7",
+   "after": "7a8dad4fda7f47330ab8b1af7a660e18731c1b46"
+  },
+  {
+   "path": "docs/images/pack/tidy.png",
+   "before": "5839686722ef8c2888537b120ef5cd9255ca210e",
+   "after": "fb9a54b8c19c39f6eb23edaf3fbd21a62bc1c070"
+  },
+  {
+   "path": "docs/images/pack/tour.png",
+   "before": "647bd906d633e7576b7f2d9615378d1bb4b9a7f8",
+   "after": "ca1cf7af5acf2427832b2039dc042d544ed0d9c1"
+  },
+  {
+   "path": "docs/images/pack/tv-mode.png",
+   "before": "5391f0e59bd315d010935725fe5f656b274124cb",
+   "after": "558ce0ab95d33486bee586c204205f534ab4f22c"
+  },
+  {
+   "path": "docs/images/pack/typing.png",
+   "before": "a7d8cd02058048ac939620bac2adea4608503f48",
+   "after": "801e36e11da55cf29f3c561a384cf0eaceea57ec"
+  },
+  {
+   "path": "docs/images/pack/words.png",
+   "before": "eb24753a0f0c1d07d823c06ceaa45c5ca7909442",
+   "after": "cecc95070010521e7a5b227ce1341ec2fb2c25bb"
+  },
+  {
+   "path": "docs/images/social-preview.png",
+   "before": "9c6b66fe500cfcabe0e5648ae6b9191cde999060",
+   "after": "92c8fae5f8abe8a51a8954b9cf3336d6cc2c0149"
+  },
+  {
+   "path": "docs/visuals-src/VISUAL_SYSTEM.md",
+   "before": "006e5f228b1f134c31ae48abbd8e27151744a8c0",
+   "after": "0ba11a2a0c86234eac090f25d4c466ff63fef146"
+  },
+  {
+   "path": "docs/visuals-src/concept/tour-welcome.png",
+   "before": null,
+   "after": "3d0b1c8bee0f4bd79a3cf530d1412f6f3058b4a9"
+  },
+  {
+   "path": "docs/visuals-src/concept/wn-accents.png",
+   "before": null,
+   "after": "f61ef4acceddd619e287287c0590bdf59b51509b"
+  },
+  {
+   "path": "docs/visuals-src/concepts.html",
+   "before": null,
+   "after": "3ef201a3318d560089bf930dc3419ceacc313716"
+  },
+  {
+   "path": "docs/visuals-src/explore/README.md",
+   "before": null,
+   "after": "213e3bb4437b278813300d3ac40e87c83fae3bd9"
+  },
+  {
+   "path": "docs/visuals-src/explore/hero-3b.html",
+   "before": null,
+   "after": "f9ca62599dcef3917f32827ae26c6fc8f53c347a"
+  },
+  {
+   "path": "docs/visuals-src/explore/hero-3b2.html",
+   "before": null,
+   "after": "0b9e1b25905c82b02255d2edd41d27a551128ba2"
+  },
+  {
+   "path": "docs/visuals-src/explore/hero-3b3.html",
+   "before": null,
+   "after": "9af5d6688b15b5c6b822ab675a6ff41f7c7d20c3"
+  },
+  {
+   "path": "docs/visuals-src/explore/hero-3b4.html",
+   "before": null,
+   "after": "7da252c8258e7504988862d3a577a5a43833b95a"
+  },
+  {
+   "path": "docs/visuals-src/explore/hero-3b5.html",
+   "before": null,
+   "after": "31d0a2f3bfa5502b965c5809d2994378027bd43a"
+  },
+  {
+   "path": "docs/visuals-src/explore/hero-3b6.html",
+   "before": null,
+   "after": "f077ff4f0add5f335eb28ff91f8e473e680a4e7c"
+  },
+  {
+   "path": "docs/visuals-src/explore/hero-3b7.html",
+   "before": null,
+   "after": "e291bc6723fb674e37e1a840fad564a3b3f0f7dd"
+  },
+  {
+   "path": "docs/visuals-src/explore/hero-3b8.html",
+   "before": null,
+   "after": "63764052400aa99b8e5e0d6fc03a226bc7f23a43"
+  },
+  {
+   "path": "docs/visuals-src/explore/hero-concepts.html",
+   "before": null,
+   "after": "6de27e5c25587227d4a962fcb8a4f973ddff91cb"
+  },
+  {
+   "path": "docs/visuals-src/explore/hero-ideas2.html",
+   "before": null,
+   "after": "30d00b2f78dfff90ae4d4cd1d6da00c413c8ccb5"
+  },
+  {
+   "path": "docs/visuals-src/explore/hero-ideas3.html",
+   "before": null,
+   "after": "09d74647a277a1ef3c448b3e38fa3e9dc062bd05"
+  },
+  {
+   "path": "docs/visuals-src/explore/hero-ideas4.html",
+   "before": null,
+   "after": "8e91a7ce887c15989d6ea3b59c8e047c38bbce86"
+  },
+  {
+   "path": "docs/visuals-src/explore/hero-ideas5.html",
+   "before": null,
+   "after": "5c817244700ae65358b960755fba6bf8cc13174e"
+  },
+  {
+   "path": "docs/visuals-src/explore/hero-ideas6.html",
+   "before": null,
+   "after": "ae06fca1d27f08c7c224f1a02ce6fa197eb2448f"
+  },
+  {
+   "path": "docs/visuals-src/explore/hero-ideas7.html",
+   "before": null,
+   "after": "1d778710f2d45e33ad05eacdf6078207788fc6e0"
+  },
+  {
+   "path": "docs/visuals-src/explore/hero-macro.html",
+   "before": null,
+   "after": "cf2c93a032a3a00298dcd69d0f3eec10e526c796"
+  },
+  {
+   "path": "docs/visuals-src/explore/logo-hero.js",
+   "before": null,
+   "after": "e909d55e9d2584278b7b4870017ad1631ae17e4f"
+  },
+  {
+   "path": "docs/visuals-src/explore/logo-keys.js",
+   "before": null,
+   "after": "c831875af7acf37b9747929144630f5f96c33648"
+  },
+  {
+   "path": "docs/visuals-src/explore/logo-keys.py",
+   "before": null,
+   "after": "4f729ec4556535d3d698ccc1ee073ddbd650710e"
+  },
+  {
+   "path": "docs/visuals-src/explore/shoot-final.js",
+   "before": null,
+   "after": "7b1986c2f74f855abc2775a7c21dd675aa35920f"
+  },
+  {
+   "path": "docs/visuals-src/explore/shoot-grain.js",
+   "before": null,
+   "after": "cb8321c6d14c99ad1f048fdb0266d2c03bd2fc30"
+  },
+  {
+   "path": "docs/visuals-src/explore/shoot-gtest.js",
+   "before": null,
+   "after": "240e61de6d3ae75fbf895e8a4de4afac40eeb10c"
+  },
+  {
+   "path": "docs/visuals-src/explore/shoot-l10.js",
+   "before": null,
+   "after": "a0454be2b28be2e2c354ca0fe644362343bbe502"
+  },
+  {
+   "path": "docs/visuals-src/explore/shoot-l11.js",
+   "before": null,
+   "after": "1fceb6f93289a42d768288a659b98715d8319033"
+  },
+  {
+   "path": "docs/visuals-src/explore/shoot-l12.js",
+   "before": null,
+   "after": "3b06999eb6e591fc56a4eed168c430a731ae4310"
+  },
+  {
+   "path": "docs/visuals-src/explore/shoot-l13.js",
+   "before": null,
+   "after": "c838761fd2b95de8a0dd4fe0d87c9b7965049de7"
+  },
+  {
+   "path": "docs/visuals-src/explore/shoot-l14.js",
+   "before": null,
+   "after": "8305cb4fa7bed196965949f94278a3add8fc9c46"
+  },
+  {
+   "path": "docs/visuals-src/explore/shoot-l15.js",
+   "before": null,
+   "after": "d16d8e82ae6a6fda280ae358dbd5c7995a01e357"
+  },
+  {
+   "path": "docs/visuals-src/explore/shoot-l16.js",
+   "before": null,
+   "after": "14c58f7ea4244c64f08342a3a115cbed09ffc968"
+  },
+  {
+   "path": "docs/visuals-src/explore/shoot-l17.js",
+   "before": null,
+   "after": "ab90be1d3377d63538eea46d7b7c643b7cb4acc7"
+  },
+  {
+   "path": "docs/visuals-src/explore/shoot-l18.js",
+   "before": null,
+   "after": "a82eb4d826de9e3e9098073863483d684a7bb707"
+  },
+  {
+   "path": "docs/visuals-src/explore/shoot-l19.js",
+   "before": null,
+   "after": "2fe414d4d63b8b39f994d1817598ebb698d12178"
+  },
+  {
+   "path": "docs/visuals-src/explore/shoot-l20.js",
+   "before": null,
+   "after": "4fd04138e025cfae280f2131b45e913b8a802bcc"
+  },
+  {
+   "path": "docs/visuals-src/explore/shoot-l21.js",
+   "before": null,
+   "after": "e6771396ebfc2bfcadd77e9ab9f8a58564559d19"
+  },
+  {
+   "path": "docs/visuals-src/explore/shoot-l22.js",
+   "before": null,
+   "after": "c3e59e947c413cfb1f1771655d94c83d2234a010"
+  },
+  {
+   "path": "docs/visuals-src/explore/shoot-l23.js",
+   "before": null,
+   "after": "76ed3834424395d0f02f14973eb976ec00451176"
+  },
+  {
+   "path": "docs/visuals-src/explore/shoot-l24.js",
+   "before": null,
+   "after": "d253ba17e9c41ce540d6d8c28df063345f848c67"
+  },
+  {
+   "path": "docs/visuals-src/explore/shoot-l25.js",
+   "before": null,
+   "after": "6a769cfed2eb14081c8f5bbb0a6d21d59a57f2dc"
+  },
+  {
+   "path": "docs/visuals-src/features.js",
+   "before": "9c9ec2e806b262d35965b8dcf3529c628e38c69b",
+   "after": "25f78aa3105b959f109201cfb046020a3bc02f2c"
+  },
+  {
+   "path": "docs/visuals-src/hero-anim.js",
+   "before": null,
+   "after": "50b8cb2442dcd69621eeb3a9bc1aa055160da469"
+  },
+  {
+   "path": "docs/visuals-src/hero-devices.py",
+   "before": null,
+   "after": "00797f00e7d2401f66ed061301176741f095ac08"
+  },
+  {
+   "path": "docs/visuals-src/hero-final.html",
+   "before": null,
+   "after": "570d7428216a803375d18b03aa6c2b79499c99fe"
+  },
+  {
+   "path": "docs/visuals-src/launch-shoot.js",
+   "before": null,
+   "after": "e85adeaaa0f2a6b4965cdc1dbb4efa5650d96dd3"
+  },
+  {
+   "path": "docs/visuals-src/launch.html",
+   "before": null,
+   "after": "6a0ddf056924c80a9ae4b651776882df7d32b1d3"
+  },
+  {
+   "path": "docs/visuals-src/make-launch.sh",
+   "before": null,
+   "after": "0afb16fd7b930bede7c49288089304ad4acaeda2"
+  },
+  {
+   "path": "docs/visuals-src/parts.js",
+   "before": "1573649c76365d6034124be9003a2b03c8a897be",
+   "after": "ba6d67c5fb407690a72bac62f719efaf1ab7dde1"
+  },
+  {
+   "path": "docs/visuals-src/shoot-anim.js",
+   "before": null,
+   "after": "09a1890b39c5b8d98c5c287e26a751dcfc5da4f8"
+  },
+  {
+   "path": "docs/visuals-src/shoot-locked.js",
+   "before": null,
+   "after": "dce489d09f6923a46cb23cd79abda93f32f999db"
+  }
+ ]
+}

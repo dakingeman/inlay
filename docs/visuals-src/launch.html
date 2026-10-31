@@ -1,0 +1,386 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="inlay.css">
+<script src="../../design/tokens.js"></script><script src="parts.js"></script><script src="features.js"></script><script src="backdrop.js"></script>
+<!--
+  Launch set, round L2 (30 Oct 2026). Every element is placed by its INK, not its box, and the layout reports what it measured:
+   - text: the ink's left edge and the cap/ascender top (canvas metrics), not the line box
+   - device pictures: the drawing, not the PNG's transparent margin
+   - screens and panels: their visible edge (the 2 px ring outside the box)
+  Layouts:  v=a  side by side (words + device left, aligned to the screen's top and bottom edge)
+            v=b  title on top (every image the same: words top-left, the moment underneath, centred in the room below)
+  Shared rules: 12-column grid, 96 px margins, 8 px rhythm, the composition's centre on the optical centre (3 % above the middle),
+  one dominant element (the screen), proximity groups the words, the device stands on the screen's bottom line.
+  ?guides=1 draws the grid and the alignment lines. window.REPORT holds the measurements for launch-check.js.
+-->
+<style>
+.abs{position:absolute}
+.h{font-family:A;font-weight:700;letter-spacing:-.005em;line-height:1.12;color:var(--paper);text-wrap:balance}
+.b{font-family:A;font-weight:400;letter-spacing:.005em;color:#C9CCD3;line-height:1.45;text-wrap:balance}
+.teal{color:var(--teal)}
+.screen{box-shadow:0 0 0 2px var(--track),0 2px 4px rgba(0,0,0,.3),0 24px 60px rgba(0,0,0,.45)!important}
+.crop{overflow:hidden;border-radius:22px;background:#000;box-shadow:0 0 0 2px var(--track),0 2px 4px rgba(0,0,0,.3),0 24px 60px rgba(0,0,0,.45)}
+.guide{position:absolute;pointer-events:none;z-index:9}
+/* the set images' parts (from feature.html), in Atkinson like every word outside the app's screens, no small capitals */
+.cardimg{display:block;border-radius:14px;box-shadow:0 0 0 2px var(--track),0 2px 4px rgba(0,0,0,.3),0 20px 50px rgba(0,0,0,.4)}
+.shot{display:block;border-radius:var(--r-card);box-shadow:0 0 0 2px var(--track),0 2px 4px rgba(0,0,0,.3),0 20px 50px rgba(0,0,0,.4)}
+.lbl{font-family:A;font-size:19px;color:#C9CCD3;text-align:center;margin-top:16px;letter-spacing:.005em}
+.row{display:flex;align-items:center;height:56px}
+.row .b{width:310px;flex:none;display:flex;align-items:center;font-size:0;line-height:0}
+.row .w{font-family:A;font-size:20px;color:var(--paper)}
+.label{font-family:A;font-weight:700;letter-spacing:0;text-transform:none;color:#C9CCD3;font-size:19px}
+.sec{margin-bottom:14px}
+.zoom{background:#000;border-radius:22px;box-shadow:0 0 0 2px var(--track),0 2px 4px rgba(0,0,0,.3),0 20px 50px rgba(0,0,0,.4)}
+</style></head><body>
+<div id="c" class="canvas"></div>
+<script>
+const q=new URLSearchParams(location.search), ID=q.get('id'), V=q.get('v')||'a', GUIDES=q.get('guides')==='1';
+const W=+(q.get('w')||1600), H=+(q.get('h')||900), M=96, RING=2, PIC_PAD=12/1429;     // pic renders carry a 12 px margin at 1429 wide
+const OPT=Math.round(H*0.03);                                                            // optical centre: 3 % above the middle
+const c=document.getElementById('c'); Object.assign(c.style,{width:W+'px',height:H+'px'});
+const REPORT={id:ID,v:V,checks:[]}; window.REPORT=REPORT;
+const ctx=document.createElement('canvas').getContext('2d');
+// Ink metrics for one line of text at a size and weight
+function ink(text,size,weight){ ctx.font=`${weight} ${size}px A`; const m=ctx.measureText(text);
+  return {left:-m.actualBoundingBoxLeft, asc:m.actualBoundingBoxAscent, desc:m.actualBoundingBoxDescent, fa:m.fontBoundingBoxAscent, fd:m.fontBoundingBoxDescent, w:m.width}; }
+// A text block placed so its INK starts at (x, inkTop): returns its element and measured ink box
+function textBlock(html, plain, x, inkTop, width, size, weight, cls, lh){
+  const e=document.createElement('div'); e.className='abs m '+cls; e.innerHTML=html; Object.assign(e.style,{width:width+'px',fontSize:size+'px'}); c.appendChild(e);
+  const k=ink(plain.split(' ').slice(0,4).join(' '),size,weight);
+  const lineH=size*lh, half=(lineH-(k.fa+k.fd))/2;
+  const topOffset=half+k.fa-Math.max(k.asc, ink('Hdlk',size,weight).asc*0.999);   // first line: from the box top to the tallest ink
+  e.style.left=(x-k.left)+'px'; e.style.top=(inkTop-topOffset)+'px';
+  return {e, inkTop, inkLeft:x, size, lineH, half, k};
+}
+function inkBottom(t){ const r=t.e.getBoundingClientRect(), cr=c.getBoundingClientRect();
+  const lines=Math.round(r.height/t.lineH); const lastBase=r.top-cr.top+(lines-1)*t.lineH+t.half+t.k.fa;
+  return {bottom:lastBase+ink('gyp',t.size,400).desc, lines}; }
+function pic(src,x,bottomInk,width){ const pad=width*PIC_PAD; const e=document.createElement('img'); e.className='abs m pic'; e.src=src;
+  Object.assign(e.style,{left:(x-pad)+'px',width:width+'px'}); c.appendChild(e); return {e,pad,bottomInk,width}; }
+function placePic(p){ const h=p.e.naturalHeight*p.width/p.e.naturalWidth; p.e.style.top=(p.bottomInk-h+p.pad)+'px'; p.inkTop=p.bottomInk-h+2*p.pad; p.h=h; }
+function line(x,y,w,h,col){ if(!GUIDES)return; const g=document.createElement('div'); g.className='guide'; Object.assign(g.style,{left:x+'px',top:y+'px',width:w+'px',height:h+'px',background:col}); c.appendChild(g); }
+const F=FEATURES[ID]||{};
+const HERO=ID==='hero';
+// Button names in the words become the app's own badges ({A}, {R2}…), sized from the font's cap height and centred on
+// the capitals' middle, so they sit in the line like a letter (Emre, 30 Oct 2026). Words with buttons, per image:
+const BUTTON_WORDS={
+  accents:{title:'Hold {A} for accents', body:'Hold {A} on a letter and its accents rise into the top row. Move to the one you want and let go.'},
+  hold:{title:'Hold {R2} for more', body:'Tips appear on the keys while you hold it: a capital, word jumps, an accent and undo. Nothing to memorise.'},
+  editing:{title:'Select, copy and paste', body:'{SELECT} starts selecting and {R1} grows it. The clock keeps your last six copies, one press away.'},
+  words:{title:'Words show up as you type', body:'Press {R3} for the first one, or move up and pick another. It learns the names and titles you use.'},
+  typing:{title:'Move with the D-pad, press {A}', body:'{Y} is space, {X} deletes and {START} goes. Moving up and down remembers your column.'}};
+const BTN_SCALE=1.42;                       // badge height ÷ cap height
+const BTN_STYLE=q.get('style')||'xbox';
+const NAMES={A:'A',B:'B',X:'X',Y:'Y',L1:'LB',R1:'RB',L2:'LT',R2:'RT',SELECT:'View',START:'Menu',R3:'R',L3:'L'};
+function richen(t,size,weight){ return t.replace(/\{(\w+)\}/g,(m,k)=>{
+  const capH=ink('H',size,weight).asc, h=Math.round(capH*BTN_SCALE), va=((capH-h)/2).toFixed(2);
+  return `<img class="btn" data-k="${k}" data-size="${size}" data-w="${weight}" src="renders/btn-${BTN_STYLE}-${k}.png" style="height:${h}px;vertical-align:${va}px;margin:0 ${(size*0.04).toFixed(1)}px">`; }); }
+const plainOf=t=>t.replace(/\{(\w+)\}/g,(m,k)=>NAMES[k]||k);
+const BW=BUTTON_WORDS[ID]||{};
+const TITLE_RAW=HERO?'Type with your <span class="teal">controller</span>':(BW.title||F.title), BODY_RAW=HERO?'A free keyboard for Android handhelds, controllers and TV.':(BW.body||F.body);
+const TITLE_P=plainOf(TITLE_RAW).replace(/<[^>]+>/g,''), BODY_P=plainOf(BODY_RAW);
+const TITLE=TITLE_RAW, BODY=BODY_RAW;
+// After layout: every badge's middle must sit on its line's cap middle (within half a pixel)
+function checkButtons(){ const cr=c.getBoundingClientRect(); let worst=0, n=0;
+  c.querySelectorAll('img.btn').forEach(b=>{ const blk=b.closest('.abs'); const size=+b.dataset.size, w=b.dataset.w;
+    const k=ink('Hdlk',size,w), lh=parseFloat(getComputedStyle(blk.firstElementChild&&blk.firstElementChild.tagName==='DIV'?blk.firstElementChild:blk).lineHeight)||size*1.2;
+    const br=b.getBoundingClientRect(), top=blk.getBoundingClientRect().top;
+    const line=Math.floor((br.top+br.height/2-top)/lh), half=(lh-(k.fa+k.fd))/2, base=top+line*lh+half+k.fa;
+    const capMid=base-ink('H',size,w).asc/2, mid=br.top+br.height/2; worst=Math.max(worst,Math.abs(mid-capMid)); n++; });
+  if(n) REPORT.checks.push({what:`${n} button badge(s) centred on the capitals' middle`, a:worst, b:0, tol:0.75}); }
+
+const HS=HERO?56:48, BS=23;                                    // two type sizes (plus the app's own inside the screen)
+const LOGO_H=56;
+let html=COVER_DEFS; c.innerHTML=html;
+const screenCfg=Object.assign({},HERO?{kb:'renders/kb-halo.png',kbAspect:1920/534,field:{before:'halo comb'}}:(F.screen||{kb:'renders/kb-suggest.png',kbAspect:1920/534,field:{before:'knights of the old rep'}}));
+const picSrc='renders/'+((F.pic)||'pic-hero')+'.png';
+
+function screenAt(x,w){ const s=libScreen(Object.assign({x,y:0,w},screenCfg)); const d=document.createElement('div'); d.innerHTML=s.html; const el=d.firstElementChild; c.appendChild(el); return {el,h:s.h,w}; }
+
+const CS=+(q.get('cs')||0.5);                                   // cover size in the library: smaller covers, a screen closer to the device's height
+screenCfg.coverScale=CS;
+const GAP=72;                                                    // the step between groups: words → device, device → screen
+if(V==='a'){
+  // Side by side. Words + device in 5 of 12 columns, the screen (the dominant element) in 7. The left column fills the
+  // screen's height exactly: words' ink top on the screen's top edge, device ink bottom on its bottom edge, and the device
+  // sized so the space between words and device is one GAP (no dead space above the device).
+  const colW=(W-2*M-11*24)/12, leftW=Math.round(colW*5+24*4), sx=M+leftW+GAP+RING, sw=W-M-RING-sx;
+  const S=screenAt(sx,sw);
+  const top=Math.round((H-S.h)/2)-OPT; S.el.style.top=top+'px';
+  const vTop=top-RING, vBot=top+S.h+RING;
+  let y=vTop;
+  if(HERO){ const lg=document.createElement('img'); lg.className='abs m'; lg.src='../brand/inlay-lockup-clear-dark.svg'; Object.assign(lg.style,{left:M+'px',top:y+'px',height:LOGO_H+'px'}); c.appendChild(lg); y+=LOGO_H+40; }
+  const t=textBlock(richen(TITLE,HS,700),TITLE_P,M,y,leftW,HS,700,'h',1.12);
+  const tb=inkBottom(t);
+  const b=textBlock(richen(BODY,BS,400),BODY_P,M,tb.bottom+20,leftW,BS,400,'b',1.45);
+  const bb=inkBottom(b);
+  const p=pic(picSrc,M,vBot,100);
+  REPORT.place=()=>{
+    const ar=(p.e.naturalWidth*(1-2*PIC_PAD))/(p.e.naturalHeight-2*p.e.naturalWidth*PIC_PAD);   // the drawing's own shape
+    // One device size for the set (BODY_W); smaller only when its shoulder keys need the room (the gap never under 56)
+    const BODY_W=440, want=vBot-(bb.bottom+56); let pw=Math.min(BODY_W, Math.round(want*ar));
+    p.width=pw/(1-2*PIC_PAD); p.pad=p.width*PIC_PAD; p.e.style.width=p.width+'px'; p.e.style.left=(M-p.pad)+'px'; placePic(p);
+    REPORT.checks.push(
+    {what:'screen visible top = first ink top', a:vTop, b:HERO?vTop:t.inkTop},
+    {what:'device ink bottom = screen visible bottom', a:p.bottomInk, b:vBot},
+    {what:'words → device between 56 and 120 (no dead space)', a:p.inkTop-bb.bottom, min:55.5},
+    {what:'words → device at most 120', a:p.inkTop-bb.bottom, max:120},
+    {what:'device → screen = one step (72)', a:sx-RING-(M+pw), min:GAP-0.5},
+    {what:'words ink left = margin', a:t.inkLeft, b:M},
+    {what:'screen right edge = margin', a:sx+sw+RING, b:W-M},
+    {what:'composition centre on the optical centre', a:(vTop+vBot)/2, b:H/2-OPT, tol:1.5});
+    REPORT.deviceW=pw;
+    line(M,0,1,H,'#f0f'); line(W-M,0,1,H,'#f0f'); line(0,vTop,W,1,'#0ff'); line(0,vBot,W,1,'#0ff'); line(0,H/2-OPT,W,1,'#ff0');
+    line(M,bb.bottom,leftW,1,'#f80'); line(M,p.inkTop,leftW,1,'#f80'); };
+}
+if(V==='b'&&F.layout==='top'){
+  // Title on top, for the images whose subject is a set (devices, themes, languages, a whole screen): the words where every
+  // image has them, the content as one block centred by its ink in the room below (horizontally on the canvas, vertically
+  // between the words and the bottom margin)
+  const tw=Math.round((W-2*M)*0.62);
+  const t=textBlock(richen(TITLE,HS,700),TITLE_P,M,M,tw,HS,700,'h',1.12);
+  const tb=inkBottom(t);
+  const b=textBlock(richen(BODY,BS,400),BODY_P,M,tb.bottom+18,tw,BS,400,'b',1.45);
+  const bb=inkBottom(b);
+  const box=document.createElement('div'); box.className='abs'; Object.assign(box.style,{left:'0px',top:'0px',width:W+'px',height:H+'px'});
+  box.innerHTML=F.content(); c.appendChild(box);
+  REPORT.place=()=>{
+    fitBadgeColumns(box);
+    const cr=c.getBoundingClientRect();
+    // what's seen: a picture cropped by its frame counts as its frame
+    const clipped=e=>{ for(let p=e.parentElement;p&&p!==box;p=p.parentElement) if(getComputedStyle(p).overflow==='hidden') return true; return false; };
+    const els=[...box.querySelectorAll('img,.m,.zoom,.shot,.cardimg')].filter(e=>!clipped(e)).map(e=>e.getBoundingClientRect()).filter(r=>r.width>2&&r.height>2);
+    const u=els.reduce((a,r)=>({l:Math.min(a.l,r.left-cr.left),t:Math.min(a.t,r.top-cr.top),r:Math.max(a.r,r.right-cr.left),b:Math.max(a.b,r.bottom-cr.top)}),{l:1e9,t:1e9,r:-1e9,b:-1e9});
+    const roomTop=bb.bottom+56, roomBot=H-M+24;
+    const dx=Math.round(W/2-(u.l+u.r)/2), dy=Math.round(roomTop+(roomBot-roomTop-(u.b-u.t))/2-u.t);
+    box.style.left=dx+'px'; box.style.top=dy+'px';
+    REPORT.checks.push({what:'words ink top = margin', a:t.inkTop, b:M},
+      {what:'content centred on the canvas (by ink)', a:u.l+dx, b:W-(u.r+dx), tol:1.5},
+      {what:'words → content ≥ 48', a:u.t+dy-bb.bottom, min:48},
+      {what:'content inside the bottom margin', a:u.b+dy, max:H-M+24},
+      {what:'content inside the side margins', a:u.l+dx, min:M-0.5});
+    line(M,0,1,H,'#f0f'); line(W-M,0,1,H,'#f0f'); line(0,M,W,1,'#f0f'); line(W/2,0,1,H,'#ff0'); };
+}
+else if(V==='b'){
+  // Title on top: the words at the same place on every image; under them the device and the screen as one group,
+  // centred by ink. The device sits beside the keyboard it drives: its middle on the keyboard's middle, as tall as it.
+  const centre=HERO, tw=HERO?W-2*M:Math.round((W-2*M)*0.62);
+  let y=M, t;
+  if(centre){
+    const lg=document.createElement('img'); lg.className='abs m'; lg.src='../brand/inlay-lockup-clear-dark.svg'; Object.assign(lg.style,{height:LOGO_H+'px',top:(y-8)+'px'}); c.appendChild(lg);
+    REPORT.logo=lg; y+=LOGO_H+32;
+    t=textBlock(`<div style="text-align:center">${richen(TITLE,HS,700)}</div>`,TITLE_P,M,y,W-2*M,HS,700,'h',1.12);
+  } else t=textBlock(richen(TITLE,HS,700),TITLE_P,M,y,tw,HS,700,'h',1.12);
+  const tb=inkBottom(t);
+  const b=centre?textBlock(`<div style="text-align:center">${richen(BODY,BS,400)}</div>`,BODY_P,M,tb.bottom+18,W-2*M,BS,400,'b',1.45):textBlock(richen(BODY,BS,400),BODY_P,M,tb.bottom+18,tw,BS,400,'b',1.45);
+  const bb=inkBottom(b);
+  const roomTop=bb.bottom+56, roomBot=H-M+24;
+  const sw=HERO?760:F.pic==='pic-tv'?680:800;               // the TV search screen is taller: a little narrower keeps it inside the margin
+  const S=screenAt(0,sw);
+  const kbH=Math.round(sw/screenCfg.kbAspect);
+  const p=pic(picSrc,0,0,100);
+  REPORT.place=()=>{
+    // Sized by the BODY (without shoulder keys), so the device is the same size on every image; lit shoulder keys rise above it
+    const BODY_AR=1405/570;                                       // the wide handheld's body (pic-accents, no shoulder keys)
+    // A tall device (the TV remote) can't match a keyboard's height by width: it stands as tall as the screen's keyboard
+    // and text line together, centred on the screen's middle
+    const tall=F.pic==='pic-tv', imgAR=(p.e.naturalWidth*(1-2*PIC_PAD))/(p.e.naturalHeight-2*p.e.naturalWidth*PIC_PAD);
+    const pw=tall?Math.round(S.h*0.82*imgAR):Math.min(W-2*M-sw-GAP-2*RING, Math.round(kbH*BODY_AR));
+    const groupW=pw+GAP+sw+RING*2, gx=Math.round((W-groupW)/2);
+    S.el.style.left=(gx+pw+GAP+RING)+'px';
+    const sTop=Math.round(roomTop+(roomBot-roomTop-S.h)/2); S.el.style.top=sTop+'px';
+    const vTop=sTop-RING, vBot=sTop+S.h+RING, kbMid=sTop+S.h-kbH/2;
+    p.width=pw/(1-2*PIC_PAD); p.pad=p.width*PIC_PAD; p.e.style.width=p.width+'px'; p.e.style.left=(gx-p.pad)+'px';
+    const bodyH=tall?pw/imgAR:pw/BODY_AR, mid=tall?sTop+S.h/2:kbMid;
+    p.bottomInk=Math.min(vBot, mid+bodyH/2); placePic(p); p.bodyTop=p.bottomInk-bodyH;
+    if(centre){ const lg=REPORT.logo; lg.style.left=Math.round((W-lg.getBoundingClientRect().width)/2)+'px'; }
+    REPORT.checks.push(
+    {what:'words ink top = margin', a:centre?M-8:t.inkTop, b:centre?M-8:M},
+    {what:tall?'device middle = screen middle':'device body middle = keyboard middle', a:(p.bodyTop+p.bottomInk)/2, b:mid, tol:1.5},
+    {what:'device inside the screen\'s height', a:p.inkTop, min:vTop},
+    {what:'words → moment ≥ 48', a:vTop-bb.bottom, min:48},
+    {what:'moment centred by ink (left room = right room)', a:gx, b:W-(gx+groupW), tol:1.5},
+    {what:'moment bottom inside the margin', a:vBot, max:H-M+24});
+    REPORT.deviceW=pw;
+    line(M,0,1,H,'#f0f'); line(W-M,0,1,H,'#f0f'); line(0,M,W,1,'#f0f'); line(0,vTop,W,1,'#0ff'); line(0,vBot,W,1,'#0ff'); line(0,kbMid,W,1,'#f80'); line(W/2,0,1,H,'#ff0'); };
+}
+if(V==='g'){
+  // The hero, round L7 (Emre, 30 Oct 2026): no device, the name big, the typing window under it. The tagline is in the text
+  // box: typed part white, the rest of it shown faint ahead of the cursor, the way a phone keyboard previews a completion.
+  // ?ghost=word (only the rest of the word being typed) | line (the whole sentence faint from the start); ?st=offer|done
+  const GH=q.get('ghost')||'word', ST=q.get('st')||'offer';
+  const typed={early:'Type with y',offer:'Type with your contr',done:'Type with your controller'}[ST];
+  const rest=GH==='line'?'Type with your controller'.slice(typed.length):({early:'our',offer:'oller'}[ST]||'');
+  const KB={early:'renders/kb-tag-y.png',offer:'renders/kb-tag.png',done:'renders/kb-tag-done.png'}[ST];
+  const LH=+(q.get('lh')||150), ww=1040, gapY=72;
+  const sc=ww/800, fh=Math.round(56*sc), pad=Math.round(16*sc), kbH=Math.round(ww*534/1920), gap=Math.round(12*sc), fs=Math.round(22*sc);
+  const d=document.createElement('div'); d.className='abs screen m'; const NOF=q.get('nofield')==='1'; const ph=NOF?kbH:pad+fh+gap+kbH;
+  Object.assign(d.style,{width:ww+'px',height:ph+'px'});
+  const fieldHtml=(t,r)=>field({before:t,after:r||'\u200b',count:''},{h:fh,fs,pad:Math.round(20*sc)})
+    .replace(/<span>([^<]*)<\/span><\/div>/, (m,x)=>`<span class="ghost" style="color:#9A9DA5;opacity:.62">${x}</span></div>`);
+  d.innerHTML=`<div class="fwrap" style="padding:${pad}px ${pad}px 0">${fieldHtml(typed,rest)}</div><img class="kbimg" src="${KB}" style="display:block;width:${ww}px;height:${kbH}px;margin-top:${gap}px">`;
+  if(NOF){ d.querySelector('.fwrap').style.display='none'; d.querySelector('.kbimg').style.marginTop='0px'; }
+  c.appendChild(d);
+  // The animation (hero-anim.js): each frame sets what's typed and the keyboard as the app drew it; the rest of the tagline
+  // shows faint ahead of the cursor (only while what's typed is the tagline's start)
+  const TAG='Type with your controller';
+  // mode: 'line' (the whole tagline faint ahead), 'none' (only what's typed), 'word' (the rest of the word being typed,
+  // faint, only once the keyboard offers that word first; nothing before then)
+  const OFFER_AT={type:2,with:2,your:2,controller:5};
+  window.setFrame=(t,kbSrc,mode,cur)=>new Promise(res=>{ const done=t.trimEnd(); let rest='';
+    if((mode||'line')==='line') rest=TAG.toLowerCase().startsWith(done.toLowerCase())?TAG.slice(Math.min(t.length,TAG.length)):'';
+    if(mode==='word'){ const ws=t.split(' '), pre=ws[ws.length-1], tw=TAG.split(' ')[ws.length-1]||'';
+      if(pre.length>=(OFFER_AT[tw.toLowerCase()]||99) && tw.toLowerCase().startsWith(pre.toLowerCase()) && pre.length<tw.length) rest=tw.slice(pre.length); }
+    d.querySelector('.fwrap').innerHTML=fieldHtml(t,rest);
+    const cu=d.querySelector('.cur'); if(cu&&cur===false) cu.style.visibility='hidden';
+    const im=d.querySelector('.kbimg'); if(im.getAttribute('src')===kbSrc){res();return;} im.onload=()=>res(); im.src=kbSrc; });
+  const lg=document.createElement('img'); lg.className='abs m'; lg.src='../brand/inlay-lockup-clear-dark.svg'; c.appendChild(lg);
+  const groupH=LH+gapY+ph+2*RING, top=Math.round((H-groupH)/2)-OPT;
+  lg.style.height=LH+'px'; lg.style.top=top+'px';
+  d.style.left=Math.round((W-ww)/2)+'px'; d.style.top=(top+LH+gapY+RING)+'px';
+  REPORT.place=()=>{ const lw=lg.getBoundingClientRect().width; lg.style.left=Math.round((W-lw)/2)+'px';
+    REPORT.checks.push({what:'name and window centred', a:(W-lw)/2, b:parseFloat(lg.style.left), tol:1},
+      {what:'group on the optical centre', a:(top+top+groupH)/2, b:H/2-OPT, tol:1.5},{what:'inside the bottom margin', a:top+groupH, max:H-M+24}); };
+}
+if(V==='t'){
+  // The hero, round L6 (Emre, 30 Oct 2026): no headline and no game, the tagline is typed into the text box and the keyboard
+  // offers its last word; the logo is big. ?st=typing|offer|done (the moments of the loop), ?lay=stack|split
+  const ST=q.get('st')||'offer', LAY=q.get('lay')||'stack';
+  const TXT={typing:'Type with your cont',offer:'Type with your contr',done:'Type with your controller '}[ST];
+  const KB={typing:'renders/kb-tag-cont.png',offer:'renders/kb-tag.png',done:'renders/kb-tag-done.png'}[ST];
+  const PIC=ST==='done'?'renders/pic-words.png':'renders/pic-hero.png';             // the right stick lit as it takes the word
+  const win=(w)=>{ const sc=w/800, fh=Math.round(52*sc), pad=Math.round(16*sc), kbH=Math.round(w*534/1920), gap=Math.round(12*sc);
+    const d=document.createElement('div'); d.className='abs screen m'; const h=pad+fh+gap+kbH;
+    Object.assign(d.style,{width:w+'px',height:h+'px'});
+    d.innerHTML=`<div style="padding:${pad}px ${pad}px 0">${field({before:TXT,count:''},{h:fh,fs:Math.round(22*sc),pad:Math.round(20*sc)})}</div><img src="${KB}" style="display:block;width:${w}px;height:${kbH}px;margin-top:${gap}px">`;
+    c.appendChild(d); return {el:d,h,w,kbH}; };
+  const lg=document.createElement('img'); lg.className='abs m'; lg.src='../brand/inlay-lockup-clear-dark.svg'; c.appendChild(lg);
+  const BODY_AR=1405/570;
+  if(LAY==='stack'){
+    // the name big at the top, then the device beside the typing window, the whole group on the optical centre
+    const LH=+(q.get('lh')||124), gapY=LH>140?64:72, ww=LH>140?700:760;   // a bigger name, a slightly smaller window: the group still fits
+    const P=win(ww); const dw=Math.round(P.kbH*BODY_AR); const pc=pic(PIC,0,0,dw/(1-2*PIC_PAD));
+    const groupH=LH+gapY+P.h+2*RING, top=Math.round((H-groupH)/2)-OPT;
+    lg.style.height=LH+'px'; lg.style.top=top+'px';
+    REPORT.place=()=>{ lg.style.left=Math.round((W-lg.getBoundingClientRect().width)/2)+'px';
+      const gw=dw+GAP+ww+2*RING, gx=Math.round((W-gw)/2), pt=top+LH+gapY+RING;
+      P.el.style.left=(gx+dw+GAP+RING)+'px'; P.el.style.top=pt+'px';
+      const kbMid=pt+P.h-P.kbH/2; pc.e.style.left=(gx-pc.pad)+'px'; pc.bottomInk=kbMid+(dw/BODY_AR)/2; placePic(pc);
+      REPORT.checks.push({what:'group centred by ink', a:gx, b:W-(gx+gw), tol:1.5},{what:'device body middle = keyboard middle', a:pc.bottomInk-(dw/BODY_AR)/2, b:kbMid, tol:1.5},
+        {what:'inside the margins', a:Math.min(gx, pt+P.h+RING<=H-M+24?999:-1), min:M-0.5},{what:'composition on the optical centre', a:(top+pt+P.h+RING)/2, b:H/2-OPT, tol:2}); };
+  } else {
+    // the name big on the left, over the device; the typing window on the right; device on the keyboard's middle
+    const ww=820, LH=112;
+    const P=win(ww); const sx=W-M-RING-ww, top=Math.round((H-P.h)/2)-OPT; P.el.style.left=sx+'px'; P.el.style.top=top+'px';
+    const dw=Math.min(sx-RING-GAP-M, Math.round(P.kbH*BODY_AR)); const pc=pic(PIC,M,0,dw/(1-2*PIC_PAD));
+    lg.style.height=LH+'px';
+    REPORT.place=()=>{ const kbMid=top+P.h-P.kbH/2; pc.bottomInk=kbMid+(dw/BODY_AR)/2; placePic(pc);
+      const lw=lg.getBoundingClientRect().width, colW=sx-RING-GAP-M;
+      lg.style.left=Math.round(M+(dw-lw)/2)+'px';
+      const devTop=pc.bottomInk-dw/BODY_AR; lg.style.top=Math.round((top-RING+devTop)/2-LH/2)+'px';    // centred in the room above the device
+      REPORT.checks.push({what:'logo centred over the device', a:M+dw/2, b:parseFloat(lg.style.left)+lw/2, tol:1.5},
+        {what:'device body middle = keyboard middle', a:devTop+dw/BODY_AR/2, b:kbMid, tol:1.5},{what:'window right edge = margin', a:sx+ww+RING, b:W-M}); };
+  }
+}
+if(V==='p1'||V==='p2'||V==='p3'){
+  // Link preview, round L3 (1600 × 800 → 1280 × 640): more of the keyboard and its controller hints, searching a game
+  // everyone knows. Everything inside the centre 1250 × 625.
+  const SAFE={l:(W-1250)/2,t:(H-625)/2,r:(W+1250)/2,b:(H+625)/2};
+  // ?plat=xbox|ps|switch: each platform's own icons and a game its players know (the same searches as the app's tour)
+  const PLAT={xbox:{kb:'renders/kb-halo.png',text:'halo comb'},ps:{kb:'renders/kb-ps-sol.png',text:'metal gear sol'},switch:{kb:'renders/kb-sw-wor.png',text:'super mario wor'},
+    jsrf:{kb:'renders/kb-x-jsrf.png',text:'jet set radio fu'},ngb:{kb:'renders/kb-x-ngb.png',text:'ninja gaiden bl'},crimson:{kb:'renders/kb-x-crimson.png',text:'crimson sk'}}[q.get('plat')||'xbox'];
+  const halo={kb:PLAT.kb,kbAspect:1920/534,field:{before:PLAT.text},coverScale:0.5};
+  const lg=document.createElement('img'); lg.className='abs m'; lg.src='../brand/inlay-lockup-clear-dark.svg'; c.appendChild(lg);
+  const LINE='A free keyboard you drive with your controller.';
+  // the typing window (the tour's look): a text box and the whole keyboard in one black panel
+  const panel=(x,y,w)=>{ const s=w/800, fh=Math.round(46*s), pad=Math.round(14*s), kbH=Math.round(w*534/1920);
+    const d=document.createElement('div'); d.className='abs screen m'; const h=pad+fh+Math.round(10*s)+kbH;
+    Object.assign(d.style,{left:x+'px',top:y+'px',width:w+'px',height:h+'px'});
+    d.innerHTML=`<div style="padding:${pad}px ${pad}px 0">${field({before:PLAT.text,count:''},{h:fh,fs:Math.round(19*s),pad:Math.round(18*s)})}</div><img src="${PLAT.kb}" style="display:block;width:${w}px;height:${kbH}px;margin-top:${Math.round(10*s)}px">`;
+    c.appendChild(d); return {el:d,h,w}; };
+  let place;
+  if(V==='p1'){
+    // Centred: the name, one line, the whole typing window
+    const LH=88, gap1=28, gap2=48, ls=30, pw=1000;
+    const P=panel(0,0,pw); const li=ink(LINE,ls,400);
+    const groupH=LH+gap1+Math.round(li.asc+li.desc)+gap2+P.h, top=Math.round((H-groupH)/2)-Math.round(H*0.015);
+    lg.style.height=LH+'px'; lg.style.top=top+'px';
+    const t=textBlock(`<div style="text-align:center">${LINE}</div>`,LINE,(W-1300)/2,top+LH+gap1,1300,ls,400,'b',1.3);
+    place=()=>{ const tb=inkBottom(t); P.el.style.left=Math.round((W-pw)/2)+'px'; P.el.style.top=Math.round(tb.bottom+gap2+RING)+'px';
+      lg.style.left=Math.round((W-lg.getBoundingClientRect().width)/2)+'px'; return P; };
+  } else if(V==='p2'){
+    // The use: the name and one line left, the library search right (the result and the whole keyboard)
+    const LH=80, ls=28, sw=780, x0=SAFE.l+24;
+    const S=screenAt(SAFE.r-24-RING-sw,sw); Object.assign(S.el.style,{});
+    const lib=libScreen(Object.assign({x:0,y:0,w:sw},halo)); S.el.outerHTML; S.el.remove();
+    const d=document.createElement('div'); d.innerHTML=lib.html; const el=d.firstElementChild; c.appendChild(el);
+    el.style.left=(SAFE.r-24-RING-sw)+'px'; const top=Math.round((H-lib.h)/2-H*0.015); el.style.top=top+'px';
+    const tw=SAFE.r-24-sw-2*RING-GAP-x0;
+    lg.style.height=LH+'px'; lg.style.left=x0+'px';
+    const t=textBlock('A free keyboard you drive<br>with your controller.',LINE,x0,0,tw,ls,400,'b',1.35);   // broken where the phrase breaks
+    place=()=>{ const tb0=inkBottom(t), groupH=LH+26+tb0.bottom, mid=top+lib.h/2, gTop=Math.round(mid-groupH/2);
+      lg.style.top=gTop+'px'; t.e.style.top=(parseFloat(t.e.style.top)+gTop+LH+26)+'px'; return {el, h:lib.h, w:sw}; };
+  } else {
+    // The name and one line on top, then the device beside the whole typing window (the README look, small)
+    const LH=72, gap1=22, gap2=44, ls=26, pw=700;
+    const P=panel(0,0,pw); const li=ink(LINE,ls,400);
+    const kbH=Math.round(pw*534/1920), BODY_AR=1405/570, dw=Math.round(kbH*BODY_AR*0.92);
+    const pc=pic('renders/pic-hero.png',0,0,dw/(1-2*PIC_PAD));
+    const groupH=LH+gap1+Math.round(li.asc+li.desc)+gap2+P.h, top=Math.round((H-groupH)/2)-Math.round(H*0.015);
+    lg.style.height=LH+'px'; lg.style.top=top+'px';
+    const t=textBlock(`<div style="text-align:center">${LINE}</div>`,LINE,(W-1300)/2,top+LH+gap1,1300,ls,400,'b',1.3);
+    place=()=>{ const tb=inkBottom(t); const gw=dw+GAP+pw+2*RING, gx=Math.round((W-gw)/2);
+      P.el.style.left=(gx+dw+GAP+RING)+'px'; const pt=Math.round(tb.bottom+gap2+RING); P.el.style.top=pt+'px';
+      const kbMid=pt+P.h-kbH/2; pc.e.style.left=(gx-pc.pad)+'px'; pc.bottomInk=kbMid+(dw/BODY_AR)/2; placePic(pc);
+      lg.style.left=Math.round((W-lg.getBoundingClientRect().width)/2)+'px'; return P; };
+  }
+  REPORT.place=()=>{ const P=place(); const r=P.el.getBoundingClientRect(), lr=lg.getBoundingClientRect();
+    REPORT.checks.push({what:'name inside the safe area', a:lr.top, min:SAFE.t},{what:'window inside the safe area (bottom)', a:r.bottom+RING, max:SAFE.b},
+      {what:'window inside the safe area (sides)', a:Math.min(r.left-RING-SAFE.l, SAFE.r-r.right-RING), min:0});
+    line(SAFE.l,SAFE.t,SAFE.r-SAFE.l,1,'#f0f'); line(SAFE.l,SAFE.b,SAFE.r-SAFE.l,1,'#f0f'); line(SAFE.l,SAFE.t,1,SAFE.b-SAFE.t,'#f0f'); line(SAFE.r,SAFE.t,1,SAFE.b-SAFE.t,'#f0f'); line(W/2,0,1,H,'#ff0'); };
+}
+if(V==='s1'||V==='s2'){
+  // GitHub link card / Reddit cover (1600 × 800, shown at 1280 × 640): seen small in feeds, so one big moment.
+  // Everything that matters inside the centre 1250 × 625 (some previews crop the edges). The close-up is cut in the
+  // keyboard's own gaps (rows end between keys, never through one): the word strip and the first two rows.
+  const SAFE={l:(W-1250)/2,t:(H-625)/2,r:(W+1250)/2,b:(H+625)/2};
+  const KB={w:1920,h:534,cut:311};                          // kb-suggest.png: rows end at 306, next starts at 317
+  // [sx0, sx1]: the columns shown, cut in the gaps between keys (kb-suggest.png gaps at x 200, 395, 583, 1337, 1525)
+  const crop=(x,y,w,sx0=0,sx1=KB.w)=>{ const sc=w/(sx1-sx0), h=Math.round(KB.cut*sc); const d=document.createElement('div'); d.className='abs crop m';
+    Object.assign(d.style,{left:x+'px',top:y+'px',width:w+'px',height:h+'px'}); d.innerHTML=`<img src="renders/kb-suggest.png" style="width:${Math.round(KB.w*sc)}px;margin-left:${-Math.round(sx0*sc)}px;display:block">`; c.appendChild(d); return {d,h,w}; };
+  const lg=document.createElement('img'); lg.className='abs m'; lg.src='../brand/inlay-lockup-clear-dark.svg'; c.appendChild(lg);
+  if(V==='s1'){
+    // Centred: the name big, one line, the close-up under it; the group on the optical centre
+    const LH=104, cw=1180, ch=Math.round(cw*KB.cut/KB.w), gap1=36, gap2=56, ls=32;
+    const lineInk=ink('A free keyboard you drive with your controller.',ls,400);
+    const groupH=LH+gap1+Math.round(lineInk.asc+lineInk.desc)+gap2+ch, top=Math.round((H-groupH)/2)-Math.round(H*0.02);
+    lg.style.height=LH+'px'; lg.style.top=top+'px';
+    const t=textBlock('<div style="text-align:center">A free keyboard you drive with your controller.</div>','A free keyboard you drive with your controller.',(W-1300)/2,top+LH+gap1,1300,ls,400,'b',1.3);
+    const tb=inkBottom(t); const k=crop(Math.round((W-cw)/2),Math.round(tb.bottom+gap2),cw);
+    REPORT.place=()=>{ lg.style.left=Math.round((W-lg.getBoundingClientRect().width)/2)+'px';
+      const kr=k.d.getBoundingClientRect(), lr=lg.getBoundingClientRect();
+      REPORT.checks.push({what:'name inside the safe area', a:lr.top, min:SAFE.t},{what:'close-up inside the safe area (bottom)', a:kr.bottom+RING, max:SAFE.b},
+        {what:'close-up centred', a:kr.left, b:W-kr.right, tol:1},{what:'line → close-up ≥ 48', a:kr.top-RING-tb.bottom, min:48});
+      line(SAFE.l,SAFE.t,SAFE.r-SAFE.l,1,'#f0f'); line(SAFE.l,SAFE.b,SAFE.r-SAFE.l,1,'#f0f'); line(SAFE.l,SAFE.t,1,SAFE.b-SAFE.t,'#f0f'); line(SAFE.r,SAFE.t,1,SAFE.b-SAFE.t,'#f0f'); line(W/2,0,1,H,'#ff0'); };
+  } else {
+    // Split: the name and one line left, a closer close-up right (bigger keys); both groups centred on one line
+    const LH=88, cw=800, x0=SAFE.l+24, gapX=64, ls=28, midY=H/2-H*0.02;
+    const k=crop(SAFE.r-24-cw,0,cw,200,1920);   // the only clean cut that keeps the lit key (p) and the whole of "republic"
+    k.d.style.top=Math.round(midY-k.h/2)+'px';
+    const tw=SAFE.r-24-cw-gapX-x0;
+    lg.style.height=LH+'px'; lg.style.left=x0+'px';
+    const t=textBlock('A free keyboard you drive with your controller.','A free keyboard you drive with your controller.',x0,0,tw,ls,400,'b',1.35);
+    REPORT.place=()=>{ const tb0=inkBottom(t), lineH=tb0.bottom-0;       // the line's ink height when its ink top is at 0
+      const groupH=LH+28+lineH, gTop=Math.round(midY-groupH/2);
+      lg.style.top=gTop+'px'; const shift=gTop+LH+28; t.e.style.top=(parseFloat(t.e.style.top)+shift)+'px';
+      const tb=inkBottom(t), kr=k.d.getBoundingClientRect();
+      REPORT.checks.push({what:'words group centred on the close-up\'s centre line', a:(gTop+tb.bottom)/2, b:(kr.top+kr.bottom)/2, tol:1.5},
+        {what:'words → close-up ≥ 64', a:kr.left-RING-(x0+tw), min:64},{what:'name inside the safe area', a:gTop, min:SAFE.t},
+        {what:'close-up inside the safe area', a:kr.right+RING, max:SAFE.r});
+      line(SAFE.l,SAFE.t,SAFE.r-SAFE.l,1,'#f0f'); line(SAFE.l,SAFE.b,SAFE.r-SAFE.l,1,'#f0f'); line(0,midY,W,1,'#ff0'); };
+  }
+}
+document.fonts.ready.then(()=>Promise.all([...document.images].map(i=>i.decode().catch(()=>{})))).then(()=>{
+  REPORT.place&&REPORT.place(); checkButtons();
+  inlayBackdrop(c, ID+V, ['hero','typing','words','accents','devices','hold','editing','tidy'].indexOf(ID)+1||1, {motif:'none', grain:q.get('grain')!=='0'});
+  REPORT.checks.forEach(k=>{ k.ok = k.min!==undefined? k.a>=k.min-0.5 : k.max!==undefined? k.a<=k.max+0.5 : Math.abs(k.a-k.b)<=(k.tol||1); });
+  document.title='done'; });
+</script></body></html>

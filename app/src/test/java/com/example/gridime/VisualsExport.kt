@@ -69,6 +69,7 @@ class VisualsExport {
             maxHeightDp = heightDp
             tallBoost = false
             show(kind, style, sticks)
+            shouldersWhenUsed = true          // bumpers and triggers only where the image uses them (Emre, 30 Oct 2026)
             this.held = held; this.holding = holding
         }
         attach(v, widthDp)
@@ -150,6 +151,19 @@ class VisualsExport {
         val x = base()
         // The keyboard in every state the images show (Xbox icons unless the image is about icons)
         kb("kb-suggest", x) { walkTo("p"); setSuggestions(listOf("republic", "report", "reply"), "rep") }
+        // the link preview: searching a game everyone knows
+        kb("kb-halo", x) { walkTo("b"); setSuggestions(listOf("combat", "combo", "come"), "comb") }
+        // the hero: the tagline typed into the text box, the last word offered and taken (Emre, 30 Oct 2026)
+        kb("kb-tag", x) { walkTo("r"); setSuggestions(listOf("controller", "control", "contract"), "contr") }
+        kb("kb-tag-done", x) { walkTo("r") }
+        kb("kb-tag-y", x) { walkTo("y"); setSuggestions(listOf("your", "you", "yes"), "y") }
+        kb("kb-tag-cont", x) { walkTo("t"); setSuggestions(listOf("control", "contact", "content"), "cont") }
+        // classics people play on emulation handhelds (Emre, 30 Oct 2026)
+        kb("kb-x-jsrf", x) { walkTo("u"); setSuggestions(listOf("future", "full", "fun"), "fu") }
+        kb("kb-x-ngb", x) { walkTo("l"); setSuggestions(listOf("black", "blue", "block"), "bl") }
+        kb("kb-x-crimson", x) { walkTo("k"); setSuggestions(listOf("skies", "sky", "skill"), "sk") }
+        kb("kb-ps-sol", base(ButtonStyle.PLAYSTATION)) { walkTo("l"); setSuggestions(listOf("solid", "sold", "solo"), "sol") }
+        kb("kb-sw-wor", base(ButtonStyle.SWITCH)) { walkTo("r"); setSuggestions(listOf("world", "work", "word"), "wor") }
         kb("kb-type", x) { walkTo("i") }
         kb("kb-accents", x) { walkTo("n"); instantAnimations { pressA(); idle(400) } }
         kb("kb-holdrt", x) { walkTo("g"); setHeldShift(true) }
@@ -210,6 +224,14 @@ class VisualsExport {
             save(v, "badge-%02d".format(i))
         }
         File(out, "badges.json").writeText(org.json.JSONArray(hints).toString())
+        // Single buttons for the words in the images ("Hold [A] for accents"), drawn big so they stay sharp at headline size
+        for (st in ButtonStyle.values()) for (k in listOf("A", "B", "X", "Y", "L1", "R1", "L2", "R2", "SELECT", "START", "R3", "L3")) {
+            val v = BadgeLineView(context, HintText.parse("{$k}"), st, Design.TYPE_CAPTION, SettingsStyle.textSecondary, badgeScale = 5f, gapBadgeToBadge = 6f, gapBadgeToText = 8f)
+            v.measure(View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED), View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED))
+            v.layout(0, 0, v.measuredWidth.coerceAtLeast(1), v.measuredHeight.coerceAtLeast(1))
+            idle(20)
+            save(v, "btn-${st.name.lowercase()}-$k")
+        }
     }
 
     /** Real screens, at the Odin 2 Portal's size. */
@@ -235,6 +257,14 @@ class VisualsExport {
                 @Suppress("UNCHECKED_CAST")
                 val rows = SettingsActivity::class.java.getDeclaredField("focusableRows").apply { isAccessible = true }.get(s) as List<android.view.View>
                 rows.first { has(it, "Sound pack") }.requestFocusFromTouch(); idle(1200)
+                // The page starts at the Sound heading: no half-hidden row peeking out under the tabs (launch set, 30 Oct 2026)
+                fun find(v: android.view.View): android.view.View? = if (v is android.widget.TextView && v.text.toString() == "Sound") v
+                    else (v as? android.view.ViewGroup)?.let { g -> (0 until g.childCount).firstNotNullOfOrNull { find(g.getChildAt(it)) } }
+                find(s.window.decorView)?.let { head ->
+                    var sv: android.view.View? = head; var y = 0
+                    while (sv != null && sv !is android.widget.ScrollView) { y += sv.top; sv = sv.parent as? android.view.View }
+                    (sv as? android.widget.ScrollView)?.let { it.scrollTo(0, (y - head.height).coerceAtLeast(0)); idle(400) }
+                }
                 save(s.window.decorView, "screen-soundpack")
                 rows.first().requestFocusFromTouch(); idle(800) }
             if (i < names.lastIndex) { press(s, android.view.KeyEvent.KEYCODE_BUTTON_R1); idle(500) } }

@@ -437,6 +437,7 @@ class DevicePictureView(context: Context) : View(context) {
         morph?.let { it.before.recycle(); it.after?.recycle() }; morph = null
     }
     private val morphPaint = Paint(Paint.FILTER_BITMAP_FLAG)
+    private val shoulderPaint = Paint(Paint.FILTER_BITMAP_FLAG)
 
     /** The part that moves: everything the controls cover on either picture, a little air round it. */
     private fun controlsArea(geo: org.json.JSONObject, map: FloatArray, into: RectF) {
@@ -588,16 +589,48 @@ class DevicePictureView(context: Context) : View(context) {
             picture.renderToCanvas(Canvas(c), options)
             cacheKey = key
         }
-        canvas.drawBitmap(cache!!, 0f, 0f, null)
+        val box0 = picture.documentViewBox
+        if (geo == null || box0 == null || !shouldersWhenUsed) canvas.drawBitmap(cache!!, 0f, 0f, null)
         if (geo == null) return
 
         // Picture units to view pixels (the picture is centred and keeps its shape)
-        val box = picture.documentViewBox ?: return
+        val box = box0 ?: return
         val scale = min(width / box.width(), height / box.height())
         pictureScale = scale
         val ox = (width - box.width() * scale) / 2f - box.left * scale
         val oy = (height - box.height() * scale) / 2f - box.top * scale
         var animating = false
+
+        // Shoulder buttons only while used: everything else as drawn, each shoulder key at its own fade
+        val shoulderRect = HashMap<String, RectF>()
+        if (shouldersWhenUsed) {
+            val used = lit + onThis(holding) + onThis(hinted)
+            val dt = if (shoulderClock == 0L) Long.MAX_VALUE else now - shoulderClock
+            shoulderClock = now
+            for (k in SHOULDERS) {
+                val g = geo.optJSONObject(k) ?: continue
+                val r = g.optJSONObject("ring"); val out = ((r?.optDouble("gap") ?: 0.0) + (r?.optDouble("w") ?: 0.0)).toFloat() + SHOULDER_AIR
+                shoulderRect[k] = RectF(ox + (g.getDouble("x").toFloat() - out) * scale, oy + (g.getDouble("y").toFloat() - out) * scale,
+                    ox + (g.getDouble("x").toFloat() + g.getDouble("w").toFloat() + out) * scale, oy + (g.getDouble("y").toFloat() + g.getDouble("h").toFloat() + out) * scale)
+                val target = if (k in used) 1f else 0f
+                val was = shoulderAlpha[k] ?: target
+                val step = if (!animationsOn() || dt == Long.MAX_VALUE) 1f else dt.toFloat() / SHOULDER_FADE_MS
+                val a = if (was < target) minOf(target, was + step) else maxOf(target, was - step)
+                shoulderAlpha[k] = a
+                if (a != target) animating = true
+            }
+            val saved = canvas.save(); shoulderRect.values.forEach { canvas.clipOutRect(it) }
+            canvas.drawBitmap(cache!!, 0f, 0f, null); canvas.restoreToCount(saved)
+            shoulderRect.forEach { (k, r) ->
+                val a = shoulderAlpha[k] ?: 0f
+                if (a <= 0f) return@forEach
+                val e = Design.EASE_OUT.getInterpolation(a)
+                val sv = canvas.save(); canvas.clipRect(r)
+                shoulderPaint.alpha = (255 * e).toInt(); canvas.drawBitmap(cache!!, 0f, 0f, shoulderPaint); canvas.restoreToCount(sv)
+            }
+        }
+        // A shoulder key's ring fades with its key
+        fun fadeFor(k: String): Int? = shoulderAlpha[k]?.takeIf { shouldersWhenUsed && k in shoulderRect && it < 1f }?.let { (255 * Design.EASE_OUT.getInterpolation(it)).toInt() }
 
         sticks.forEach { k ->
             val g = geo.getJSONObject(k)
@@ -616,11 +649,14 @@ class DevicePictureView(context: Context) : View(context) {
                 p = if (t <= 0f || t >= 1f) t else Design.EASE_STANDARD.getInterpolation(t)
             }
             val avoid = if (p > 0f) zonesExcept(k, lit - sticks.toSet(), geo, ox, oy, scale) else null
+            val fade = fadeFor(k)
+            val faded = fade?.let { canvas.saveLayerAlpha(0f, 0f, width.toFloat(), height.toFloat(), it) }
             // the remote's arrows are separate curved shapes close together: every ring keeps to its own side
             val sides = if (k in DPAD_ARMS && g.has("ring")) halfwayExcept(k, lit.filter { it in DPAD_ARMS }, geo, ox, oy, scale) else null
             if (sides != null) { val saved = canvas.save(); canvas.clipOutPath(sides); drawRing(canvas, g, p, ox, oy, scale, avoid); canvas.restoreToCount(saved) }
             else if (g.has("ring")) drawRing(canvas, g, p, ox, oy, scale, avoid)
             else if (k in DPAD_ARMS) drawArmRing(canvas, k, g, p, ox, oy, scale, avoid)
+            faded?.let { canvas.restoreToCount(it) }
         }
         // Pointed at, not pressed (the tour's caption naming a button the demo isn't using right now):
         // the ring alone, softer, never the fill, so it can't be mistaken for a press
@@ -640,6 +676,16 @@ class DevicePictureView(context: Context) : View(context) {
 
     /** Buttons pointed at without being pressed: their ring shows, softer, without the fill. */
     var hinted: Set<String> = emptySet()
+
+    /**
+     * Shoulder buttons (bumpers and triggers) only while they're used (Emre, 30 Oct 2026, for the GitHub and Reddit
+     * pictures and videos): a bumper or trigger shows while it's lit, held or pointed at, fading in over
+     * [SHOULDER_FADE_MS] and out again after. Off: always shown (the app's own screens, for now).
+     */
+    var shouldersWhenUsed = false
+        set(v) { field = v; invalidate() }
+    private val shoulderAlpha = HashMap<String, Float>()
+    private var shoulderClock = 0L
         set(v) { if (field != v) { field = v; invalidate() } }
 
     private fun animationsOn() = ValueAnimator.areAnimatorsEnabled()
@@ -943,6 +989,9 @@ class DevicePictureView(context: Context) : View(context) {
         const val FLASH_MS = Design.MOTION_FLASH
         const val TALL_BOOST = 1.45f
         const val HOLD_DELAY_MS = Design.MOTION_HOLD_WAIT   // a tap is over before the hold mark starts
+        val SHOULDERS = listOf("LB", "RB", "LT", "RT")
+        const val SHOULDER_FADE_MS = 220f                  // a shoulder key fading in or out (shouldersWhenUsed)
+        const val SHOULDER_AIR = 3f                         // picture units kept round a shoulder key and its ring
         const val HOLD_FILL_MS = Design.MOTION_HOLD         // then it sweeps round in this long
         const val SWAY_MS = Design.MOTION_STICK_SWAY          // a showing-the-direction stick: one full left-right
         val MORPH_KEYS = listOf("A", "B", "X", "Y", "Dup", "Ddown", "Dleft", "Dright", "LS", "RS", "SELECT", "START")

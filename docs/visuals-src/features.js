@@ -11,10 +11,15 @@ function devRow(list,y,h){
   return list.map(([src,label,w])=>{const html=`<div class="abs" style="left:${x}px;top:${y}px;width:${w}px;height:${h+60}px;display:flex;flex-direction:column;justify-content:flex-end;align-items:center">
     <img class="m" src="renders/${src}.png" style="width:${w}px;max-height:${h}px;object-fit:contain"><div class="lbl m" style="white-space:nowrap">${label}</div></div>`; x+=w+gap; return html;}).join('');
 }
+// The badge column is as wide as its widest badge plus one gap (24), worked out once the badges have loaded (bw = null)
 function badgeRows(list,x,y,secName,bw){
-  return `<div class="abs" style="left:${x}px;top:${y}px"><div class="label sec m">${secName}</div>${list.map(([b,w])=>{
-    const r=BADGES[b]; return `<div class="row"><div class="b" style="width:${bw}px"><img class="m" src="renders/badge-${String(r.i).padStart(2,'0')}.png" style="height:${r.h}px"></div><div class="w m">${w}</div></div>`;}).join('')}</div>`;
+  const id='br'+x;
+  setTimeout(()=>{},0);
+  return `<div class="abs" id="${id}" data-auto="${bw==null?1:0}" style="left:${x}px;top:${y}px"><div class="label sec m">${secName}</div>${list.map(([b,w])=>{
+    const r=BADGES[b]; return `<div class="row" style="height:${Math.max(52,r.h+12)}px"><div class="b" style="width:${bw||200}px"><img class="m" src="renders/badge-${String(r.i).padStart(2,'0')}.png" style="height:${r.h}px"></div><div class="w m">${w}</div></div>`;}).join('')}</div>`;
 }
+function fitBadgeColumns(root){ root.querySelectorAll('[data-auto="1"]').forEach(g=>{ const imgs=[...g.querySelectorAll('.b img')];
+  const w=Math.ceil(Math.max(...imgs.map(i=>i.getBoundingClientRect().width)))+24; g.querySelectorAll('.b').forEach(b=>b.style.width=w+'px'); }); }
 const FEATURES={
   // GitHub's link preview: 1280 × 640, drawn at 1600 × 800 and scaled down; key content kept in the middle
   social:{layout:'stage',W:1600,H:800,logo:true,textX:180,textY:230,textW:440,size:44,title:'A keyboard you drive with your controller',body:'Free and open source, for Android handhelds, controllers and TV.',
@@ -24,7 +29,7 @@ const FEATURES={
   typing:{layout:'stage',textY:140,title:'Move with the D-pad, press A',body:'Y is space, X deletes and Start goes. Moving up and down remembers your column, so the highlight never guesses.',
     pic:'pic-type',screen:{kb:'renders/kb-type.png',kbAspect:1920/534,field:{before:'ninja gai'}}},
   words:{layout:'stage',textY:140,title:'Words show up as you type',body:'Press the right stick in for the first one, or move up and pick another. It learns the names and titles you use.',
-    pic:'pic-words',screen:{kb:'renders/kb-suggest.png',kbAspect:1920/534,field:{before:'knights of the old rep'}}},
+    pic:'pic-words',screen:{kb:'renders/kb-x-crimson.png',kbAspect:1920/534,field:{before:'crimson sk'}}},
   accents:{layout:'stage',textY:140,title:'Hold A for accents',body:'Hold A on a letter and its accents rise into the top row. Move to the one you want and let go.',
     pic:'pic-accents',screen:{kb:'renders/kb-accents.png',kbAspect:1920/534,field:{before:'viva piñ'}}},
   hold:{layout:'stage',textY:140,title:'Hold RT for more',body:'Tips appear on the keys while you hold it: a capital, word jumps, an accent and undo. Nothing to memorise.',
@@ -60,9 +65,11 @@ const FEATURES={
   tour:{layout:'top',title:'A one-minute tour',body:'It opens the first time, shows every button on your own device, and What\u2019s new follows each update.',
     content:()=>`<img class="abs shot m" src="renders/screen-tour-holdrt.png" style="left:260px;top:240px;width:1080px">`},
   controls:{layout:'top',title:'Every button has a job',body:'Settings \u2192 Button guide shows the same list, in your controller\u2019s icons.',
-    content:()=>badgeRows([['{A}','Type the highlighted key'],['{X}','Delete \u00b7 hold to speed up'],['{Y}','Space'],['{R2}','Shift \u00b7 tap twice for caps lock'],['{L2}','Symbols and numbers'],['{START}','Enter \u00b7 Search \u00b7 Go'],['{B}','Close the keyboard'],['hold {A}','Accents \u00b7 hold, then choose'],['{R3}','Take the first suggested word'],['{L3}','Keyboard size']],96,240,'Typing',170)
-      +badgeRows([['{L1} {R1}','Move the text cursor'],['{R3} left or right','Move the cursor, faster the further'],['{R2} + {L1} {R1}','Jump a whole word'],['{SELECT}','Select text'],['{SELECTx2}','Select everything'],['{R2} + {A}','One capital letter'],['{R2} + {Y}','Accent the last letter'],['{R2} + {X}','Undo'],['{R2} + {L2}','Switch language']],800,240,'Editing and more',300)},
+    content:()=>badgeRows([['{A}','Type the highlighted key'],['{X}','Delete \u00b7 hold to speed up'],['{Y}','Space'],['{R2}','Shift \u00b7 tap twice for caps lock'],['{L2}','Symbols and numbers'],['{START}','Enter \u00b7 Search \u00b7 Go'],['{B}','Close the keyboard'],['hold {A}','Accents \u00b7 hold, then choose'],['{R3}','Take the first suggested word'],['{L3}','Keyboard size']],96,240,'Typing',null)
+      +badgeRows([['{L1} {R1}','Move the text cursor'],['{R3} left or right','Move the cursor, faster the further'],['{R2} + {L1} {R1}','Jump a whole word'],['{SELECT}','Select text'],['{SELECTx2}','Select everything'],['{R2} + {A}','One capital letter'],['{R2} + {Y}','Accent the last letter'],['{R2} + {X}','Undo'],['{R2} + {L2}','Switch language']],700,240,'Editing and more',null)},
 };
 // badge renders (made by VisualsExport.badges): their index and height
 const BADGE_LIST=["{A}","{X}","{Y}","{R2}","{L2}","{START}","{B}","hold {A}","{R3}","{L3}","{R2} + {A}","{R2} + {Y}","{R2} + {L2}","{L1} {R1}","{R3} left or right","{R2} + {L1} {R1}","{SELECT}","{SELECTx2}","{R3} up or down","{R2} + {X}"];
-const BADGES={}; BADGE_LIST.forEach((b,i)=>BADGES[b]={i,h:Math.round(((b.startsWith('hold')||b.startsWith('{R2} +'))?104:61)*0.46)});
+// One button size in the list: every badge picture is drawn at the same scale (singles 61 px tall, HOLD capsules 74 px),
+// so one factor keeps every button the same size
+const BADGES={}; BADGE_LIST.forEach((b,i)=>BADGES[b]={i,h:Math.round(((b.startsWith('hold')||b.startsWith('{R2} +'))?74:61)*0.62)});

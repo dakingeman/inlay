@@ -1,0 +1,85 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="inlay.css">
+<script src="../../design/tokens.js"></script><script src="parts.js"></script><script src="backdrop.js"></script>
+<!-- Hero round L14 (31 Oct 2026): eight more directions. ?c=1..8 -->
+<style>
+.abs{position:absolute}
+.col{position:absolute;left:0;top:0;width:1600px;height:900px;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.win{border-radius:20px;overflow:hidden;background:#000;box-shadow:0 0 0 2px var(--track),0 2px 4px rgba(0,0,0,.3),0 24px 60px rgba(0,0,0,.45)}
+.win img{display:block}
+.t{font-family:A;color:#C9CCD3;letter-spacing:.005em}
+.h{font-family:A;font-weight:700;color:var(--paper);letter-spacing:-.015em}
+.cur{display:inline-block;width:4px;background:var(--teal);border-radius:2px;margin-left:3px}
+.fld{display:flex;align-items:center;height:70px;border-radius:14px;background:#16181C;box-shadow:inset 0 0 0 2px #24272D;padding:0 26px;font-family:R;font-weight:500;font-size:28px;color:var(--paper);box-sizing:border-box}
+.fld .lb{font-family:A;font-size:18px;color:#8E929B;width:190px;flex:none}
+.bub{max-width:520px;padding:18px 26px;border-radius:26px;font-family:R;font-weight:500;font-size:28px}
+</style></head><body>
+<div id="c" class="canvas" style="width:1600px;height:900px"></div>
+<script>
+const q=new URLSearchParams(location.search), C=+q.get('c');
+const LOGO=h=>`<img src="../brand/inlay-lockup-clear-dark.svg" style="display:block;height:${h}px">`;
+const KB=(src,w,ar=1920/534)=>`<div class="win" style="width:${w}px"><img src="renders/${src}" style="width:${w}px;height:${Math.round(w/ar)}px"></div>`;
+let html=COVER_DEFS;
+if(C===1){ // Name your hero. Q: when did people first type with a controller? Naming their character, at the start of every RPG.
+  html+=`<div class="col"><div style="width:1000px;border-radius:22px;background:rgba(12,13,16,.85);box-shadow:inset 0 0 0 2px #2A2D34;padding:40px 48px;box-sizing:border-box">
+     <div class="t" style="font-size:26px;color:var(--paper)">What's your name?</div>
+     <div class="h" style="font-size:80px;margin-top:22px;display:flex;align-items:center">inlay<span class="cur" style="height:76px"></span></div></div>
+    <div style="height:36px"></div>${KB('kb-l10-y.png',1000)}</div>`;
+}
+if(C===2){ // Then and now. Q: what were we all stuck with? The alphabetical grid every console used. Show what replaces it.
+  const A='ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+  html+=`<div class="abs" style="left:96px;top:250px;width:560px"><div class="t" style="font-size:20px;color:#6B6F78;margin-bottom:18px">Then</div>
+     <div style="display:grid;grid-template-columns:repeat(7,72px);gap:8px;opacity:.5">${A.map((l,i)=>`<div style="height:72px;display:flex;align-items:center;justify-content:center;font-family:R;font-size:30px;color:#9A9DA5;background:${i===8?'#3A3D45':'#16181C'}">${l}</div>`).join('')}</div></div>
+   <div class="abs" style="left:760px;top:250px"><div class="t" style="font-size:20px;color:var(--teal);margin-bottom:18px">Now</div>${KB('kb-tag.png',760)}</div>
+   <div class="abs" style="left:96px;top:96px">${LOGO(70)}</div>`;
+}
+if(C===3){ // The highlight is the hero. Q: what is the one thing that moves when you type? A small teal square. Follow only that.
+  const xs=[180,330,480,630], ls=['i','n','l','a'];
+  html+=xs.map((x,i)=>`<div class="abs h" style="left:${x}px;top:330px;width:120px;text-align:center;font-size:150px;line-height:1">${ls[i]}</div>`).join('')+
+   [0.06,0.1,0.16,0.25,0.4,0.62].map((o,k)=>`<div class="abs" style="left:${790+k*70}px;top:${370+Math.sin(k)*6}px;width:120px;height:120px;border-radius:24px;background:var(--teal);opacity:${o}"></div>`).join('')+
+   `<div class="abs" style="left:1210px;top:370px;width:120px;height:120px;border-radius:24px;background:var(--teal)"></div>
+    <div class="abs t" style="left:180px;top:620px;font-size:26px">Type with your controller</div>`;
+}
+if(C===4){ // The logo becomes the buttons. Q: can the symbol say "controller" as well as "keyboard"? Six keys fold into four buttons.
+  const sq=(x,y,s,c,r=12)=>`<div class="abs" style="left:${x}px;top:${y}px;width:${s}px;height:${s}px;border-radius:${r}px;background:${c}"></div>`;
+  let h=''; const W='#F2F3F5', T='var(--teal)';
+  // stage 1: the symbol
+  [[0,0],[1,0],[2,0],[0,1],[1,1],[2,1]].forEach(([c,r])=>h+=sq(200+c*74,330+r*74,62,c===1&&r===1?T:W));
+  h+=`<div class="abs" style="left:200px;top:478px;width:210px;height:44px;border-radius:12px;background:${W}"></div>`;
+  // stage 2: halfway, the outer keys sliding round, corners softening
+  [[0,0,-10],[2,0,10],[0,1,-14],[2,1,14]].forEach(([c,r,d])=>h+=sq(690+c*70+(c?-20:20),330+r*72+(r?20:-6),62,W,22));
+  h+=sq(690+70,330+72+18,62,T,26)+`<div class="abs" style="left:700px;top:500px;width:190px;height:40px;border-radius:20px;background:${W};opacity:.5"></div>`;
+  // stage 3: the face buttons
+  [[0,-1],[-1,0],[1,0]].forEach(([dx,dy])=>h+=sq(1240+dx*78,380+dy*78,66,W,33)); h+=sq(1240,380+78,66,T,33);
+  h+=`<div class="abs t" style="left:0;top:690px;width:1600px;text-align:center;font-size:26px">A keyboard you play like a controller</div>`;
+  html+=h;
+}
+if(C===5){ // Every text box. Q: where will people use it? Not in one app: anywhere Android shows a text box.
+  const F=[['Search games','jet set radio fu'],['Wi-Fi password','••••••••••'],['Message','one more round?'],['Web address','github.com/dakingeman']];
+  html+=`<div class="abs" style="left:96px;top:96px">${LOGO(70)}<div class="t" style="font-size:28px;margin-top:30px;max-width:420px;line-height:1.35">Anywhere Android<br>shows a text box.</div></div>
+   <div class="abs" style="left:620px;top:120px;display:flex;flex-direction:column;gap:18px;width:880px">${F.map(([l,v],i)=>`<div class="fld" style="opacity:${i===2?1:.55}"><span class="lb">${l}</span>${v}${i===2?'<span class="cur" style="height:32px"></span>':''}</div>`).join('')}</div>
+   <div class="abs" style="left:620px;top:500px">${KB('kb-tag.png',880)}</div>`;
+}
+if(C===6){ // The name as a window. Q: what does "inlay" mean, again, but louder? The word cut into the page, your games showing through it.
+  const g=GENERIC.map(([a,b],i)=>`radial-gradient(circle at ${10+i*15}% ${30+(i%3)*25}%, ${b} 0, ${a} 9%, transparent 22%)`).join(',');
+  html+=`<div class="col"><div style="font-family:A;font-weight:700;font-size:420px;letter-spacing:-.04em;line-height:1;background:${g},linear-gradient(120deg,#22324A,#3A2C24 50%,#1C3A40);-webkit-background-clip:text;background-clip:text;color:transparent">inlay</div>
+    <div class="t" style="font-size:28px;margin-top:20px">Type with your controller</div></div>`;
+}
+if(C===7){ // The conversation. Q: what do people actually type while gaming? Short things to friends. "One more round?"
+  html+=`<div class="abs" style="left:96px;top:96px">${LOGO(70)}</div>
+   <div class="abs" style="left:880px;top:110px;width:620px;display:flex;flex-direction:column;gap:16px">
+     <div class="bub" style="align-self:flex-start;background:#1C1E23;color:var(--paper)">gg, that last lap</div>
+     <div class="bub" style="align-self:flex-start;background:#1C1E23;color:var(--paper)">one more round?</div>
+     <div class="bub" style="align-self:flex-end;background:var(--teal);color:#0B0C0E">yes, give me a minute<span class="cur" style="height:30px;background:#0B0C0E;vertical-align:-6px"></span></div></div>
+   <div class="abs" style="left:780px;top:480px">${KB('kb-tag.png',720)}</div>
+   <div class="abs t" style="left:96px;top:200px;font-size:28px;line-height:1.4">Reply without<br>putting the controller down.</div>`;
+}
+if(C===8){ // The poster. Q: how would a product launch say it? The product big and calm, three short lines underneath.
+  html+=`<div class="abs" style="left:96px;top:96px">${KB('kb-tag.png',1408)}</div>
+   <div class="abs" style="left:96px;top:620px">${LOGO(70)}</div>
+   <div class="abs h" style="left:620px;top:612px;font-size:52px">Type with your controller.</div>
+   <div class="abs t" style="left:620px;top:690px;font-size:24px;line-height:1.5">Free and open source. For Android handhelds,<br>controllers and TV.</div>`;
+}
+document.getElementById('c').innerHTML=html;
+document.fonts.ready.then(()=>Promise.all([...document.images].map(i=>i.decode().catch(()=>{})))).then(()=>{
+  inlayBackdrop(document.getElementById('c'),'l14'+C,0,{motif:'none',grain:true}); document.title='done'; });
+</script></body></html>

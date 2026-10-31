@@ -7,7 +7,8 @@ const LIBRARY=[
   {name:'Star Wars: Knights of the Old Republic',short:'Knights of the Old Republic',plat:'XBOX'},
   {name:'Star Wars: Knights of the Old Republic II',short:'Knights of the Old Republic II',plat:'XBOX'},
   {name:'Viva Piñata',plat:'XBOX 360'},{name:'Fable: The Lost Chapters',plat:'XBOX'},
-  {name:'Conker: Live & Reloaded',plat:'XBOX'},{name:'Jet Set Radio Future',plat:'XBOX'},{name:'MechAssault 2',plat:'XBOX'}
+  {name:'Conker: Live & Reloaded',plat:'XBOX'},{name:'Jet Set Radio Future',plat:'XBOX'},{name:'MechAssault 2',plat:'XBOX'},
+  {name:'Halo: Combat Evolved',plat:'XBOX'},{name:'Halo 2',plat:'XBOX'},{name:'Crimson Skies: High Road to Revenge',short:'Crimson Skies',plat:'XBOX'},{name:'Jet Set Radio',plat:'DREAMCAST'}
 ].map((g,i)=>Object.assign(g,{tone:COVER_TONES[i%COVER_TONES.length],i}));
 const norm=s=>s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/&/g,'and').replace(/:/g,'').replace(/\s+/g,' ').trim();
 function search(q){ q=norm(q); if(!q) return LIBRARY; return LIBRARY.filter(g=>norm(g.name).includes(q)); }
@@ -32,6 +33,15 @@ function covers(list,{w,gap,title,plat,max}){
   return `<div class="covers" style="gap:${gap}px;grid-auto-columns:${w}px">${shown.map(c=>`<div class="cover m" style="width:${w}px;height:${Math.round(w*1.4)}px">${coverArt(c.tone,c.i)}
   <div class="cap"><div class="p" style="font-size:${plat}px">${c.plat}</div><div class="t" style="font-size:${title}px">${c.short||c.name}</div></div></div>`).join('')}</div>`;
 }
+// Search results as a slim list row (launch set, 30 Oct 2026): a small square cover with the platform and title beside it,
+// so the library screen stays close to the device's height and every title stays readable
+function resultRow(list,{s,max}){
+  const shown=list.slice(0,max||2), th=Math.round(64*s), gap=Math.round(14*s);
+  return `<div style="display:flex;gap:${Math.round(24*s)}px">${shown.map(c=>`<div class="m" style="display:flex;align-items:center;gap:${gap}px;flex:none;max-width:${Math.round(330*s)}px">
+    <div style="width:${th}px;height:${th}px;border-radius:${Math.round(10*s)}px;overflow:hidden;flex:none;position:relative">${coverArt(c.tone,c.i)}</div>
+    <div style="min-width:0"><div style="font-family:R;font-weight:500;font-size:${Math.round(12*s)}px;letter-spacing:.06em;color:rgba(255,255,255,.7)">${c.plat}</div>
+    <div style="font-family:R;font-weight:700;font-size:${Math.round(17*s)}px;color:var(--paper);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.short||c.name}</div></div></div>`).join('')}</div>`;
+}
 // The text box: text before the cursor, the selection, text after
 function field({before='',sel='',after='',placeholder='Search your games',count=''},{h,fs,pad}){
   const cur=`<span class="cur" style="height:${Math.round(fs*1.2)}px"></span>`;
@@ -47,11 +57,12 @@ function field({before='',sel='',after='',placeholder='Search your games',count=
  * 800-wide design. Returns {html,h}. o.kb = keyboard image, o.kbAspect = its width / height.
  */
 function libScreen(o){
+  // o.coverScale < 1: results as a slim list row (see resultRow), so the screen is closer to the device's height
   const s=o.w/800, pad=Math.round(28*s), fh=Math.round(46*s), cw=Math.round(132*s), cg=Math.round(16*s);
   const results=o.results||search((o.field.before||'')+(o.field.sel||'')+(o.field.after||''));
   const count=o.count!==undefined?o.count:(o.field.before||o.field.sel)?`${results.length} game${results.length===1?'':'s'}`:'';
   const kbH=Math.round(o.w/o.kbAspect);
-  const coversH=Math.round(cw*1.4);
+  const slim=(o.coverScale||1)<1, coversH=slim?Math.round(64*s):Math.round(cw*1.4);
   const top=Math.round(24*s), gapBar=Math.round(20*s), gapKb=Math.round(24*s);
   const h=top+fh+gapBar+coversH+gapKb+kbH;
   const html=`<div class="screen m" style="left:${o.x}px;top:${o.y}px;width:${o.w}px;height:${h}px">
@@ -59,7 +70,7 @@ function libScreen(o){
     <div class="bar" style="margin-bottom:${gapBar}px;gap:${Math.round(16*s)}px"><div class="title m" style="font-size:${Math.round(25*s)}px">${o.title||'Library'}</div>
       ${o.note?`<div class="body m" style="margin-left:auto;font-size:${Math.round(15*s)}px">${o.note.meta||''}</div>`:''}
       ${o.noField||o.note?'':`<div style="flex:1;min-width:0">${field(Object.assign({count},o.field),{h:fh,fs:Math.round(19*s),pad:Math.round(18*s)})}</div>`}</div>
-    <div style="height:${coversH}px">${o.note?noteBody(o.note,s):results.length?covers(results,{w:cw,gap:cg,title:Math.round(15*s),plat:Math.round(11*s),max:5}):`<div class="body" style="font-size:${Math.round(16*s)}px;padding-top:${Math.round(60*s)}px">No games match</div>`}</div>
+    <div style="height:${coversH}px">${o.note?noteBody(o.note,s):results.length?(slim?resultRow(results,{s,max:2}):covers(results,{w:cw,gap:cg,title:Math.round(15*s),plat:Math.round(11*s),max:5})):`<div class="body" style="font-size:${Math.round(16*s)}px;padding-top:${Math.round(60*s)}px">No games match</div>`}</div>
    </div><img class="kbd" src="${o.kb}" style="width:${o.w}px;height:${kbH}px"></div>`;
   return {html,h};
 }

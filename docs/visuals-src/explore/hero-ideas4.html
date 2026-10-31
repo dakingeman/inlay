@@ -1,0 +1,76 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="inlay.css">
+<script src="../../design/tokens.js"></script><script src="parts.js"></script><script src="backdrop.js"></script>
+<!-- Hero round L13 (31 Oct 2026): eight more directions. ?c=1..8 -->
+<style>
+.abs{position:absolute}
+.col{position:absolute;left:0;top:0;width:1600px;height:900px;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.win{border-radius:20px;overflow:hidden;background:#000;box-shadow:0 0 0 2px var(--track),0 2px 4px rgba(0,0,0,.3),0 24px 60px rgba(0,0,0,.45)}
+.win img{display:block}
+.t{font-family:A;color:#C9CCD3;letter-spacing:.005em}
+.h{font-family:A;font-weight:700;color:var(--paper);letter-spacing:-.015em}
+.inl{display:inline-flex;align-items:center;gap:.3em}
+</style></head><body>
+<div id="c" class="canvas" style="width:1600px;height:900px"></div>
+<script>
+const q=new URLSearchParams(location.search), C=+q.get('c');
+const LOGO=h=>`<img src="../brand/inlay-lockup-clear-dark.svg" style="display:block;height:${h}px">`;
+const SYM=h=>`<img src="../brand/inlay-symbol.svg" style="display:block;height:${h}px">`;
+const KB=(src,w,ar=1920/534)=>`<div class="win" style="width:${w}px"><img src="renders/${src}" style="width:${w}px;height:${Math.round(w/ar)}px"></div>`;
+const B=(k,h,st='xbox')=>`<img src="renders/btn-${st}-${k}.png" style="height:${h}px;display:inline-block;vertical-align:middle">`;
+let html=COVER_DEFS, after=null;
+if(C===1){ // Key-grid lettering. Q: what if the logo's grid of keys were a typeface? The name, built from keys, the last one lit.
+  const F={i:['.#.','...','.#.','.#.','.#.','...'],n:['...','##.','#.#','#.#','#.#','...'],l:['#..','#..','#..','#..','.#.','...'],
+           a:['...','.##','#.#','#.#','.##','...'],y:['...','#.#','#.#','.##','..#','##.']};
+  const u=62, g=12, word='inlay'; let x=(1600-(word.length*3*u+(word.length-1)*u*0.9))/2, out='';
+  [...word].forEach((ch,li)=>{ F[ch].forEach((row,r)=>[...row].forEach((v,c)=>{
+      const lit=v==='#', last=li===4&&r===5&&c===1;
+      out+=`<div class="abs" style="left:${x+c*u}px;top:${190+r*u}px;width:${u-g}px;height:${u-g}px;border-radius:12px;background:${last?'var(--teal)':lit?'#F2F3F5':'#191B20'}"></div>`; }));
+    x+=3*u+u*0.9; });
+  html+=out+`<div class="abs t" style="left:0;top:640px;width:1600px;text-align:center;font-size:28px">Type with your controller</div>`;
+}
+if(C===2){ // The world grid. Q: what does a game level look like underneath? A grid. The keyboard as the floor of a game world.
+  html+=`<div class="abs" style="left:-500px;top:380px;width:2600px;transform:perspective(1100px) rotateX(58deg);transform-origin:50% 0;
+     -webkit-mask-image:linear-gradient(to bottom,transparent 0,#000 35%)">${KB('kb-l10-i.png',2600)}</div>
+   <div class="col" style="justify-content:flex-start;padding-top:120px">${LOGO(120)}<div class="t" style="font-size:26px;margin-top:30px">Type with your controller</div></div>`;
+}
+if(C===3){ // Macro. Q: what is the one thing the eye should land on? The highlighted key, so close it fills the frame.
+  const u=520, gap=40;
+  html+=[['q',-1,-1],['w',0,-1],['e',1,-1],['a',-1,0],['s',0,0],['d',1,0],['z',-1,1],['x',0,1],['c',1,1]].map(([k,c,r])=>{
+    const on=k==='s'; return `<div class="abs" style="left:${800-u/2+c*(u+gap)}px;top:${450-u/2+r*(u+gap)}px;width:${u}px;height:${u}px;border-radius:70px;background:${on?'var(--teal)':'#15171B'};
+      box-shadow:${on?'0 0 120px rgba(111,211,227,.35)':'inset 0 0 0 3px #22252B'};display:flex;align-items:center;justify-content:center;font-family:R;font-weight:500;font-size:240px;color:${on?'#0B0C0E':'#2E3138'}">${k}</div>`; }).join('')+
+    `<div class="abs" style="left:64px;top:56px">${LOGO(64)}</div>`;
+}
+if(C===4){ // Your look. Q: what do people show off? How their setup looks. The keyboard in its looks, fanned like cards.
+  const L=['look-light-ocean.png','look-plum-lavender.png','look-forest-lime.png','look-midnight-coral.png','kb-tag.png'];
+  html+=L.map((f,i)=>`<div class="abs" style="left:${300+i*40}px;top:${300+i*34}px;transform:rotate(${-8+i*2}deg);transform-origin:50% 100%">${KB(f,1000)}</div>`).join('')+
+    `<div class="abs" style="left:96px;top:90px">${LOGO(80)}</div>`;
+}
+if(C===5){ // Sound. Q: what can't a picture show? The sound. Each press sends out a ring, like a drop in water.
+  html+=`<div class="col">${LOGO(110)}<div style="height:60px"></div><div style="position:relative">${KB('kb-l10-i.png',1180)}
+    <svg style="position:absolute;left:0;top:0;overflow:visible" width="1180" height="328">${[[7,0,1],[6,2,.6],[8,1,.35]].map(([c,r,o])=>{const x=1180*(0.059+c*0.098), y=328*(0.288+r*0.197);
+      return [40,80,130,190].map((rad,k)=>`<circle cx="${x}" cy="${y}" r="${rad}" fill="none" stroke="#6FD3E3" stroke-width="${3-k*0.5}" opacity="${o*(0.8-k*0.18)}"/>`).join('')}).join('')}</svg></div></div>`;
+}
+if(C===6){ // Rhythm. Q: which games are about pressing the right button at the right time? Rhythm games. Typing is a rhythm too.
+  const lanes=[['A','#9BD86A'],['R3',''],['X','']], hit=380;
+  html+=`<div class="abs h" style="left:${hit}px;top:120px;font-size:72px">Type with your contr<span style="display:inline-block;width:6px;height:70px;background:var(--teal);border-radius:3px;vertical-align:-10px;margin-left:4px"></span></div>`;
+  lanes.forEach(([k],i)=>{ const y=380+i*150;
+    html+=`<div class="abs" style="left:0;top:${y-1}px;width:1600px;height:2px;background:#22252B"></div><div class="abs" style="left:${hit-150}px;top:${y-40}px">${B(k,80)}</div>`;
+    const notes=i===0?[520,640,760,880,1000]:i===1?[1180]:[1380];
+    notes.forEach((nx,j)=>html+=`<div class="abs" style="left:${nx}px;top:${y-28}px;opacity:${1-j*0.08}">${B(k,56)}</div>`); });
+  html+=`<div class="abs" style="left:${hit+40}px;top:300px;width:3px;height:380px;background:var(--teal);opacity:.6;border-radius:2px"></div><div class="abs" style="left:96px;top:800px">${LOGO(52)}</div>`;
+}
+if(C===7){ // Hands off the glass. Q: what's the annoyance we remove? Reaching for the touchscreen mid-game. A faint fingerprint you'll stop leaving.
+  let fp=''; for(let k=0;k<22;k++){ const rx=30+k*11, ry=42+k*14; fp+=`<ellipse cx="0" cy="${k*1.8}" rx="${rx}" ry="${ry}" fill="none" stroke="#C9CCD3" stroke-width="5" stroke-dasharray="${60+k*7} ${8+(k%3)*6}" opacity=".07"/>`; }
+  html+=`<svg class="abs" style="left:0;top:0" width="1600" height="900"><g transform="translate(1180 330) rotate(-18)">${fp}</g></svg>
+    <div class="abs" style="left:150px;top:180px"><div class="h" style="font-size:72px;line-height:1.08">Leave the<br>screen alone.</div>
+     <div class="t" style="font-size:26px;margin-top:28px">Type with your controller.</div><div style="margin-top:60px">${LOGO(70)}</div></div>
+    <div class="abs" style="left:820px;top:560px">${KB('kb-tag.png',680)}</div>`;
+}
+if(C===8){ // The sum. Q: what's the cleverest thing it does, in one line? Five letters and one button make the word.
+  html+=`<div class="col"><div class="h inl" style="font-size:96px;gap:34px">contr<span style="color:#4A4E57;font-weight:400">+</span>${B('R3',96)}<span style="color:#4A4E57;font-weight:400">=</span><span style="color:var(--teal)">controller</span></div>
+    <div class="t" style="font-size:26px;margin-top:56px">Type a few letters, take the word.</div><div style="margin-top:90px">${LOGO(80)}</div></div>`;
+}
+document.getElementById('c').innerHTML=html;
+document.fonts.ready.then(()=>Promise.all([...document.images].map(i=>i.decode().catch(()=>{})))).then(()=>{
+  if(after) after(); inlayBackdrop(document.getElementById('c'),'l13'+C,0,{motif:'none',grain:true}); document.title='done'; });
+</script></body></html>

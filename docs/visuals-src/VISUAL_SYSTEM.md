@@ -105,3 +105,8 @@ Settled with Emre on 27 Oct 2026 for 1.2.0. Made by `video.html`, `render-video.
 - **Cue sheet.** `finish-video.py` writes `out/<name>-cues.md`: every cut, key press, highlight move and pack change in seconds, for the music and sound effects.
 - **Faster renders.** Several browser pages draw frames at once (`PAGES`, default 6) and each part keeps its own folder, so `render-video.js <name> <plan> --only=3,8` redraws just those parts.
 - **GIF:** rendered again without grain (`GRAIN=0 node render-video.js teaser-nograin …`), 960 px, 15 fps, one shared palette, ordered dithering, under 8 MB.
+
+
+## Grain
+
+The backdrop keeps its original, near-invisible grain (`backdrop.js`, against banding only). A visible "film" grain was tried on 31 Oct 2026 for the images and the app and turned down after a test on the Odin; don't bring it back without asking.

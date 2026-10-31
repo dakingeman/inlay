@@ -1,0 +1,67 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="inlay.css">
+<script src="../../design/tokens.js"></script><script src="parts.js"></script><script src="backdrop.js"></script>
+<!-- Hero round L17 (31 Oct 2026): 3B refined. The typing window says the tagline ("contr" typed, "oller" faint, the top row
+     offering controller), and the devices become an overview of what it works with: all four the same size, the tall ones
+     shown by their top part, cropped with a soft fade. ?c=1..5 -->
+<style>
+.abs{position:absolute}
+.win{border-radius:20px;overflow:hidden;background:#000;box-shadow:0 0 0 2px var(--track),0 2px 4px rgba(0,0,0,.3),0 24px 60px rgba(0,0,0,.45)}
+.t{font-family:A;color:#C9CCD3;letter-spacing:.005em}
+.dev{position:relative;overflow:hidden}
+.dev img{position:absolute;left:50%;transform:translateX(-50%)}
+.card{border-radius:18px;background:rgba(255,255,255,.035);box-shadow:inset 0 0 0 2px #24272D}
+.fade{-webkit-mask-image:linear-gradient(to bottom,transparent 0,#000 24%,#000 76%,transparent 100%);mask-image:linear-gradient(to bottom,transparent 0,#000 24%,#000 76%,transparent 100%)}
+.round{border-radius:50%;-webkit-mask-image:radial-gradient(circle at 50% 46%,#000 52%,transparent 71%);mask-image:radial-gradient(circle at 50% 46%,#000 52%,transparent 71%)}
+</style></head><body>
+<div id="c" class="canvas" style="width:1600px;height:900px"></div>
+<script>
+const q=new URLSearchParams(location.search), C=+q.get('c'), PW=+(q.get('pw')||0.6);
+const LOGO=h=>`<img src="../brand/inlay-lockup-clear-dark.svg" style="display:block;height:${h}px">`;
+const WINDOW=ww=>{ const p=Math.round(ww*0.016); return `<div class="win" style="width:${ww}px;padding:${p}px ${p}px 0;box-sizing:border-box;background:#0A0B0D">
+   <div class="field" style="height:${Math.round(ww*0.064)}px;font-size:${Math.round(ww*0.027)}px;padding:0 ${Math.round(ww*0.022)}px">Type with your contr<span class="cur" style="height:${Math.round(ww*0.031)}px"></span><span style="color:#9A9DA5;opacity:.62">oller</span></div>
+   <img src="renders/kb-tag.png" style="width:${ww-2*p}px;margin-top:${Math.round(ww*0.011)}px;display:block"></div>`; };
+// The app's own drawings, each in its platform's buttons. vb = viewBox; btn = face-button size in drawing units (from the
+// app's layout files); focus = the drawing point (units) set in the frame's middle. Scale: the face buttons come out
+// nearly the same size, and the line weight with them (PW 0 = same scale for all, 1 = identical buttons).
+const DEV=[{f:'dev3-controller-xbox.svg',n:'Controller',vb:[28.1,-76.32,657,519.32],btn:39,focus:[430,175]},
+           {f:'dev3-wide-ps.svg',n:'Handheld',vb:[0,-90.37,657,410.37],btn:27,focus:[430,150],screen:[157.75,54.75,342.5,191.5]},
+           {f:'dev3-vertical-switch.svg',n:'Vertical handheld',vb:[-2.39,-194.73,364.78,714.73],btn:35,focus:[180,352],screen:[51.2,40.9,257.6,220.1]},
+           {f:'dev3-remote.svg',n:'TV remote',vb:[0,0,150,560],btn:36,focus:[75,175]}];
+const BASE=0.48;   // px per unit for the controller
+function shot(i,w,h,o={}){ const {rot=0,zoom=1,dx=0,dy=0}=o; const d=DEV[i], u=BASE*Math.pow(39/d.btn,PW)*zoom, iw=d.vb[2]*u, ih=d.vb[3]*u;
+  const fx=(d.focus[0]-d.vb[0])*u, fy=(d.focus[1]-d.vb[1])*u;
+  // a screen gets a quiet fill: 'tint' (a hint of the highlight colour) or 'logo' (the tint and the Inlay symbol, the real file)
+  const fill=o.fill||'tint';
+  const scr=d.screen?(()=>{ const [sx,sy,sw,sh]=d.screen;
+    return `<div style="position:absolute;left:${(sx-d.vb[0])*u}px;top:${(sy-d.vb[1])*u}px;width:${sw*u}px;height:${sh*u}px;border-radius:${8*u}px;background:rgba(114,214,232,.09);display:flex;align-items:center;justify-content:center">
+      ${fill==='logo'?`<img src="../brand/inlay-symbol.svg" style="height:${Math.min(sw,sh)*u*0.42}px">`:''}</div>`; })():'';
+  return `<div style="position:absolute;width:${iw}px;height:${ih}px;left:${w/2-fx+dx}px;top:${h/2-fy+dy}px;transform:rotate(${rot}deg);transform-origin:${fx}px ${fy}px">
+    <img src="renders/${d.f}" style="position:absolute;left:0;top:0;width:${iw}px;height:${ih}px">${scr}</div>`; }
+const name=(i,fs=17)=>`<div class="t" style="font-size:${fs}px;margin-top:12px;text-align:center">${DEV[i].n}</div>`;
+const stage=inner=>`<div class="abs" style="left:0;top:0;height:900px;width:1600px;display:flex;flex-direction:column;align-items:center;justify-content:center">${LOGO(92)}<div style="margin-top:34px">${WINDOW(WW)}</div>${inner}</div>`;
+const card=(i,w,h,o)=>`<div><div class="card" style="position:relative;overflow:hidden;width:${w}px;height:${h}px">${shot(i,w,h,o)}</div>${name(i)}</div>`;
+let html=COVER_DEFS;
+const NAMES=false, WW=1000, GAP=16, BASEW=[226,300,176,126], RW=WW+4, K=(RW-3*GAP)/BASEW.reduce((a,b)=>a+b);   // the window's 2 px ring sits outside its box, so the row is 4 px wider to share its visible edges
+const Wd=BASEW.map(w=>Math.round(w*K)); Wd[1]+=RW-3*GAP-Wd.reduce((a,b)=>a+b); const _=0, H=Math.round(170*K), R=[-10,6,-4,9], DY=[6,4,8,6].map(v=>v*K);
+const ring='position:absolute;inset:0;border-radius:18px;box-shadow:inset 0 0 0 2px #2A2D34;pointer-events:none';
+const recess='position:absolute;inset:0;border-radius:18px;box-shadow:inset 0 10px 18px -6px rgba(0,0,0,.75),inset 0 -1px 0 rgba(255,255,255,.05)';
+const sink=h=>`position:absolute;left:0;right:0;bottom:0;height:${h}%;background:linear-gradient(to bottom,rgba(20,22,26,0),#14161A 92%)`;
+// the tile dissolve: the card's lower part turns into the brand's tiles, the device seen through the gaps
+function dissolve(w){ const P=22*K, id='m'+Math.round(w*1000+Math.random()*999), start=H*0.74;
+  // the card colour over the device's foot, with a hole for every tile; the holes start the full tile size (no seam)
+  // and shrink row by row, so the device breaks up into the brand's tiles as it reaches the card's edge
+  let holes=''; for(let y=start;y<H;y+=P){ const f=Math.min(1,(y-start+P)/(H-start+P*0.6)), sz=P*(1-f)*(1-0.22*f);
+    if(sz<1.5) continue; for(let x=0;x<w;x+=P){ const o=(P-sz)/2; holes+=`<rect x="${x+o}" y="${y+o}" width="${sz}" height="${sz}" rx="${Math.min(4*K,sz/2)}" fill="#000"/>`; } }
+  return `<svg style="position:absolute;left:0;top:0" width="${w}" height="${H}"><defs><mask id="${id}" maskUnits="userSpaceOnUse"><rect width="${w}" height="${H}" fill="#fff"/>
+    <rect width="${w}" height="${start}" fill="#000"/>${holes}</mask></defs><rect width="${w}" height="${H}" fill="#14161A" mask="url(#${id})"/></svg>`; }
+function framed(i,over){ return `<div><div style="position:relative;overflow:hidden;width:${Wd[i]}px;height:${H}px;border-radius:18px;background:#14161A">
+   ${shot(i,Wd[i],H,{rot:R[i],dy:DY[i],zoom:K,fill:'tint'})}${over(i)}<div style="${ring}"></div></div>${NAMES?name(i):''}</div>`; }
+const OVER={setin:i=>`<div style="${recess}"></div>`, sink:i=>`<div style="${sink(46)}"></div>`,
+  dissolve:i=>dissolve(Wd[i]), both:i=>`<div style="${sink(40)}"></div><div style="${recess}"></div>`};
+const MODE=['setin','sink','both','plain'][C-1]; OVER.plain=i=>''; if(MODE==='dissolve') DY.forEach((v,k)=>DY[k]=v-14*K);
+html+=stage(`<div class="stagecards" style="display:flex;gap:${GAP}px;margin-top:30px">${[0,1,2,3].map(i=>framed(i,OVER[MODE])).join('')}</div>`);
+document.getElementById('c').innerHTML=html;
+document.fonts.ready.then(()=>Promise.all([...document.images].map(i=>i.decode().catch(()=>{})))).then(()=>{
+
+  inlayBackdrop(document.getElementById('c'),'l19'+C,0,{motif:'none',grain:true}); document.title='done'; });
+</script></body></html>

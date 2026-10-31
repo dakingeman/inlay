@@ -1,0 +1,55 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="inlay.css">
+<script src="../../design/tokens.js"></script><script src="parts.js"></script><script src="backdrop.js"></script>
+<!-- Hero round L17 (31 Oct 2026): 3B refined. The typing window says the tagline ("contr" typed, "oller" faint, the top row
+     offering controller), and the devices become an overview of what it works with: all four the same size, the tall ones
+     shown by their top part, cropped with a soft fade. ?c=1..5 -->
+<style>
+.abs{position:absolute}
+.win{border-radius:20px;overflow:hidden;background:#000;box-shadow:0 0 0 2px var(--track),0 2px 4px rgba(0,0,0,.3),0 24px 60px rgba(0,0,0,.45)}
+.t{font-family:A;color:#C9CCD3;letter-spacing:.005em}
+.dev{position:relative;overflow:hidden}
+.dev img{position:absolute;left:50%;transform:translateX(-50%)}
+.card{border-radius:18px;background:rgba(255,255,255,.035);box-shadow:inset 0 0 0 2px #24272D}
+.fade{-webkit-mask-image:linear-gradient(to bottom,transparent 0,#000 24%,#000 76%,transparent 100%);mask-image:linear-gradient(to bottom,transparent 0,#000 24%,#000 76%,transparent 100%)}
+.round{border-radius:50%;-webkit-mask-image:radial-gradient(circle at 50% 46%,#000 52%,transparent 71%);mask-image:radial-gradient(circle at 50% 46%,#000 52%,transparent 71%)}
+</style></head><body>
+<div id="c" class="canvas" style="width:1600px;height:900px"></div>
+<script>
+const q=new URLSearchParams(location.search), C=+q.get('c');
+const LOGO=h=>`<img src="../brand/inlay-lockup-clear-dark.svg" style="display:block;height:${h}px">`;
+const WINDOW=ww=>{ const p=Math.round(ww*0.016); return `<div class="win" style="width:${ww}px;padding:${p}px ${p}px 0;box-sizing:border-box;background:#0A0B0D">
+   <div class="field" style="height:${Math.round(ww*0.064)}px;font-size:${Math.round(ww*0.027)}px;padding:0 ${Math.round(ww*0.022)}px">Type with your contr<span class="cur" style="height:${Math.round(ww*0.031)}px"></span><span style="color:#9A9DA5;opacity:.62">oller</span></div>
+   <img src="renders/kb-tag.png" style="width:${ww-2*p}px;margin-top:${Math.round(ww*0.011)}px;display:block"></div>`; };
+// close-ups: z = drawing width / frame width, (fx, fy) = the point of the drawing (fractions) put at the frame's centre
+const DEV=[['c-controller-xbox-lit.svg','Controller',523/353,{z:1.6,fx:.66,fy:.40}],
+           ['c-wide-xbox-lit.svg','Handheld',589/243,{z:1.6,fx:.70,fy:.5}],
+           ['c-vsplit-xbox-a.svg','Vertical handheld',321/475,{z:.95,fx:.5,fy:.70}],
+           ['c-remote-lit.svg','TV remote',148/558,{z:.55,fx:.5,fy:.17}]];
+function shot(i,w,h,{rot=0,dz=1,dy=0}={}){ const [f,n,ar,o]=DEV[i], iw=w*o.z*dz, ih=iw/ar;
+  return `<img src="hero-parts/${f}" style="position:absolute;width:${iw}px;height:${ih}px;left:${w/2-iw*o.fx}px;top:${h/2-ih*o.fy+dy}px;transform:rotate(${rot}deg);transform-origin:${iw*o.fx}px ${ih*o.fy}px">`; }
+const name=(i,fs=17)=>`<div class="t" style="font-size:${fs}px;margin-top:12px;text-align:center">${DEV[i][1]}</div>`;
+const stage=inner=>`<div class="abs" style="left:0;top:0;height:900px;width:1600px;display:flex;flex-direction:column;align-items:center;justify-content:center">${LOGO(92)}<div style="margin-top:34px">${WINDOW(880)}</div>${inner}</div>`;
+let html=COVER_DEFS;
+if(C===1){ // Close-ups: each card a tight crop on what makes that device itself, cut clean by the card's edge
+  html+=stage(`<div style="display:flex;gap:18px;margin-top:30px">${[0,1,2,3].map(i=>`<div><div class="card" style="position:relative;overflow:hidden;width:206px;height:140px">${shot(i,206,140)}</div>${name(i)}</div>`).join('')}</div>`);
+}
+if(C===2){ // Tilted: the same close-ups turned a few degrees, like product shots caught at an angle
+  const R=[-14,-10,12,14];
+  html+=stage(`<div style="display:flex;gap:18px;margin-top:30px">${[0,1,2,3].map(i=>`<div><div class="card" style="position:relative;overflow:hidden;width:206px;height:140px">${shot(i,206,140,{rot:R[i]})}</div>${name(i)}</div>`).join('')}</div>`);
+}
+if(C===3){ // Breaking out: the card is a plinth, the device rises out of its top edge, cut only at the sides and the bottom
+  html+=stage(`<div style="display:flex;gap:22px;margin-top:62px">${[0,1,2,3].map(i=>`<div><div style="position:relative;width:206px;height:120px">
+     <div class="card" style="position:absolute;inset:0"></div>
+     <div style="position:absolute;inset:0;clip-path:inset(-56px 2px 2px 2px round 0 0 16px 16px)">${shot(i,206,120,{dz:.82,dy:-22})}</div></div>${name(i)}</div>`).join('')}</div>`);
+}
+if(C===4){ // Bento: one height, each card as wide as its device wants (wide for the handheld, narrow for the remote), close-ups inside
+  const Wd=[230,300,170,130];
+  html+=stage(`<div style="display:flex;gap:16px;margin-top:30px">${[0,1,2,3].map(i=>`<div><div class="card" style="position:relative;overflow:hidden;width:${Wd[i]}px;height:150px">${shot(i,Wd[i],150,{dz:i===1?.82:i===3?1.25:i===2?1.0:1})}</div>${name(i)}</div>`).join('')}</div>`);
+}
+if(C===5){ // Round close-ups: option 5's soft rounds, now each a close-up with the device running out past the circle's fade
+  html+=stage(`<div style="display:flex;gap:40px;margin-top:30px">${[0,1,2,3].map(i=>`<div style="display:flex;flex-direction:column;align-items:center"><div class="round" style="position:relative;width:136px;height:136px;background:rgba(255,255,255,.035)">${shot(i,136,136,{dz:i>1?1.1:1})}</div>${name(i,16)}</div>`).join('')}</div>`);
+}
+document.getElementById('c').innerHTML=html;
+document.fonts.ready.then(()=>Promise.all([...document.images].map(i=>i.decode().catch(()=>{})))).then(()=>{
+  inlayBackdrop(document.getElementById('c'),'l18'+C,0,{motif:'none',grain:true}); document.title='done'; });
+</script></body></html>

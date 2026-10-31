@@ -1,0 +1,61 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="inlay.css">
+<script src="../../design/tokens.js"></script><script src="parts.js"></script><script src="backdrop.js"></script>
+<!-- Hero round L17 (31 Oct 2026): 3B refined. The typing window says the tagline ("contr" typed, "oller" faint, the top row
+     offering controller), and the devices become an overview of what it works with: all four the same size, the tall ones
+     shown by their top part, cropped with a soft fade. ?c=1..5 -->
+<style>
+.abs{position:absolute}
+.win{border-radius:20px;overflow:hidden;background:#000;box-shadow:0 0 0 2px var(--track),0 2px 4px rgba(0,0,0,.3),0 24px 60px rgba(0,0,0,.45)}
+.t{font-family:A;color:#C9CCD3;letter-spacing:.005em}
+.dev{position:relative;overflow:hidden}
+.dev img{position:absolute;left:50%;transform:translateX(-50%)}
+.card{border-radius:18px;background:rgba(255,255,255,.035);box-shadow:inset 0 0 0 2px #24272D}
+.fade{-webkit-mask-image:linear-gradient(to bottom,transparent 0,#000 24%,#000 76%,transparent 100%);mask-image:linear-gradient(to bottom,transparent 0,#000 24%,#000 76%,transparent 100%)}
+.round{border-radius:50%;-webkit-mask-image:radial-gradient(circle at 50% 46%,#000 52%,transparent 71%);mask-image:radial-gradient(circle at 50% 46%,#000 52%,transparent 71%)}
+</style></head><body>
+<div id="c" class="canvas" style="width:1600px;height:900px"></div>
+<script>
+const q=new URLSearchParams(location.search), C=+q.get('c');
+const LOGO=h=>`<img src="../brand/inlay-lockup-clear-dark.svg" style="display:block;height:${h}px">`;
+// the typing window with the tagline: "contr" typed, the rest of the word faint, the keyboard offering it (kb-tag)
+const WINDOW=ww=>{ const p=Math.round(ww*0.016); return `<div class="win" style="width:${ww}px;padding:${p}px ${p}px 0;box-sizing:border-box;background:#0A0B0D">
+   <div class="field" style="height:${Math.round(ww*0.064)}px;font-size:${Math.round(ww*0.027)}px;padding:0 ${Math.round(ww*0.022)}px">Type with your contr<span class="cur" style="height:${Math.round(ww*0.031)}px"></span><span style="color:#9A9DA5;opacity:.62">oller</span></div>
+   <img src="renders/kb-tag.png" style="width:${ww-2*p}px;margin-top:${Math.round(ww*0.011)}px;display:block"></div>`; };
+// each device drawn at its own scale inside the same frame (w × h): wide ones fit the width, tall ones show their top part
+// focus: the point of the drawing (fraction of its height) set in the frame's middle; tall ones are zoomed to their controls
+const DEV=[['c-controller-xbox-lit.svg','Controller',523/353,{w:.74,focus:.5}],['c-wide-xbox-lit.svg','Handheld',589/243,{w:.92,focus:.5}],
+           ['c-vsplit-xbox-a.svg','Vertical handheld',321/475,{w:.62,focus:.70}],['c-remote-lit.svg','TV remote',148/558,{w:.36,focus:.15}]];
+function device(i,w,h,cls=''){ const [f,n,ar,o]=DEV[i], iw=w*o.w, ih=iw/ar, top=h/2-ih*o.focus;
+  return `<div class="dev ${cls}" style="width:${w}px;height:${h}px"><img src="hero-parts/${f}" style="width:${iw}px;height:${ih}px;top:${top}px"></div>`; }
+const label=(i,fs=17)=>`<div class="t" style="font-size:${fs}px;margin-top:12px;text-align:center">${DEV[i][1]}</div>`;
+let html=COVER_DEFS;
+if(C===1){ // Cards: the name, the window, and four equal cards under "Works with"
+  html+=`<div class="abs" style="left:0;top:0;height:900px;width:1600px;display:flex;flex-direction:column;align-items:center;justify-content:center">${LOGO(96)}
+    <div style="margin-top:36px">${WINDOW(860)}</div>
+    <div style="display:flex;gap:18px;margin-top:34px">${[0,1,2,3].map(i=>`<div style="display:flex;flex-direction:column;align-items:center"><div class="card">${device(i,180,118,i>1?'fade':'')}</div>${label(i)}</div>`).join('')}</div></div>`;
+}
+if(C===2){ // Open row: no boxes, the tall devices fading out at their foot; the window bigger
+  html+=`<div class="abs" style="left:0;top:0;height:900px;width:1600px;display:flex;flex-direction:column;align-items:center;justify-content:center">${LOGO(92)}
+    <div style="margin-top:34px">${WINDOW(1000)}</div>
+    <div style="display:flex;gap:56px;margin-top:30px">${[0,1,2,3].map(i=>`<div style="display:flex;flex-direction:column;align-items:center">${device(i,150,96,i>1?'fade':'')}${label(i,16)}</div>`).join('')}</div></div>`;
+}
+if(C===3){ // Side column: the name and window on the left, the four devices stacked on the right as a "works with" list
+  html+=`<div class="abs" style="left:96px;top:0;height:900px;display:flex;flex-direction:column;justify-content:center">${LOGO(84)}<div style="margin-top:40px">${WINDOW(980)}</div></div>
+   <div class="abs" style="left:1150px;top:0;height:900px;display:flex;flex-direction:column;justify-content:center;gap:14px">
+     <div class="t" style="font-size:17px;color:#8E929B;margin-bottom:4px">Works with</div>
+     ${[0,1,2,3].map(i=>`<div class="card" style="display:flex;align-items:center;gap:18px;padding:0 22px 0 6px;width:354px;box-sizing:border-box">${device(i,140,92,i>1?'fade':'')}<div class="t" style="font-size:20px;color:var(--paper)">${DEV[i][1]}</div></div>`).join('')}</div>`;
+}
+if(C===4){ // The bar: the four devices in one segmented bar above the window, none picked, so it reads as a list, not a switch
+  html+=`<div class="abs" style="left:0;top:0;height:900px;width:1600px;display:flex;flex-direction:column;align-items:center;justify-content:center">${LOGO(96)}
+    <div style="display:flex;margin-top:38px;border-radius:18px;box-shadow:inset 0 0 0 2px #24272D;background:rgba(255,255,255,.03);overflow:hidden">${[0,1,2,3].map(i=>`<div style="display:flex;align-items:center;gap:12px;height:68px;padding:0 24px 0 10px;${i?'box-shadow:inset 2px 0 0 #24272D':''}">${device(i,96,60,i>1?'fade':'')}<span class="t" style="font-size:18px;color:var(--paper)">${DEV[i][1]}</span></div>`).join('')}</div>
+    <div style="margin-top:30px">${WINDOW(900)}</div></div>`;
+}
+if(C===5){ // Rounds: the devices in soft round frames, the edge blurring out, like profile pictures of the family
+  html+=`<div class="abs" style="left:0;top:0;height:900px;width:1600px;display:flex;flex-direction:column;align-items:center;justify-content:center">${LOGO(96)}
+    <div style="margin-top:36px">${WINDOW(880)}</div>
+    <div style="display:flex;gap:44px;margin-top:30px">${[0,1,2,3].map(i=>`<div style="display:flex;flex-direction:column;align-items:center"><div style="border-radius:50%;background:rgba(255,255,255,.035)">${device(i,124,124,'round')}</div>${label(i,16)}</div>`).join('')}</div></div>`;
+}
+document.getElementById('c').innerHTML=html;
+document.fonts.ready.then(()=>Promise.all([...document.images].map(i=>i.decode().catch(()=>{})))).then(()=>{
+  inlayBackdrop(document.getElementById('c'),'l17'+C,0,{motif:'none',grain:true}); document.title='done'; });
+</script></body></html>

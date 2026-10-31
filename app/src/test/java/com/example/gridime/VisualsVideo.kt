@@ -166,6 +166,146 @@ class VisualsVideo {
         mark("RS"); pic.flash("RS", 600); kb.bestWord()?.let { onWord(it) }; hold(2200)
     }
 
+    /**
+     * The hero (30 Oct 2026): the tagline typed into the text box with the app's own word suggester. Automatic capitals put
+     * the T in, the right stick takes "your" and then "controller", the line rests, then clears. Paced for reading.
+     */
+    @Test fun sHeroTag() = heroTag("herotag", walk = false)
+    @Test fun sHeroTagWalk() = heroTag("herotag-walk", walk = true)
+
+    /**
+     * The README hero: the tagline typed at an even pace, each word taken from the suggestions with the right stick,
+     * then X held to clear it (the app's real hold-to-delete: letters speeding up, then whole words) so it loops.
+     * [walk] true: the highlight travels key to key (several steps a frame on long moves, so the pace stays even);
+     * false: the highlight is simply on each key as it's pressed (Emre, 30 Oct 2026).
+     */
+    private fun heroTag(name: String, walk: Boolean) = scene(name) {
+        cap = "hero"; tidy = true
+        val lang = Language.ENGLISH
+        var ready = false
+        val suggester = WordSuggester(context, lang) { ready = true }
+        var g = 0; while (!ready && g++ < 200) { Thread.sleep(20); idle(10) }
+        // The app's own suggestions at every letter; a row is only set by hand where the app would rank the word
+        // second, and then it is the app's own three words, reordered
+        val mine = UserWords(context)
+        val firstAt = mapOf("yo" to listOf("your", "you", "you're"), "contr" to listOf("controller", "control", "contract"))
+        fun suggest() { prefix = before.substringAfterLast(' '); val low = prefix.lowercase(); kb.setSuggestions(when {
+            prefix.isEmpty() -> emptyList()
+            low in firstAt -> firstAt.getValue(low)
+            else -> suggester.suggest(prefix, 3, mine.matching(lang, low, suggester::knows)) }, prefix) }
+        val frame = 1000L / 30
+        val letterFrames = 6                       // 200 ms a letter, every letter
+        fun pressLetter(ch: Char) {
+            val label = ch.toString()
+            val n = kb.stepsTo(label)
+            if (!walk || n == 0) {
+                var guard = 0; while (guard++ < 60 && kb.stepTowards(label) == false) { }
+                hold((letterFrames - 1) * frame)
+            } else {
+                val moveFrames = minOf(n, letterFrames - 2)
+                for (f in 0 until moveFrames) {
+                    val steps = (n * (f + 1)) / moveFrames - (n * f) / moveFrames
+                    repeat(steps) { kb.stepTowards(label) }; mark("move"); hold(frame) }
+                hold((letterFrames - 1 - moveFrames) * frame)
+            }
+            mark(pressName); kb.pressSelected(); suggest(); mark("words"); hold(frame)
+        }
+        fun typeUntilOffered(word: String, rest: Long) {
+            for (ch in word) { pressLetter(ch); if (kb.bestWord()?.lowercase() == word) break }
+            hold(450); mark("RS"); pic.flash("RS", 400); kb.bestWord()?.let { onWord(it) }; hold(rest)
+        }
+        // Hold X, exactly as GridKeyboardService does: one delete, a 320 ms wait, letters from 100 ms speeding up by
+        // 7 ms a time to 50 ms, and from the 20th repeat whole words every 160 ms
+        fun holdDelete() {
+            kb.holdButton("X", true); mark("X")
+            fun del(n: Int) {
+                before = if (n < 20) before.dropLast(1) else before.trimEnd().let { t -> t.dropLast(t.length - (t.lastIndexOf(' ') + 1)) }
+                suggest(); kb.setPreview(before, sel, after)
+            }
+            del(0); hold(320); var n = 1
+            while (before.isNotEmpty()) { del(n); hold(if (n < 20) maxOf(50L, 100L - n * 7L) else 160L); n++ }
+            kb.holdButton("X", false)
+        }
+        // The loop starts where it ends: an empty box, the highlight on "r" (the last key pressed)
+        show(""); var guard = 0; while (guard++ < 40 && kb.stepTowards("r") == false) { }
+        // settle the keyboard into the exact state the loop ends in (the same calls the clearing makes)
+        kb.holdButton("X", true); kb.setSuggestions(listOf("type"), "t"); kb.setSuggestions(emptyList(), ""); kb.holdButton("X", false)
+        idle(300)
+        hold(500)
+        for (w in listOf("type", "with", "your")) typeUntilOffered(w, 150)
+        typeUntilOffered("controller", 1800)
+        mark("clear"); holdDelete()
+        kb.setSuggestions(emptyList(), ""); hold(frame)
+    }
+
+    /**
+     * Hero round L9 (Emre, 30 Oct 2026): the keyboard types the name, in time with the logo animation
+     * (docs/brand/motion, 5.16 s loop): i n l a y pressed at the moments the letters appear, then X taps as they go.
+     * The highlight is simply on each key as it's pressed. The app's own suggestions follow every letter.
+     */
+    @Test fun sLogoKeys() = logoKeys("logokeys", words = true)
+    @Test fun sLogoKeysQuiet() = logoKeys("logokeys-quiet", words = false)
+
+    /** [words] false: the top row stays on its tools, as with word suggestions turned off in Settings. */
+    private fun logoKeys(name: String, words: Boolean) = scene(name) {
+        cap = "hero"
+        val lang = Language.ENGLISH
+        var ready = false
+        val suggester = WordSuggester(context, lang) { ready = true }
+        var g = 0; while (!ready && g++ < 200) { Thread.sleep(20); idle(10) }
+        val mine = UserWords(context)
+        fun suggest() { prefix = before.substringAfterLast(' '); val low = prefix.lowercase(); kb.setSuggestions(
+            if (!words || prefix.isEmpty()) emptyList() else suggester.suggest(prefix, 3, mine.matching(lang, low, suggester::knows)), prefix) }
+        // where the loop starts and ends: empty, the highlight on "y" (the last key pressed), the keyboard settled
+        show(""); var guard = 0; while (guard++ < 40 && kb.stepTowards("y") == false) { }
+        kb.holdButton("X", true); kb.setSuggestions(listOf("in"), "i"); kb.setSuggestions(emptyList(), ""); kb.holdButton("X", false)
+        idle(300)
+        val events = listOf(0.86 to "i", 1.16 to "n", 1.62 to "l", 1.86 to "a", 2.08 to "y",
+            4.66 to "X", 4.70 to "X", 4.76 to "X", 4.82 to "X", 4.86 to "X")
+        val total = Math.round(5.16 * 30).toInt()
+        var f = 0
+        for ((t, k) in events) {
+            val at = Math.round(t * 30).toInt()
+            if (at > f) { hold((at - f) * 1000L / 30); f = at }
+            if (k == "X") { kb.pressShortcut("X", KeyType.DELETE) }
+            else { var gg = 0; while (gg++ < 40 && kb.stepTowards(k) == false) { }; mark(pressName); kb.pressSelected() }
+            suggest(); mark("words")
+        }
+        hold((total - f) * 1000L / 30)
+    }
+
+    /**
+     * Hero L9-A, final (Emre, 30 Oct 2026): the keyboard types "inlay" the way you really would, the highlight
+     * travelling key to key and A pressing each letter at the moment the logo animation shows it; then the highlight
+     * goes to the Delete key and A taps it five times; the loop starts where it ends (empty, highlight on Delete).
+     * Times in seconds; the logo is retimed to match afterwards (logo-keys.py).
+     */
+    @Test fun sLogoKeysTravel() = scene("logokeys-travel") {
+        // the highlight wraps round the row's edges (as it does on the keyboard): the shortest way to every key
+        cap = "hero"
+        val frame = 1000L / 30
+        show(""); var guard = 0; while (guard++ < 40 && kb.stepToKey(KeyType.DELETE) == false) { }
+        kb.holdButton("X", true); kb.setSuggestions(listOf("in"), "i"); kb.setSuggestions(emptyList(), ""); kb.holdButton("X", false)
+        idle(300)
+        var f = 0
+        fun until(t: Double) { val at = Math.round(t * 30).toInt(); if (at > f) { hold((at - f) * frame); f = at } }
+        // Walk with the stick so the highlight lands one frame before [t]: a step a frame, two when the way is long
+        fun walkAndPress(t: Double, n: Int, step: () -> Unit, press: () -> Unit) {
+            val at = Math.round(t * 30).toInt()
+            val room = maxOf(1, at - f - 2)
+            val frames = minOf(n, room)
+            until((at - frames - 1) / 30.0)
+            for (k in 0 until frames) { repeat((n * (k + 1)) / frames - (n * k) / frames) { step() }; mark("move"); hold(frame); f++ }
+            until(t); press()
+        }
+        for ((t, ch) in listOf(0.86 to "i", 1.16 to "n", 1.62 to "l", 1.86 to "a", 2.08 to "y"))
+            walkAndPress(t, kb.stepsTo(ch, wrap = true), { kb.stepTowards(ch, wrap = true) }) { mark(pressName); kb.pressSelected(); kb.setSuggestions(emptyList(), "") }
+        val dels = (0 until 5).map { 4.0 + it * 0.16 }
+        walkAndPress(dels[0], kb.stepsToKey(KeyType.DELETE, wrap = true), { kb.stepToKey(KeyType.DELETE, wrap = true) }) { mark(pressName); kb.pressSelected() }
+        for (t in dels.drop(1)) { until(t); mark(pressName); kb.pressSelected() }
+        until(dels.last() + 0.28)
+    }
+
     /** Hold A on a letter: the accents rise, move to one, let go. */
     @Test fun sAccents() = scene("accents") {
         cap = "accents"; show("viva pi"); hold(800)
