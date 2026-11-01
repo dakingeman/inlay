@@ -1,0 +1,43 @@
+{
+ "name": "face-swap-1.2.1",
+ "title": "Swap A/B and X/Y for handhelds set to a Nintendo button layout",
+ "recorded": "2026-11-01",
+ "base": "HEAD",
+ "files": [
+  {
+   "path": "CHANGELOG.md",
+   "before": "89cbeea3119dc28139087d3831f2d1edcd3db0b0",
+   "after": "48ac782d62f884b20e1de78fd3f9a8da64f8dea8"
+  },
+  {
+   "path": "app/src/main/java/com/example/gridime/FaceButtons.kt",
+   "before": null,
+   "after": "e6d218820a2a30227dd9e8ab244f1d0e7851cf0a"
+  },
+  {
+   "path": "app/src/main/java/com/example/gridime/GridKeyboardService.kt",
+   "before": "1507736b377e3a03d1aff9afcff8f84b1290b8bf",
+   "after": "174e62a5d8f352c03dd9b7f4e604bb8d088901eb"
+  },
+  {
+   "path": "app/src/main/java/com/example/gridime/KeyboardSettings.kt",
+   "before": "02efe1fd0e602a06bb82c21f843a7bd285729116",
+   "after": "3d504d502ce68055ea0ab18f4b3d6d7342f3b798"
+  },
+  {
+   "path": "app/src/main/java/com/example/gridime/SettingsActivity.kt",
+   "before": "649c688979572886b104dd2aa9c740331ef1c1e3",
+   "after": "f68dff787d57b2f693db812a1e90f641505f28b9"
+  },
+  {
+   "path": "app/src/main/java/com/example/gridime/TutorialActivity.kt",
+   "before": "01f3872ac88df9a0b5cda1fa312be530a3419d7c",
+   "after": "e0e9bf9dba2515b08a8e70bc50e63da360f56aae"
+  },
+  {
+   "path": "app/src/test/java/com/example/gridime/FaceButtonsTest.kt",
+   "before": null,
+   "after": "24e919fdb679d8d3e5e64bf2ae3c8e2c66c3b8af"
+  }
+ ]
+}

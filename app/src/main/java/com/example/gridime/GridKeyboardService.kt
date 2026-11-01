@@ -765,9 +765,17 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
     // =====================================================================
     // CONTROLLER BUTTONS
     // =====================================================================
-    override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
+    // Face buttons are turned into their positions as they arrive (FaceButtons); what isn't ours goes on
+    // to the app exactly as the device sent it.
+    override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean =
+        keyDown(FaceButtons.code(keyCode, settings.swapFaceButtons), event, keyCode)
+
+    override fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean =
+        keyUp(FaceButtons.code(keyCode, settings.swapFaceButtons), event, keyCode)
+
+    private fun keyDown(keyCode: Int, event: KeyEvent, rawCode: Int): Boolean {
         val grid = gridView
-        if (grid == null || !isInputViewShown) return super.onKeyDown(keyCode, event)
+        if (grid == null || !isInputViewShown) return super.onKeyDown(rawCode, event)
         // Held buttons repeat on our own timers, so Android's repeats are ignored
         val first = event.repeatCount == 0
 
@@ -827,13 +835,13 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
                 }
             }
 
-            else -> return super.onKeyDown(keyCode, event)
+            else -> return super.onKeyDown(rawCode, event)
         }
         return true
     }
 
-    override fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean {
-        if (gridView == null || !isInputViewShown) return super.onKeyUp(keyCode, event)
+    private fun keyUp(keyCode: Int, event: KeyEvent, rawCode: Int): Boolean {
+        if (gridView == null || !isInputViewShown) return super.onKeyUp(rawCode, event)
         when (keyCode) {
             KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_DPAD_DOWN,
             KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_DPAD_RIGHT -> stopNav()
@@ -849,9 +857,9 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
                     requestHideSelf(0)                       // the same quiet close as before
                     return true
                 }
-                return if (consumed) true else super.onKeyUp(keyCode, event)
+                return if (consumed) true else super.onKeyUp(rawCode, event)
             }
-            else -> if (keyCode !in HANDLED_KEYS) return super.onKeyUp(keyCode, event)
+            else -> if (keyCode !in HANDLED_KEYS) return super.onKeyUp(rawCode, event)
         }
         return true
     }

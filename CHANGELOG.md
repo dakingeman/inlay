@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.2.1 — Nintendo-layout handhelds
+
+**Fixes**
+- **Handhelds set to a Nintendo button layout.** Some handhelds (a Retroid Pocket 6 in its retro style, for one) report A, B, X and Y by the letter printed on them instead of where they sit, so every press landed on the opposite button: typing on the right button, the wrong button lit in Try your buttons. Settings → Device → **Swap A/B and X/Y** turns them back. Off by default, so nothing changes for anyone else. Thanks to the Retroid user who sent a video.
+
 ## 1.2.0 — Words, accents, sounds and the device in your hands
 
 The biggest update so far. Inlay now suggests words and learns yours, puts accents one hold away, tidies small slips as you type, and knows what you're holding: a controller, a handheld, a vertical handheld or a TV remote. All nine sound packs were remade, Settings got a clearer layout, and the tour and What's new got a new look in your own colour.

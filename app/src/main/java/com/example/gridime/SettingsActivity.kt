@@ -761,7 +761,9 @@ class SettingsActivity : Activity() {
      * Up from the first row goes to the tabs (how a remote switches sections). The page's scroll
      * view would otherwise take the key and only look for a row inside the page.
      */
-    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+    override fun dispatchKeyEvent(raw: KeyEvent): Boolean {
+        // Face buttons by position, before anything else sees them (FaceButtons)
+        val event = FaceButtons.event(raw, ::settings.isInitialized && settings.swapFaceButtons)
         if (testing && testKey(event)) return true
         if (event.keyCode == KeyEvent.KEYCODE_DPAD_UP && event.action == KeyEvent.ACTION_DOWN &&
             focusableRows.firstOrNull()?.hasFocus() == true) {
@@ -1086,6 +1088,10 @@ class SettingsActivity : Activity() {
                 if (c.remote) null else ChoiceRow(this, "Button icons", "Match the labels on your buttons",
                     ButtonStyle.values().map { it.label }, settings.buttonStyle.ordinal) {
                     update(settings.copy(buttonStyle = ButtonStyle.values()[it]))
+                },
+                if (c.remote) null else ToggleRow(this, "Swap A/B and X/Y",
+                    "For handhelds set to a Nintendo button layout. Turn on if Try your buttons lights the opposite button", settings.swapFaceButtons) {
+                    update(settings.copy(swapFaceButtons = it))
                 },
                 ActionRow(this, "Try your buttons", if (c.remote) "Press OK, Back or the ring: they light up on the picture. Hold Back to stop"
                     else "Press any button: it lights up on the picture. Hold {B} to stop") { startButtonTest() }

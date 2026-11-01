@@ -233,6 +233,7 @@ data class KeyboardSettings(
     val numberRow: Boolean = false,      // a slim row of 1 to 0 above the letters
     val picture: PictureChoice = PictureChoice.AUTO,   // which device the tour, What's new and Button guide show
     val verticalSticks: Boolean = false,  // a vertical handheld that does have sticks
+    val swapFaceButtons: Boolean = false, // the device reports A/B and X/Y by printed letter (Nintendo layout): see FaceButtons
     val hasSticks: Boolean = true,        // worked out from the device, never saved (see Controls)
     // Sound & haptics
     val vibration: Boolean = true,
@@ -292,6 +293,7 @@ data class KeyboardSettings(
             .put(K_NUMBER_ROW, numberRow)
             .put(K_PICTURE, picture.name)
             .put(K_VERTICAL_STICKS, verticalSticks)
+            .put(K_SWAP_FACE, swapFaceButtons)
             .put(K_TV_MODE, tvMode.name)
             .put(K_TUTORIAL, tutorialDone)
             .put(K_WHATS_NEW, whatsNewSeen)
@@ -360,6 +362,7 @@ data class KeyboardSettings(
         private const val K_NUMBER_ROW = "number_row"
         private const val K_PICTURE = "device_picture"
         private const val K_VERTICAL_STICKS = "vertical_sticks"
+        private const val K_SWAP_FACE = "swap_face_buttons"
         private const val K_TV_MODE = "tv_mode"
         private const val K_TUTORIAL = "tutorial_done"
         private const val K_WHATS_NEW = "whats_new_seen"
@@ -487,6 +490,7 @@ data class KeyboardSettings(
                 numberRow = p.bool(K_NUMBER_ROW, d.numberRow),
                 picture = enumOr(p.str(K_PICTURE), d.picture),
                 verticalSticks = p.bool(K_VERTICAL_STICKS, d.verticalSticks),
+                swapFaceButtons = p.bool(K_SWAP_FACE, d.swapFaceButtons),
                 tutorialDone = p.bool(K_TUTORIAL, d.tutorialDone),
                 whatsNewSeen = p.str(K_WHATS_NEW) ?: d.whatsNewSeen,
                 keyShape = enumOr(p.str(K_SHAPE), d.keyShape),

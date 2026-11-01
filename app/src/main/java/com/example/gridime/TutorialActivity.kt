@@ -2259,6 +2259,10 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
     // =====================================================================
     // CONTROLLER
     // =====================================================================
+    /** Face buttons by position, before the tour sees them (FaceButtons). */
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean =
+        super.dispatchKeyEvent(FaceButtons.event(event, ::settings.isInitialized && settings.swapFaceButtons))
+
     override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
         if (event.repeatCount > 0) return true
         when (keyCode) {
