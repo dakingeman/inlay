@@ -328,6 +328,14 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
     // =====================================================================
     // LIFECYCLE
     // =====================================================================
+    /** The page is designed at Odin size and drawn larger, as one unit, on screens with more room ([TourScale]). */
+    override fun attachBaseContext(newBase: android.content.Context) {
+        tourScale = TourScale.of(newBase.resources.configuration)
+        super.attachBaseContext(TourScale.wrap(newBase))
+    }
+    /** How much larger than designed this screen draws the page (1 = as designed). */
+    internal var tourScale = 1f; private set
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Palette.init(this)
@@ -985,38 +993,15 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
         fitCardToPanel()
     }
 
-    /**
-     * Beside the keyboard the card always shares the keyboard window's foot, and its top sits on a line of the window
-     * too, chosen once per screen so it's the same on every page:
-     *  1. the window's top, when the card fits beside the whole window under every page's words
-     *  2. else the keyboard's top, just under the text box
-     *  3. else as tall as the room under the longest page's words (still on the window's foot)
-     */
-    enum class CardTop { WINDOW, KEYBOARD, ROOM }
     private var cardRoom = -1
-    internal val cardTop: CardTop get() {
-        val room = cardRoom
-        return when {
-            room < 0 || panel.height <= room -> CardTop.WINDOW
-            keyboardTopInPanel().let { panel.height - it <= room } -> CardTop.KEYBOARD
-            else -> CardTop.ROOM
-        }
-    }
-    private fun keyboardTopInPanel(): Int {
-        var y = 0; var v: View? = keyboardBox
-        while (v != null && v !== panel) { y += v.top; v = v.parent as? View }
-        return y
-    }
+    /**
+     * The card is as tall as its tallest step plus its padding, never stretched to the window: a stretched card was
+     * mostly empty on big screens (Reddit video, 3 Nov 2026). Beside the keyboard its foot still sits on the
+     * keyboard window's foot (the words column ends where the window ends), so it keeps one place on every page.
+     */
     private fun fitCardToPanel() {
-        if (!split) return
         val box = cardBox() ?: return
-        if (panel.height <= 0) return
-        val h = when (cardTop) {
-            CardTop.WINDOW -> panel.height
-            CardTop.KEYBOARD -> panel.height - keyboardTopInPanel()
-            CardTop.ROOM -> cardRoom
-        }
-        if (box.minimumHeight != h) { box.minimumHeight = h; box.requestLayout() }
+        if (box.minimumHeight != 0) { box.minimumHeight = 0; box.requestLayout() }
     }
 
     /** For the checks: the card's words now, the step the demo is on, and whether the card is fully shown. */
@@ -1366,8 +1351,7 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
                 words.measuredHeight - words.paddingTop > room
             }
             splitCaption = tooTall
-            // The card's height for this screen (one rule for every page, see [CardTop]): the tallest page's sentence
-            // decides how much room is left under the words
+            // The room left under the tallest page's sentence (for the debug line)
             var textMost = 0
             pages.filter { it.rows.isNotEmpty() }.forEach { p ->     // pages without steps have no card: their words may take the column
                 title.text = p.title; body.text = p.body; buildRows(emptyList()); rowsPane.visibility = View.GONE
@@ -1462,6 +1446,33 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
         (words.layoutParams as LinearLayout.LayoutParams).height = tallest
         words.requestLayout()
         startRowLight()
+    }
+
+    /** For the checks: what TourBalanceTest measures on the page on show. */
+    internal class Balance(val pieces: String, val scale: Float, val titlePx: Float, val screenShortPx: Int, val screenH: Int, val cardFill: Float?, val biggestBand: Float)
+    internal fun balanceForCheck(): Balance {
+        val root = window.decorView
+        val loc = IntArray(2)
+        fun box(v: View?): android.graphics.Rect? {
+            if (v == null || !v.isShown || v.width <= 0 || v.height <= 0) return null
+            if (v is TextView && v.text.isNullOrEmpty()) return null
+            v.getLocationInWindow(loc); return android.graphics.Rect(loc[0], loc[1], loc[0] + v.width, loc[1] + v.height)
+        }
+        val pieces = listOfNotNull(box(eyebrowRow), box(dots), box(title), box(body), box(cardBox()), box(picture), box(panel), box(controlBar))
+        // Where on the screen's height something is shown, then the tallest stretch right across the screen with nothing
+        var reach = 0; var biggest = 0
+        pieces.sortedBy { it.top }.forEach { r -> biggest = maxOf(biggest, r.top - reach); reach = maxOf(reach, r.bottom) }
+        biggest = maxOf(biggest, root.height - reach)
+        val fill = cardBox()?.let { b ->
+            if (b.height <= 0) null else {
+                val min = b.minimumHeight; b.minimumHeight = 0
+                b.measure(View.MeasureSpec.makeMeasureSpec(b.width, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED))
+                val natural = b.measuredHeight
+                b.minimumHeight = min; b.requestLayout()
+                natural.toFloat() / b.height
+            }
+        }
+        return Balance(pieces.joinToString { it.toShortString() }, tourScale, title.textSize, minOf(root.width, root.height), root.height, fill, biggest.toFloat() / root.height)
     }
 
     /** For the checks: where the keyboard window sits on screen, and how big its keys are drawn (1 = full size). */

@@ -24,6 +24,7 @@ import kotlin.math.cos
 import kotlin.math.hypot
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.roundToInt
 import kotlin.math.sin
 
 /** Which device picture to show. Automatic works it out from the controller and the screen. */
@@ -308,8 +309,28 @@ object DevicePicture {
     }
 
     private val pictures = HashMap<String, Pair<SVG, JSONObject>>()
+    private val screens = HashMap<String, android.graphics.RectF?>()
 
-    fun load(context: Context, kind: DeviceKind, style: ButtonStyle, sticks: Boolean = false): Pair<SVG, JSONObject>? {
+    /** The device's screen in picture units: its largest visible rectangle. Null for pictures without one. */
+    fun screenBox(context: Context, kind: DeviceKind, style: ButtonStyle, sticks: Boolean = false): android.graphics.RectF? {
+        if (kind == DeviceKind.CONTROLLER || kind == DeviceKind.REMOTE) return null
+        val name = if (kind == DeviceKind.VERTICAL && sticks) "${kind.file}-sticks-${styleName(style)}" else "${kind.file}-${styleName(style)}"
+        if (screens.containsKey(name)) return screens[name]
+        val box = runCatching {
+            val text = context.applicationContext.assets.open("devices/$name.svg").bufferedReader().use { it.readText() }
+            fun attr(tag: String, a: String) = Regex("""\b$a="([-0-9.]+)"""").find(tag)?.groupValues?.get(1)?.toFloatOrNull()
+            // the screen is the device's one rect filled with the screen colour (the big white rects are masks)
+            Regex("<rect[^>]*>").findAll(text).map { it.value }.filter { "display=\"none\"" !in it && "transform" !in it && "fill=\"#0C0D11\"" in it }
+                .mapNotNull { t -> val x = attr(t, "x"); val y = attr(t, "y"); val w = attr(t, "width"); val h = attr(t, "height")
+                    if (x == null || y == null || w == null || h == null) null else android.graphics.RectF(x, y, x + w, y + h) }
+                .maxByOrNull { it.width() * it.height() }
+        }.getOrNull()
+        screens[name] = box
+        return box
+    }
+
+    /** [outlinePx]: the outline's thickness on screen (its strokes don't scale); bigger for the full-screen picture. */
+    fun load(context: Context, kind: DeviceKind, style: ButtonStyle, sticks: Boolean = false, outlinePx: Float = DevicePictureView.OUTLINE_PX): Pair<SVG, JSONObject>? {
         // The remote is the same for everyone; the others come in Xbox, PlayStation and Switch style,
         // and the vertical handheld also with sticks
         val name = when {
@@ -317,14 +338,18 @@ object DevicePicture {
             kind == DeviceKind.VERTICAL && sticks -> "${kind.file}-sticks-${styleName(style)}"
             else -> "${kind.file}-${styleName(style)}"
         }
-        pictures[name]?.let { return it }
+        val px = (outlinePx * 10).roundToInt() / 10f
+        val key = if (px == DevicePictureView.OUTLINE_PX) name else "$name@$px"
+        pictures[key]?.let { return it }
         return runCatching {
             val assets = context.applicationContext.assets
-            val svg = assets.open("devices/$name.svg").use { SVG.getFromInputStream(it) }
+            val svg = if (px == DevicePictureView.OUTLINE_PX) assets.open("devices/$name.svg").use { SVG.getFromInputStream(it) }
+                else SVG.getFromString(assets.open("devices/$name.svg").bufferedReader().use { it.readText() }
+                    .replace("stroke-width=\"2.5\" vector-effect=\"non-scaling-stroke\"", "stroke-width=\"$px\" vector-effect=\"non-scaling-stroke\""))
             svg.setDocumentWidth("100%")
             svg.setDocumentHeight("100%")
             val css = JSONObject(assets.open("devices/$name.json").bufferedReader().use { it.readText() })
-            (svg to css).also { pictures[name] = it }
+            (svg to css).also { pictures[key] = it }
         }.getOrNull()
     }
 }
@@ -342,6 +367,15 @@ internal object HoldStyle {
 class DevicePictureView(context: Context) : View(context) {
 
     private val dp = resources.displayMetrics.density
+    /**
+     * How thick lines, rings and marks are drawn, as a multiple of their normal size. 1 everywhere, except the
+     * full-screen Try your buttons, where it's the picture's own enlargement: there the big picture looks exactly
+     * like the small one made bigger (lines grow with it), so moving between the two changes nothing but size.
+     */
+    var inkScale = 1f
+        set(v) { if (field != v) { field = v; cacheKey = ""; shown?.let { (k, st, sk) -> show(k, st, sk) }; invalidate() } }
+    private var shown: Triple<DeviceKind, ButtonStyle, Boolean>? = null
+    private val ink get() = dp * inkScale
     private var svg: SVG? = null
     private var css: JSONObject? = null
 
@@ -389,7 +423,9 @@ class DevicePictureView(context: Context) : View(context) {
     fun show(kind: DeviceKind, style: ButtonStyle, sticks: Boolean = false) {
         this.kind = kind
         this.sticks = sticks
-        val loaded = DevicePicture.load(context, kind, style, sticks)
+        shown = Triple(kind, style, sticks)
+        screenBox = DevicePicture.screenBox(context, kind, style, sticks)
+        val loaded = DevicePicture.load(context, kind, style, sticks, DevicePictureView.OUTLINE_PX * inkScale)
         svg = loaded?.first
         css = loaded?.second
         tightest = css?.optJSONObject("_geo")?.let { DevicePicture.tightestGap(it) } ?: Float.MAX_VALUE
@@ -506,6 +542,21 @@ class DevicePictureView(context: Context) : View(context) {
         val box = svg?.documentViewBox ?: return 0f to 0f
         val sc = pictureScaleForTest()
         return ((width - box.width() * sc) / 2f - box.left * sc) to ((height - box.height() * sc) / 2f - box.top * sc)
+    }
+    private var screenBox: android.graphics.RectF? = null
+    /** The device's own screen, in this view's pixels, as drawn (null for a controller or a remote). */
+    fun screenInView(): android.graphics.RectF? {
+        val sb = screenBox ?: return null; val b = svg?.documentViewBox ?: return null; val d = drawnRect() ?: return null
+        val sc = d.width() / b.width()
+        return android.graphics.RectF(d.left + (sb.left - b.left) * sc, d.top + (sb.top - b.top) * sc, d.left + (sb.right - b.left) * sc, d.top + (sb.bottom - b.top) * sc)
+    }
+    /** Where the drawing itself sits inside this view (it's centred and keeps its shape), in view pixels. */
+    fun drawnRect(): android.graphics.RectF? {
+        val b = svg?.documentViewBox ?: return null
+        if (width <= 0 || height <= 0) return null
+        val sc = min(width / b.width(), height / b.height())
+        val l = (width - b.width() * sc) / 2f; val t = (height - b.height() * sc) / 2f
+        return android.graphics.RectF(l, t, l + b.width() * sc, t + b.height() * sc)
     }
     internal fun pictureScaleForTest(): Float { val b = svg?.documentViewBox ?: return 1f; return min(width / b.width(), height / b.height()) }
 
@@ -713,14 +764,14 @@ class DevicePictureView(context: Context) : View(context) {
      */
     private val ringF: Float get() {
         val widest = (RING_GAP_DP + RING_W_DP + when (HoldStyle.look) {
-            HoldStyle.Look.TIMER -> TIMER_GAP_DP + TIMER_W_DP; HoldStyle.Look.INNER -> 0f }) * dp
-        val byRoom = (leastRoom * pictureScale - ROOM_AIR_DP * dp) / widest
-        val byPairs = (tightest * pictureScale - RING_AIR_DP * dp) / (2 * (RING_GAP_DP + RING_W_DP) * dp)
+            HoldStyle.Look.TIMER -> TIMER_GAP_DP + TIMER_W_DP; HoldStyle.Look.INNER -> 0f }) * ink
+        val byRoom = (leastRoom * pictureScale - ROOM_AIR_DP * ink) / widest
+        val byPairs = (tightest * pictureScale - RING_AIR_DP * ink) / (2 * (RING_GAP_DP + RING_W_DP) * ink)
         return min(1f, min(byRoom, byPairs)).coerceAtLeast(0f)
     }
-    private val ringPx get() = (RING_GAP_DP + RING_W_DP) * dp * ringF
-    private val gapPx get() = RING_GAP_DP * dp * ringF
-    private val bandPx get() = RING_W_DP * dp * ringF
+    private val ringPx get() = (RING_GAP_DP + RING_W_DP) * ink * ringF
+    private val gapPx get() = RING_GAP_DP * ink * ringF
+    private val bandPx get() = RING_W_DP * ink * ringF
 
     /**
      * A pressed button's ring: outside the button, following its exact outline, a small even gap away,
@@ -750,7 +801,7 @@ class DevicePictureView(context: Context) : View(context) {
             val a = mid(me); val b = mid(g); val dx = b.x - a.x; val dy = b.y - a.y; val len = hypot(dx, dy)
             if (len <= 0f) continue
             val nx = dx / len; val ny = dy / len; val far = 10000f
-            val hx = (a.x + b.x) / 2 - nx * RING_AIR_DP * dp * ringF / 2; val hy = (a.y + b.y) / 2 - ny * RING_AIR_DP * dp * ringF / 2
+            val hx = (a.x + b.x) / 2 - nx * RING_AIR_DP * ink * ringF / 2; val hy = (a.y + b.y) / 2 - ny * RING_AIR_DP * ink * ringF / 2
             val h = Path().apply {
                 moveTo(hx - ny * far, hy + nx * far); lineTo(hx + ny * far, hy - nx * far)
                 lineTo(hx + ny * far + nx * far, hy - nx * far + ny * far); lineTo(hx - ny * far + nx * far, hy + nx * far + ny * far); close()
@@ -762,7 +813,7 @@ class DevicePictureView(context: Context) : View(context) {
 
     /** Everything lit except [key]: each button with its press ring and a little air round it (held rings stay out). */
     private fun zonesExcept(key: String, lit: Collection<String>, geo: org.json.JSONObject, ox: Float, oy: Float, s: Float): Path? {
-        val zone = ringPx + RING_AIR_DP * dp * ringF
+        val zone = ringPx + RING_AIR_DP * ink * ringF
         var out: Path? = null
         for (k in lit) {
             if (k == key || (k in DPAD_ARMS && key in DPAD_ARMS)) continue
@@ -778,7 +829,7 @@ class DevicePictureView(context: Context) : View(context) {
                 val a = mid(me); val b = mid(g); val dx = b.x - a.x; val dy = b.y - a.y; val len = hypot(dx, dy)
                 if (len > 0f) {
                     val nx = dx / len; val ny = dy / len; val far = 10000f
-                    val hx = (a.x + b.x) / 2 - nx * RING_AIR_DP * dp * ringF; val hy = (a.y + b.y) / 2 - ny * RING_AIR_DP * dp * ringF
+                    val hx = (a.x + b.x) / 2 - nx * RING_AIR_DP * ink * ringF; val hy = (a.y + b.y) / 2 - ny * RING_AIR_DP * ink * ringF
                     z.op(Path().apply {
                         moveTo(hx - ny * far, hy + nx * far); lineTo(hx + ny * far, hy - nx * far)
                         lineTo(hx + ny * far + nx * far, hy - nx * far + ny * far); lineTo(hx - ny * far + nx * far, hy + nx * far + ny * far); close()
@@ -795,10 +846,10 @@ class DevicePictureView(context: Context) : View(context) {
      * the press ring first, then the held look. One list, so buttons, D-pad arms and sticks all match.
      */
     private fun ringBands(p: Float): List<FloatArray> {
-        val gap = gapPx; val w = bandPx; val f = ringPx / ((RING_GAP_DP + RING_W_DP) * dp)   // < 1 on a tight picture
+        val gap = gapPx; val w = bandPx; val f = ringPx / ((RING_GAP_DP + RING_W_DP) * ink)   // < 1 on a tight picture
         val out = mutableListOf(floatArrayOf(gap, gap + w, 1f))
         if (p > 0f) when (HoldStyle.look) {
-            HoldStyle.Look.TIMER -> { val tg = TIMER_GAP_DP * dp * f; out += floatArrayOf(gap + w + tg, gap + w + tg + TIMER_W_DP * dp * f, p) }  // a second ring runs round
+            HoldStyle.Look.TIMER -> { val tg = TIMER_GAP_DP * ink * f; out += floatArrayOf(gap + w + tg, gap + w + tg + TIMER_W_DP * ink * f, p) }  // a second ring runs round
             HoldStyle.Look.INNER -> out += floatArrayOf(-INNER_FROM, -INNER_TO, p)    // inside the button: fractions of its size (see innerBand)
         }
         return out
@@ -829,8 +880,8 @@ class DevicePictureView(context: Context) : View(context) {
         // Readable at any size: the mark never gets thinner than INNER_MIN_DP and leaves a lit rim of at least
         // INNER_RIM_DP. On a small button it grows inward until the button is hollow (lit rim, dark middle):
         // a shape change you can read from across the room, and nothing ever grows outside the button
-        val a = max(from * half, INNER_RIM_DP * dp).coerceAtMost(half * 0.45f)
-        val b = max(to * half, a + INNER_MIN_DP * dp).let { if (it > half * 0.7f) half * 1.05f else it }
+        val a = max(from * half, INNER_RIM_DP * ink).coerceAtMost(half * 0.45f)
+        val b = max(to * half, a + INNER_MIN_DP * ink).let { if (it > half * 0.7f) half * 1.05f else it }
         val saved = canvas.save()
         canvas.clipPath(shape)
         if (a > 0f) { val near = Path(); Paint().apply { style = Paint.Style.STROKE; strokeWidth = 2 * a }.getFillPath(shape, near); canvas.clipOutPath(near) }
@@ -950,14 +1001,14 @@ class DevicePictureView(context: Context) : View(context) {
             paint.style = Paint.Style.FILL; paint.color = accent
             canvas.drawCircle(x, y, r * f, paint)
             if (inner > 0f) {
-                paint.style = Paint.Style.STROKE; paint.strokeWidth = Design.STROKE_ICON * dp; paint.color = Contrast.withAlpha(Design.INK_DARK, Design.ALPHA_STICK_RIM)
+                paint.style = Paint.Style.STROKE; paint.strokeWidth = Design.STROKE_ICON * ink; paint.color = Contrast.withAlpha(Design.INK_DARK, Design.ALPHA_STICK_RIM)
                 canvas.drawCircle(x, y, inner * f, paint)
             }
         }
         paint.strokeCap = Paint.Cap.ROUND
         if (pushed) {
             // A real stick tilts inside its well: the cap slides only as far as the well allows
-            val d = if (wellR > 0f) min(10f * k, max(0f, wellR - r - 0.75f * dp)) else 10f * k
+            val d = if (wellR > 0f) min(10f * k, max(0f, wellR - r - 0.75f * ink)) else 10f * k
             val px = cx + push.x * d; val py = cy + push.y * d
             cap(px, py, 1f)
             if (showArrow) {
@@ -966,7 +1017,7 @@ class DevicePictureView(context: Context) : View(context) {
                 val a = atan2(push.y, push.x); val c = cos(a); val sn = sin(a)
                 val g0 = 0.42f * r                                   // the arrow's size, from the cap's size
                 val nx = -sn; val ny = c
-                paint.style = Paint.Style.STROKE; paint.strokeWidth = max(1.4f * dp, 0.16f * r); paint.color = STICK_INK
+                paint.style = Paint.Style.STROKE; paint.strokeWidth = max(1.4f * ink, 0.16f * r); paint.color = STICK_INK
                 val arrow = Path().apply {
                     moveTo(px - c * g0 * 0.35f + nx * g0 * 0.6f, py - sn * g0 * 0.35f + ny * g0 * 0.6f)
                     lineTo(px + c * g0 * 0.35f, py + sn * g0 * 0.35f)
@@ -979,7 +1030,7 @@ class DevicePictureView(context: Context) : View(context) {
             cap(cx, cy, CLICKED_IN)
             // The ring wraps the sunken cap and always fits inside the well, with air to spare
             val inner = r * CLICKED_IN
-            val room = if (wellR > 0f) wellR - ROOM_AIR_DP * dp - inner else gapPx + bandPx
+            val room = if (wellR > 0f) wellR - ROOM_AIR_DP * ink - inner else gapPx + bandPx
             val k2 = (room / (gapPx + bandPx)).coerceIn(0f, 1f)
             band(canvas, Path().apply { addCircle(cx, cy, inner, Path.Direction.CW) }, gapPx * k2, (gapPx + bandPx) * k2, 1f)
         }
@@ -988,6 +1039,7 @@ class DevicePictureView(context: Context) : View(context) {
     internal companion object {
         const val FLASH_MS = Design.MOTION_FLASH
         const val TALL_BOOST = 1.45f
+        const val OUTLINE_PX = 2.5f   // the outline's thickness in the drawings (stroke-width, non-scaling)
         const val HOLD_DELAY_MS = Design.MOTION_HOLD_WAIT   // a tap is over before the hold mark starts
         val SHOULDERS = listOf("LB", "RB", "LT", "RT")
         const val SHOULDER_FADE_MS = 220f                  // a shoulder key fading in or out (shouldersWhenUsed)

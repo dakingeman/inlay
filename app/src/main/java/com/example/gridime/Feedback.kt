@@ -103,7 +103,7 @@ class Feedback(context: Context) {
 
     fun update(newSettings: KeyboardSettings) {
         settings = newSettings
-        loadPack(newSettings.soundPack)
+        loadPack(newSettings.activeSoundPack)
     }
 
     init {
@@ -112,7 +112,7 @@ class Feedback(context: Context) {
             ready += id
             waiting.remove(id)?.let { volume -> playNow(id, volume) }
         }
-        loadPack(settings.soundPack)
+        loadPack(settings.activeSoundPack)
     }
 
     fun release() {

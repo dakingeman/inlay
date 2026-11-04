@@ -24,8 +24,8 @@ import kotlin.math.abs
  *  - a scrolling area keeps its edge: words scrolled past it never draw over the device (a small upright phone did, 30 Oct 2026)
  *  - the card's edge sits exactly on the title's left edge, inside its column (it never hangs past it: a fading page cut
  *    the overhang off on the Odin, 30 Oct 2026)
- *  - beside the keyboard (the split), the card shares the keyboard window's foot, and its top sits on the line its screen
- *    chose ([TutorialActivity.CardTop]): the window's top, or the keyboard's top under the text box
+ *  - beside the keyboard (the split), the card shares the keyboard window's foot and is as tall as its steps (never
+ *    stretched to the window: a stretched card was mostly empty on big screens, 3 Nov 2026)
  *  - small screens: the device beside the sentence and caption is drawn whole, centred on them, with the same margin on its
  *    right as the words have on their left, and at least [TutorialActivity.DEVICE_HEADER_GAP_DP] from the words
  * Measured in pixels, with a pixel to spare for rounding.
@@ -57,7 +57,6 @@ class TourMarkerTest {
 
     private fun run(screen: String) {
         val problems = mutableListOf<String>()
-        val cardTops = mutableListOf<String>()
         val d = context.resources.displayMetrics.density
         val slack = 1.5f
         for ((dev, pic) in listOf("handheld" to PictureChoice.HANDHELD, "vertical" to PictureChoice.VERTICAL, "vertical with sticks" to PictureChoice.VERTICAL,
@@ -91,16 +90,7 @@ class TourMarkerTest {
                             if (badge == null) problems += "$where: the card has no buttons"
                             if (abs(r.left - titleLeft) > slack) problems += "$where: the card's edge is ${(r.left - titleLeft) / d} dp off the title's edge"
                             if (c.split && abs(r.bottom - panel.bottom) > 2 * d) problems += "$where: the card's foot is ${(r.bottom - panel.bottom) / d} dp off the keyboard window's foot"
-                            if (c.split) {
-                                val line = when (t.cardTop) {
-                                    TutorialActivity.CardTop.WINDOW -> panel.top
-                                    TutorialActivity.CardTop.KEYBOARD -> win(c.keyboard).top
-                                    TutorialActivity.CardTop.ROOM -> null
-                                }
-                                if (line != null && abs(r.top - line) > 2 * d) problems += "$where: the card's top is ${(r.top - line) / d} dp off its line (${t.cardTop})"
-                                if (r.top < panel.top - slack) problems += "$where: the card reaches ${(panel.top - r.top) / d} dp above the keyboard window"
-                                cardTops += "$screen ${t.cardTop}"
-                            }
+                            if (c.split && r.top < panel.top - slack) problems += "$where: the card reaches ${(panel.top - r.top) / d} dp above the keyboard window"
                         }
                     }
                     // A scrolling area keeps its edge: what scrolls past it never draws over the device or the keyboard
@@ -125,7 +115,6 @@ class TourMarkerTest {
                 }
                 t.finish()
             }
-        cardTops.distinct().forEach { println("CARD-TOP $it") }
         problems.distinct().forEach { println("PROBLEM $it") }
         assertTrue("${problems.distinct().size} problems:\n" + problems.distinct().take(40).joinToString("\n"), problems.isEmpty())
     }
@@ -139,4 +128,6 @@ class TourMarkerTest {
     @Test @Config(sdk = [34], qualifiers = "w480dp-h432dp-land-hdpi") fun square() = run("square")
     @Test @Config(sdk = [34], qualifiers = "w472dp-h363dp-land-420dpi") fun pocket() = run("small handheld")
     @Test @Config(sdk = [34], qualifiers = "w480dp-h312dp-land-xhdpi") fun small43() = run("small 4:3")
+    @Test @Config(sdk = [34], qualifiers = "w1097dp-h617dp-land-280dpi") fun hdSmall() = run("1080p handheld, small display size")
+    @Test @Config(sdk = [34], qualifiers = "w683dp-h512dp-land-xhdpi") fun fourThreeHd() = run("4:3 handheld")
 }

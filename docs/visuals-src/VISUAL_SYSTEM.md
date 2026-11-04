@@ -39,6 +39,8 @@ Never varies: base colours, the whisper's colour rule, the accent colour. Decide
 
 ## 4b. Feature images
 
+- **Release notes and changelog images** use the same system: `release.html` (+ `shot-release.js`), a 46 px headline with one teal word, a 21 px line, and a real screenshot from the Odin on `inlayBackground` with no motif. Never an improvised dark background (Emre, 1 Nov 2026).
+
 - **Imagery always matches the words.** Each image shows exactly the setting or moment its text talks about (the sound-packs image shows the Sound pack row, not vibration). Check this before shipping any image.
 - **Stage images** (device on the left, screen on the right): the device stands on the same line as the bottom of the screen next to it, whatever the device (handheld, remote). Device 530 px wide, text from y 140, at least 24 px between the text and the device.
 - **Hint chips** (Paste / Remove / Back, "D-pad to choose", "Let go to keep it open") get a clearer fill and a teal edge in every render, so they read at README size.

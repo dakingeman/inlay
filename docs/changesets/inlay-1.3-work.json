@@ -1,0 +1,343 @@
+{
+ "name": "inlay-1.3-work",
+ "title": "Inlay 1.3 so far: Try your buttons, Konami Code and its reward, sparks, Retro collection (lab 1.9), tour and picture scaling",
+ "recorded": "2026-11-04",
+ "base": "192f0c7",
+ "files": [
+  {
+   "path": "app/src/main/assets/fonts/PressStart2P.ttf",
+   "before": null,
+   "after": "3c193337b8020febc228dbac4dd0ad9ed7011c0d"
+  },
+  {
+   "path": "app/src/main/java/com/example/gridime/Design.kt",
+   "before": "743ee69ff9b4bf962d6b7aa911a4d4f4ba3e2878",
+   "after": "9adc2862f803d56c21187ca516447ff1629f64e4"
+  },
+  {
+   "path": "app/src/main/java/com/example/gridime/DevicePicture.kt",
+   "before": "8ddd9079ddb60800bab538790c2700a960725d53",
+   "after": "61adf97258c749ee38b49866802d813e9764addc"
+  },
+  {
+   "path": "app/src/main/java/com/example/gridime/Feedback.kt",
+   "before": "fa34ff55300430eae836d697fb783ac9e6f94367",
+   "after": "7c482dbfbb7c330e8b377f4d0c58b1e5afbdb149"
+  },
+  {
+   "path": "app/src/main/java/com/example/gridime/KeyGridView.kt",
+   "before": "8d0d35b4980d2f1e83917520fae879908e8f5150",
+   "after": "51ac0503e4806d8124e19f548a0894401709e628"
+  },
+  {
+   "path": "app/src/main/java/com/example/gridime/KeyboardSettings.kt",
+   "before": "3d504d502ce68055ea0ab18f4b3d6d7342f3b798",
+   "after": "07eb14ebfbbd3aa96bc17a6ec7d739778843f9fb"
+  },
+  {
+   "path": "app/src/main/java/com/example/gridime/KonamiCode.kt",
+   "before": null,
+   "after": "c5367d7ed1c203f4e6d69f2c5ab9a9566f70c8dd"
+  },
+  {
+   "path": "app/src/main/java/com/example/gridime/SecretReward.kt",
+   "before": null,
+   "after": "71e43c4fde70bade2842feaa951c2696853b1318"
+  },
+  {
+   "path": "app/src/main/java/com/example/gridime/SettingsActivity.kt",
+   "before": "f68dff787d57b2f693db812a1e90f641505f28b9",
+   "after": "d274c31b7b9b403b74214b76b3151c279cd6056e"
+  },
+  {
+   "path": "app/src/main/java/com/example/gridime/SettingsChrome.kt",
+   "before": "f45cc7007ca98a916ff203aeb276bbe487d7e633",
+   "after": "328b400f2f9bde2b3bf38255843008362f199e3b"
+  },
+  {
+   "path": "app/src/main/java/com/example/gridime/SettingsViews.kt",
+   "before": "518ac0a7e05901daa713757810e773d57e735f3b",
+   "after": "390c607febaede8810e04241f6d178dd1a137d76"
+  },
+  {
+   "path": "app/src/main/java/com/example/gridime/TourScale.kt",
+   "before": null,
+   "after": "e6586af7ac4b9901a0ba4ba20fc05c2eb82bd5f0"
+  },
+  {
+   "path": "app/src/main/java/com/example/gridime/TutorialActivity.kt",
+   "before": "e0e9bf9dba2515b08a8e70bc50e63da360f56aae",
+   "after": "739b4ac5d46fe68dc29b3233843d6d643db54b94"
+  },
+  {
+   "path": "app/src/main/res/font/mplus_rounded.ttf",
+   "before": null,
+   "after": "bf7494a8228943f4009de968db84633aa6e8a758"
+  },
+  {
+   "path": "app/src/preview/res/raw/lab_0_10.ogg",
+   "before": null,
+   "after": "8eeb93c8b81e517d1a43c279d674a05a440bc182"
+  },
+  {
+   "path": "app/src/preview/res/raw/lab_0_2.ogg",
+   "before": null,
+   "after": "b2a60bda32dc3e6526d3d523ce1c73b3a530974e"
+  },
+  {
+   "path": "app/src/preview/res/raw/lab_0_3.ogg",
+   "before": null,
+   "after": "273b51d2fb8d88ba6199ae14e3c3f10ff38c9651"
+  },
+  {
+   "path": "app/src/preview/res/raw/lab_0_4.ogg",
+   "before": null,
+   "after": "c9272ddf486de1d2186715386f7658754c79df10"
+  },
+  {
+   "path": "app/src/preview/res/raw/lab_0_5.ogg",
+   "before": null,
+   "after": "618af7e4f350bc8c84be92e87c2141759a57c5c5"
+  },
+  {
+   "path": "app/src/preview/res/raw/lab_0_6.ogg",
+   "before": null,
+   "after": "c342f5408b27d8729eb44dbb30f2649c95e5c3a9"
+  },
+  {
+   "path": "app/src/preview/res/raw/lab_0_7.ogg",
+   "before": null,
+   "after": "9986f631abda0654da679ac8d131e5cafaf657d5"
+  },
+  {
+   "path": "app/src/preview/res/raw/lab_0_8.ogg",
+   "before": null,
+   "after": "234971c5baa7d1f92261b17b62116d3fd85dccf3"
+  },
+  {
+   "path": "app/src/preview/res/raw/lab_0_9.ogg",
+   "before": null,
+   "after": "a2b901f741d0944e5c8f601504cd717df331efc4"
+  },
+  {
+   "path": "app/src/preview/res/raw/lab_1_10.ogg",
+   "before": null,
+   "after": "53a08444c2c787c60e0676dfb6b12b1d8e86fa6e"
+  },
+  {
+   "path": "app/src/preview/res/raw/lab_1_2.ogg",
+   "before": null,
+   "after": "552ce7bc241b369e374e2eaf2cb82991f8657bdf"
+  },
+  {
+   "path": "app/src/preview/res/raw/lab_1_3.ogg",
+   "before": null,
+   "after": "fafb616f1d50a7d85fda2daa5a8efb24399244e2"
+  },
+  {
+   "path": "app/src/preview/res/raw/lab_1_4.ogg",
+   "before": null,
+   "after": "33f891e50caeb0ad8e0658ababe2ebb84205215e"
+  },
+  {
+   "path": "app/src/preview/res/raw/lab_1_5.ogg",
+   "before": null,
+   "after": "6b420268ceca4eb39f309c633b2d6291343afba0"
+  },
+  {
+   "path": "app/src/preview/res/raw/lab_1_6.ogg",
+   "before": null,
+   "after": "435805a04eca5981f658ed734d2667b482f63d0d"
+  },
+  {
+   "path": "app/src/preview/res/raw/lab_1_7.ogg",
+   "before": null,
+   "after": "5f35855f7e2ad899a6d11bee5a32f54d902ed8bc"
+  },
+  {
+   "path": "app/src/preview/res/raw/lab_1_8.ogg",
+   "before": null,
+   "after": "6729b69450aa261bce0c3cde700dba39c3b801f0"
+  },
+  {
+   "path": "app/src/preview/res/raw/lab_1_9.ogg",
+   "before": null,
+   "after": "e80c2a6c5b8b20a4d915e363e248d95d3dfa59fd"
+  },
+  {
+   "path": "app/src/preview/res/raw/lab_2_10.ogg",
+   "before": null,
+   "after": "1016d68662fd8821703d574b650a9c3a7e635a8d"
+  },
+  {
+   "path": "app/src/preview/res/raw/lab_2_2.ogg",
+   "before": null,
+   "after": "9a66c500571163a39528b7a612040ee7140b23e9"
+  },
+  {
+   "path": "app/src/preview/res/raw/lab_2_3.ogg",
+   "before": null,
+   "after": "71c13018d947189799834cd6e3a299552162d9d9"
+  },
+  {
+   "path": "app/src/preview/res/raw/lab_2_4.ogg",
+   "before": null,
+   "after": "4524044759cef416af5c0cf81196ec8633440417"
+  },
+  {
+   "path": "app/src/preview/res/raw/lab_2_5.ogg",
+   "before": null,
+   "after": "81425a4ec6ab74b5077874cfba9fa45f5aa85ee5"
+  },
+  {
+   "path": "app/src/preview/res/raw/lab_2_6.ogg",
+   "before": null,
+   "after": "2ea6be0969d5fe4421822643493b53d669bd0762"
+  },
+  {
+   "path": "app/src/preview/res/raw/lab_2_7.ogg",
+   "before": null,
+   "after": "d606c65202041f3c0532626492203e9890c1d1fb"
+  },
+  {
+   "path": "app/src/preview/res/raw/lab_2_8.ogg",
+   "before": null,
+   "after": "c6fe2f8f21f7d2f6e0d7d69e0cbf3ea1244b6df3"
+  },
+  {
+   "path": "app/src/preview/res/raw/lab_2_9.ogg",
+   "before": null,
+   "after": "608f86eafa3e7d5c46cde6774515dabe9f51eb25"
+  },
+  {
+   "path": "app/src/preview/res/raw/lab_3_10.ogg",
+   "before": null,
+   "after": "a794f3d0843a90385d059d19502b98a7417187e5"
+  },
+  {
+   "path": "app/src/preview/res/raw/lab_3_2.ogg",
+   "before": null,
+   "after": "1c7e6538970062aa0ec2aa26826c2306973869c0"
+  },
+  {
+   "path": "app/src/preview/res/raw/lab_3_3.ogg",
+   "before": null,
+   "after": "d23a52bc44b5a40b7bf32d94ba3cc74cfa70e859"
+  },
+  {
+   "path": "app/src/preview/res/raw/lab_3_4.ogg",
+   "before": null,
+   "after": "d8c085dc35bf2f5010deef54a516f9dcdbbdadf8"
+  },
+  {
+   "path": "app/src/preview/res/raw/lab_3_5.ogg",
+   "before": null,
+   "after": "4777c6bcaa79b96443dd4c2a9ade7f828e382996"
+  },
+  {
+   "path": "app/src/preview/res/raw/lab_3_6.ogg",
+   "before": null,
+   "after": "1e2cc0eafa58f59548e6ba8c92e1d8b6235120b0"
+  },
+  {
+   "path": "app/src/preview/res/raw/lab_3_7.ogg",
+   "before": null,
+   "after": "a0d5b4ad519c67df2a80d79df01353cc4f46cc59"
+  },
+  {
+   "path": "app/src/preview/res/raw/lab_3_8.ogg",
+   "before": null,
+   "after": "def553116231055c86f802a81b5a407a44e038d6"
+  },
+  {
+   "path": "app/src/preview/res/raw/lab_3_9.ogg",
+   "before": null,
+   "after": "7c22b1beb6861139c6a78ac66a43acbb1b0a5528"
+  },
+  {
+   "path": "app/src/test/java/com/example/gridime/FullTestAndKonamiTest.kt",
+   "before": null,
+   "after": "4137940b081afa556e48b63a138c185e79f422f2"
+  },
+  {
+   "path": "app/src/test/java/com/example/gridime/KonamiMockExport.kt",
+   "before": null,
+   "after": "5ca86c5a1fa85865ed8c8461cfefa28be00859cc"
+  },
+  {
+   "path": "app/src/test/java/com/example/gridime/LegibilityRenderTest.kt",
+   "before": "6b49067c90b9006b001a9da3e28443791b8a9e70",
+   "after": "1226b0a3ea91b1cd61bd3f49827c0ebce9baa84a"
+  },
+  {
+   "path": "app/src/test/java/com/example/gridime/LookNewExport.kt",
+   "before": null,
+   "after": "5fd18e937fa2465c19019c2bc6c82ed2c271850f"
+  },
+  {
+   "path": "app/src/test/java/com/example/gridime/PictureBigExport.kt",
+   "before": null,
+   "after": "574e657b2cbea5ad2a7afdb7122e217255843dab"
+  },
+  {
+   "path": "app/src/test/java/com/example/gridime/SecretRewardFitTest.kt",
+   "before": null,
+   "after": "95bdf2a7e6bdcaac4817fc77b87364702401e2fd"
+  },
+  {
+   "path": "app/src/test/java/com/example/gridime/SplitMockExport.kt",
+   "before": null,
+   "after": "05138b6f9f724ec191a4084a513de72a30f2ef9a"
+  },
+  {
+   "path": "app/src/test/java/com/example/gridime/StageFitsTest.kt",
+   "before": "854b012fabd28e934fbfe763234cd3a049d67368",
+   "after": "1847e31507a75dd8d8958f2ec5f87d4feec539c6"
+  },
+  {
+   "path": "app/src/test/java/com/example/gridime/TourBalanceTest.kt",
+   "before": null,
+   "after": "f06bde3be863f98668259dc4bc6937d2e010d63a"
+  },
+  {
+   "path": "app/src/test/java/com/example/gridime/TourMarkerTest.kt",
+   "before": "1055450998f85bf8bd2b9730fac12e2c1f1aa521",
+   "after": "0be5db4ed4a4f69fcfd68e82bdcda06dfb605da3"
+  },
+  {
+   "path": "app/src/test/java/com/example/gridime/TourScaleShots.kt",
+   "before": null,
+   "after": "a83eae653360123a5fe10fc3e68364545a2527cf"
+  },
+  {
+   "path": "app/src/test/java/com/example/gridime/TourTemplateTest.kt",
+   "before": "7d68c1bc566e00e8368b9339398f9f5a4688f693",
+   "after": "b7b54ca8cf9dac9f3000eadb6e4203a9011dfee2"
+  },
+  {
+   "path": "app/src/test/java/com/example/gridime/TryButtonsMockExport.kt",
+   "before": null,
+   "after": "109725bd30e200e34c096d74bf4568b822a758cd"
+  },
+  {
+   "path": "app/src/test/java/com/example/gridime/TryMatrixExport.kt",
+   "before": null,
+   "after": "914bba22adff948e73895a59561749efe4b15e9e"
+  },
+  {
+   "path": "licenses/MPLUSRounded1c-OFL.txt",
+   "before": null,
+   "after": "046fc66490024a7a8b928e2485f12349e522c936"
+  },
+  {
+   "path": "licenses/PressStart2P-OFL.txt",
+   "before": null,
+   "after": "5891186b36c9f9a60bc523c36934fd018974d91f"
+  },
+  {
+   "path": "tools/checks.py",
+   "before": null,
+   "after": "aed1f66f75d3ad70fd144913c7fcfcf2ffd66e98"
+  }
+ ]
+}

@@ -43,15 +43,29 @@ class SettingsActivity : Activity() {
     private lateinit var controlBar: ControlBar
     // NEW: the Button guide's device picture. Beside the page on wide screens, above it on narrow ones.
     private lateinit var guidePicture: DevicePictureView
+    // Try your buttons, full screen: a second picture drawn at full size (never the small one stretched)
+    private lateinit var fullOverlay: FrameLayout
+    private lateinit var fullBackdrop: View
+    private lateinit var fullPicture: DevicePictureView
+    private var fullShown = false
+    private var keyboardWasUp = false
+    // The Konami Code's reward (on the device's screen, or lifted out of it)
+    private lateinit var secretScreen: SecretScreen
+    private val lookIndex get() = pages.indexOfFirst { it.title == "Look" }
+    private val konami by lazy { KonamiCode(this) { secretFound() }.also { k -> k.buzz = { settings.vibration }
+        if (KonamiCode.hasLab(this)) k.onProblem = { controlBar.show(settings.buttonStyle, listOf(it.take(120))) } } }
     private lateinit var picturePanel: LinearLayout
     private lateinit var pictureBlock: LinearLayout
+    private lateinit var pictureStage: FrameLayout
+    /** Beside the page: the picture stands on a fixed-height stage (see pictureStage). */
+    private var pictureOnStage = false
     private lateinit var pictureTitle: android.widget.TextView
     private lateinit var pictureCaption: android.widget.TextView
     private val guideIndex get() = pages.indexOfFirst { it.title == "Button guide" }
     private val deviceIndex get() = pages.indexOfFirst { it.title == "Device" }
     /** Landscape with room for the page and the picture side by side. */
     /** The picture's column beside the page: narrower on small screens, so the rows keep room. */
-    private val pictureColumnDp get() = minOf(PICTURE_PANEL_DP, resources.configuration.screenWidthDp * 0.36f)
+    private val pictureColumnDp get() = minOf(PICTURE_PANEL_DP * TourScale.of(resources.configuration), resources.configuration.screenWidthDp * 0.36f)
     private val wideScreen get() = resources.configuration.screenWidthDp >= SIDE_PICTURE_MIN_DP &&
         resources.configuration.screenWidthDp > resources.configuration.screenHeightDp
     private var currentPage = 0
@@ -275,6 +289,8 @@ class SettingsActivity : Activity() {
             setOnFocusChangeListener { _, _ -> if (sheetAnim == null) applySheet(sheetProgress) }
         }
         tabs.setBackgroundColor(SettingsStyle.background)       // it lies over the page's top, which scrolls under it
+        // new things not seen yet: Look's themes, Sound & haptics' theme sounds
+        tabs.marks = setOfNotNull(lookIndex.takeIf { settings.secretNew }, soundIndex.takeIf { settings.secretSoundNew })
 
         // Content column: centred, never wider than a comfortable reading width
         content = LinearLayout(this).apply {
@@ -331,10 +347,42 @@ class SettingsActivity : Activity() {
             accent = settings.accent
             importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
         }
-        pictureBlock = LinearLayout(this).apply {
+        // Beside the page the picture stands on a stage of fixed height, sized for the tallest picture (the vertical
+        // handheld) and the room left above the words. Every picture sits on the stage's floor, so switching between
+        // them never moves the words under them or the block as a whole: only the drawing changes.
+        pictureStage = FrameLayout(this).apply {
+            addView(guidePicture, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT,
+                Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL))
+        }
+        pictureBlock = object : LinearLayout(this) {
+            private var stageKey = ""
+            private var belowMost = 0
+            override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+                val w = MeasureSpec.makeMeasureSpec(MeasureSpec.getSize(widthMeasureSpec), MeasureSpec.AT_MOST)
+                val free = MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED)
+                var below = 0
+                for (i in 1 until childCount) {
+                    val c = getChildAt(i)
+                    if (c.visibility == View.GONE) continue
+                    c.measure(w, free)
+                    below += c.measuredHeight + ((c.layoutParams as? LinearLayout.LayoutParams)?.topMargin ?: 0)
+                }
+                val lp = pictureStage.layoutParams
+                if (pictureOnStage && MeasureSpec.getMode(heightMeasureSpec) != MeasureSpec.UNSPECIFIED) {
+                    // The words are measured first; the most they've needed at this size is kept, so a caption one
+                    // line longer for another picture doesn't nudge the stage either
+                    val key = "${MeasureSpec.getSize(widthMeasureSpec)}x${MeasureSpec.getSize(heightMeasureSpec)}"
+                    if (key != stageKey) { stageKey = key; belowMost = 0 }
+                    belowMost = maxOf(belowMost, below)
+                    val tallest = (guidePicture.maxHeightDp * DevicePictureView.TALL_BOOST * resources.displayMetrics.density).toInt()
+                    lp.height = minOf(tallest, MeasureSpec.getSize(heightMeasureSpec) - belowMost).coerceAtLeast(0)
+                } else lp.height = ViewGroup.LayoutParams.WRAP_CONTENT
+                super.onMeasure(widthMeasureSpec, heightMeasureSpec)
+            }
+        }.apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_HORIZONTAL
-            addView(guidePicture, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+            addView(pictureStage, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
             // Under the picture: on the Device tab, what Inlay is set up for (plain words, nothing to press)
             pictureTitle = android.widget.TextView(context).apply {
                 textSize = Design.TYPE_ROW
@@ -407,6 +455,21 @@ class SettingsActivity : Activity() {
                 }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, px(EDGE_FADE_DP)))
             }
             addView(topBar, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.TOP))
+            fullBackdrop = View(context).apply { setBackgroundColor(SettingsStyle.background) }
+            fullPicture = DevicePictureView(context).apply {
+                maxHeightDp = 4000f; tallBoost = false
+                importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+            }
+            fullOverlay = FrameLayout(context).apply {
+                visibility = View.GONE
+                addView(fullBackdrop, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+                addView(fullPicture, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT, Gravity.CENTER).apply {
+                    setMargins(px(Design.SPACE_XL), px(Design.SPACE_L), px(Design.SPACE_XL), px(Design.SPACE_L))
+                })
+            }
+            addView(fullOverlay, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+            secretScreen = SecretScreen(context).apply { visibility = View.INVISIBLE; importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO }
+            addView(secretScreen, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
         }
         scroll.clipToPadding = false
         tabs.addOnLayoutChangeListener { _, _, top, _, bottom, _, oldTop, _, oldBottom ->
@@ -428,6 +491,7 @@ class SettingsActivity : Activity() {
         controlBar = ControlBar(this)
         root.addView(controlBar, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
         refreshControlBar()
+        labCrashReport(root)
         return root
     }
 
@@ -468,6 +532,12 @@ class SettingsActivity : Activity() {
         rebuilding = true
         currentPage = index
         tabs.select(index)
+        // Look opened: the new themes have been seen, the sign goes
+        if (index in tabs.marks) {
+            tabs.marks = tabs.marks - index
+            settings = if (index == lookIndex) settings.copy(secretNew = false) else settings.copy(secretSoundNew = false)
+            settings.save(this)
+        }
         content.removeAllViews()
 
         placeGuidePicture(index)
@@ -516,10 +586,14 @@ class SettingsActivity : Activity() {
         val onGuide = index == guideIndex || index == deviceIndex     // both show the device picture
         val beside = onGuide && wideScreen
         picturePanel.visibility = if (beside) View.VISIBLE else View.GONE
-        // On the Device tab the words under the picture need room too, so a tall picture stays smaller there
+        // On the Device tab the words under the picture need room too: the block measures them first (roomBelowPx)
         val device = index == deviceIndex
-        guidePicture.maxHeightDp = if (beside) (if (device) PICTURE_DEVICE_DP else PICTURE_WIDE_DP) else PICTURE_NARROW_DP
-        guidePicture.tallBoost = !device
+        // On a screen with more room than the Odin the picture grows with it, by the tour's own rule, so it never
+        // looks lost on a big screen (a vertical handheld on a 1080p screen at a small display size was tiny)
+        val grow = TourScale.of(resources.configuration)
+        guidePicture.maxHeightDp = grow * if (beside) (if (device) PICTURE_DEVICE_DP else PICTURE_WIDE_DP) else PICTURE_NARROW_DP
+        guidePicture.tallBoost = !device || beside   // beside the page a tall picture (vertical) may grow, as far as the room above its words allows
+        pictureOnStage = beside
         guidePicture.held = emptySet(); guidePicture.holding = emptySet(); guidePicture.stickSway = emptyMap(); guidePicture.stickPush = emptyMap()
         refreshPictureCaption(index)
         if (beside) picturePanel.addView(pictureBlock, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
@@ -823,17 +897,12 @@ class SettingsActivity : Activity() {
         }
         return listOf(
         // One group: a "Theme" heading over a single "Theme" row said the same word twice (audit, 30 Oct 2026)
-        Section("Theme and colour", listOf(
-            StepperRow(this, "Theme", "Dark themes suit OLED screens. Clear lets the app behind show through",
-                Palette.tones.map { it.name }, settings.toneIndex.coerceIn(0, Palette.tones.lastIndex)) {
-                update(settings.copy(toneIndex = it))
-            }
-        ) + listOfNotNull(
+        Section("Theme and colour", themeRows() + listOfNotNull(
             if (settings.tone.clear) SliderRow(this, "See-through", "How much of the app behind shows. Lower is easier to read",
                 0, 10, settings.seeThrough, { it.toString() }) {
                 update(settings.copy(seeThrough = it))
             } else null
-        ) + listOf<SettingRow>(swatches) + customRows),
+        ) + (if (themeOwnsHighlight) emptyList() else listOf<SettingRow>(swatches) + customRows)),
         Section("Keys", listOfNotNull(
             ChoiceRow(this, "Keyboard size", say("Also on the keyboard: press {L3}", "How big the keys are"),
                 listOf("Normal", "Large", "Largest"), settings.sizeLevel.coerceIn(0, 2)) {
@@ -852,7 +921,7 @@ class SettingsActivity : Activity() {
                 KeyShape.values().map { it.label }, settings.keyShape.ordinal) {
                 update(settings.copy(keyShape = KeyShape.values()[it]))
             },
-            ChoiceRow(this, "Highlight style", "How the selected key is marked. Solid is the simplest",
+            if (themeOwnsHighlight) null else ChoiceRow(this, "Highlight style", "How the selected key is marked. Solid is the simplest",
                 HighlightStyle.values().map { it.label }, settings.highlightStyle.ordinal) {
                 update(settings.copy(highlightStyle = HighlightStyle.values()[it]))
             },
@@ -984,8 +1053,12 @@ class SettingsActivity : Activity() {
                 playSequence(listOf(feedback::key, feedback::on, feedback::lock))
             }
         )),
-        Section("Sound", listOf(
-            StepperRow(this, "Sound pack", null,
+        Section("Sound", listOfNotNull(
+            settings.tone.ownSound?.let { own -> ToggleRow(this, "Theme's own sounds",
+                "${settings.tone.name} comes with ${own.label}: ${own.description.replaceFirstChar { it.lowercase() }}. Off: pick any pack", settings.themeSound) {
+                update(settings.copy(themeSound = it)); feedback.sample(); reshowPage()
+            }.apply { newMark = settings.secretSoundNew; onFound = { newMark = false } } },
+            if (settings.tone.ownSound != null && settings.themeSound) null else StepperRow(this, "Sound pack", null,
                 SoundPack.values().map { it.label }, settings.soundPack.ordinal,
                 descriptions = SoundPack.values().map { it.description }, silent = true) {
                 update(settings.copy(soundPack = SoundPack.values()[it]))
@@ -1094,7 +1167,28 @@ class SettingsActivity : Activity() {
                     update(settings.copy(swapFaceButtons = it))
                 },
                 ActionRow(this, "Try your buttons", if (c.remote) "Press OK, Back or the ring: they light up on the picture. Hold Back to stop"
-                    else "Press any button: it lights up on the picture. Hold {B} to stop") { startButtonTest() }
+                    else "Press any button: it lights up on the picture. Hold {B} to stop") { startButtonTest() },
+                ToggleRow(this, "Full screen", "Try your buttons shows the device across the whole screen", settings.testFullScreen) {
+                    update(settings.copy(testFullScreen = it))
+                },
+                // Test builds only: pick the Konami Code's build-up sound, to compare them on the device
+                if (c.remote || !KonamiCode.hasLab(this)) null else ChoiceRow(this, "Test build: build-up sound",
+                    "Enter the Konami Code in Try your buttons to hear it", KonamiCode.SOUNDS, settings.labBuildUp.coerceIn(0, KonamiCode.SOUNDS.lastIndex)) {
+                    update(settings.copy(labBuildUp = it))
+                },
+                // Test builds only: tune the Konami Code's buzz by feel
+                if (c.remote || !KonamiCode.hasLab(this)) null else ChoiceRow(this, "Test build: reward",
+                    "What plays after the Konami Code", SecretScreen.DESIGNS, settings.labReward.coerceIn(0, SecretScreen.DESIGNS.lastIndex)) {
+                    update(settings.copy(labReward = it))
+                },
+                if (c.remote || !KonamiCode.hasLab(this)) null else ChoiceRow(this, "Test build: buzz strength",
+                    "How strong the Konami Code's buzz is", KonamiCode.BUZZ_STRENGTHS, settings.labBuzzStrength.coerceIn(0, 3)) {
+                    update(settings.copy(labBuzzStrength = it))
+                },
+                if (c.remote || !KonamiCode.hasLab(this)) null else ChoiceRow(this, "Test build: buzz style",
+                    "Calibrated uses Android's own haptics where the device has them", KonamiCode.BUZZ_STYLES, settings.labBuzzStyle.coerceIn(0, 3)) {
+                    update(settings.copy(labBuzzStyle = it))
+                }
             )),
             Section("Controls", (if (c.sticks) listOf(
             SliderRow(this, "Stick speed", "How fast the highlight moves while you hold the left stick all the way. A\u00A0lighter push goes more gently",
@@ -1155,6 +1249,13 @@ class SettingsActivity : Activity() {
     private fun startButtonTest() {
         testing = true
         guidePicture.held = emptySet(); guidePicture.holding = emptySet(); guidePicture.stickSway = emptyMap(); guidePicture.stickPush = emptyMap()
+        konami.sound = settings.labBuildUp; konami.reset(); konami.prepare()
+        konami.strength = settings.labBuzzStrength; konami.style = settings.labBuzzStyle
+        // The preview keyboard would cover the picture: it steps aside for the test and comes back after
+        keyboardWasUp = settings.showPreview && !controls.remote
+        if (keyboardWasUp) togglePreview()
+        if (settings.testFullScreen) showFullTest()
+        mirrorPicture()
         refreshControlBar()
         scroll.removeCallbacks(stopTest)
         scroll.postDelayed(stopTest, BUTTON_TEST_IDLE_MS)
@@ -1164,12 +1265,248 @@ class SettingsActivity : Activity() {
         if (!testing) return
         testing = false
         guidePicture.held = emptySet(); guidePicture.holding = emptySet(); guidePicture.stickSway = emptyMap(); guidePicture.stickPush = emptyMap()
+        konami.reset()
+        mirrorPicture()
+        val bringBack = keyboardWasUp; keyboardWasUp = false
+        // The picture lands first, then the keyboard slides back up: one movement at a time
+        if (bringBack && fullShown) hideFullTestUnderKeyboard()
+        else hideFullTest { if (bringBack && !settings.showPreview) togglePreview() }
         scroll.removeCallbacks(stopTest)
         refreshControlBar()
     }
 
+    /** The full-screen picture shows exactly what the small one shows. */
+    private fun mirrorPicture() {
+        if (!fullShown) return
+        fullPicture.held = guidePicture.held; fullPicture.holding = guidePicture.holding
+        fullPicture.stickSway = guidePicture.stickSway; fullPicture.stickPush = guidePicture.stickPush
+    }
+
+    /**
+     * Full screen: the page fades away under a second picture, drawn at the full size (so it's as sharp as the
+     * screen allows), that grows out of where the small one is (400 ms, eased in and out). Back the same way.
+     * The two drawings are matched exactly (not their boxes, which have different shapes), so nothing jumps at
+     * either end.
+     */
+    private fun showFullTest() {
+        fullShown = true
+        fullPicture.accent = settings.accent
+        fullPicture.show(controls.kind, settings.buttonStyle, controls.sticks)
+        fullOverlay.visibility = View.VISIBLE
+        fullBackdrop.alpha = 0f; fullPicture.alpha = 0f
+        fullOverlay.post {
+            fullPicture.pivotX = 0f; fullPicture.pivotY = 0f
+            // lines and rings grow with the picture, so the big one is the small one made bigger
+            val sr = guidePicture.drawnRect(); val br = fullPicture.drawnRect()
+            fullPicture.inkScale = if (sr != null && br != null && sr.width() > 0f) br.width() / sr.width() else 1f
+            val m = smallFromFull()
+            if (m != null) {
+                fullPicture.scaleX = m[0]; fullPicture.scaleY = m[0]; fullPicture.translationX = m[1]; fullPicture.translationY = m[2]
+                fullPicture.alpha = 1f; guidePicture.alpha = 0f
+            }
+            fullBackdrop.animate().alpha(1f).setDuration(FULL_TEST_MS).setInterpolator(Design.EASE_STANDARD).start()
+            fullPicture.animate().alpha(1f).scaleX(1f).scaleY(1f).translationX(0f).translationY(0f)
+                .setDuration(FULL_TEST_MS).setInterpolator(Design.EASE_STANDARD).start()
+        }
+    }
+
+    /**
+     * The scale and offset (pivot at the top left) that put the full-screen drawing exactly over the small one,
+     * or null when the small one isn't on screen (then it simply fades).
+     */
+    internal fun smallFromFull(): FloatArray? {
+        if (!guidePicture.isShown || guidePicture.width <= 0 || fullPicture.width <= 0) return null
+        val small = guidePicture.drawnRect() ?: return null
+        val big = fullPicture.drawnRect() ?: return null
+        val s = IntArray(2); guidePicture.getLocationInWindow(s)
+        // where the full picture sits without any transform: its parent's place plus its own layout position
+        val o = IntArray(2); fullOverlay.getLocationInWindow(o)
+        val fx = o[0] + fullPicture.left; val fy = o[1] + fullPicture.top
+        val k = small.width() / big.width()
+        return floatArrayOf(k, s[0] + small.left - fx - big.left * k, s[1] + small.top - fy - big.top * k)
+    }
+
+    /** Back to the page; [then] runs once the picture has landed (the keyboard comes back only after that). */
+    private fun hideFullTest(then: () -> Unit = {}) {
+        if (!fullShown) { then(); return }
+        fullShown = false
+        val m = smallFromFull()
+        fullBackdrop.animate().alpha(0f).setDuration(FULL_TEST_MS).setInterpolator(Design.EASE_STANDARD).start()
+        fullPicture.animate().apply {
+            if (m != null) { scaleX(m[0]); scaleY(m[0]); translationX(m[1]); translationY(m[2]) } else alpha(0f)
+        }.setDuration(FULL_TEST_MS).setInterpolator(Design.EASE_STANDARD).withEndAction {
+            // the small picture is exactly where the big one landed: swap in the same frame, then tidy up
+            guidePicture.alpha = 1f
+            fullOverlay.visibility = View.GONE
+            fullPicture.scaleX = 1f; fullPicture.scaleY = 1f; fullPicture.translationX = 0f; fullPicture.translationY = 0f
+            then()
+        }.start()
+    }
+
+    /**
+     * The way back when the keyboard was open before the test: the keyboard slides straight back up, in front, while
+     * the big picture shrinks towards its place and fades behind it, and the page fades in. One movement, nothing
+     * lands on the side first.
+     */
+    private fun hideFullTestUnderKeyboard() {
+        fullShown = false
+        val m = smallFromFull()
+        sheet.translationZ = 1f                                   // the keyboard draws in front of the big picture
+        if (!settings.showPreview) togglePreview()
+        val ms = Design.MOTION_PANEL
+        fullBackdrop.animate().alpha(0f).setDuration(ms).setInterpolator(Design.EASE_STANDARD).start()
+        fullPicture.animate().apply {
+            if (m != null) { scaleX(m[0]); scaleY(m[0]); translationX(m[1]); translationY(m[2]) }
+            alpha(0f)
+        }.setDuration(ms).setInterpolator(Design.EASE_STANDARD).withEndAction {
+            guidePicture.alpha = 1f
+            fullOverlay.visibility = View.GONE
+            fullPicture.alpha = 1f; fullPicture.scaleX = 1f; fullPicture.scaleY = 1f; fullPicture.translationX = 0f; fullPicture.translationY = 0f
+            sheet.translationZ = 0f
+        }.start()
+    }
+
+    /**
+     * The code was entered: the reward plays (on the device's own screen in full screen, otherwise on a small retro
+     * screen lifted out of the picture), then the test ends by itself and a spark flies from the picture to Look,
+     * where it stays as a sign until Look is opened. Any press skips the reward.
+     */
+    internal var secretsFound = 0          // for the checks
+    private fun secretFound() {
+        if (!testing || secretScreen.showing || revealing) return
+        secretsFound++
+        scroll.removeCallbacks(stopTest)                          // the reward ends the test itself
+        val d = IntArray(2); dock.getLocationInWindow(d)
+        fun inDock(v: View, r: android.graphics.RectF) = android.graphics.RectF(r).also {
+            val l = IntArray(2); v.getLocationInWindow(l); it.offset((l[0] - d[0]).toFloat(), (l[1] - d[1]).toFloat())
+        }
+        val picture = if (fullShown) fullPicture else guidePicture
+        val screen = if (fullShown) fullPicture.screenInView() else null
+        secretScreen.onDone = {
+            val keyboardComesBack = keyboardWasUp
+            endButtonTest()
+            // the spark only flies over a calm page: after the picture has landed, and not with the keyboard up
+            // the sign appears once the page has settled (after the picture has landed, or the keyboard is back)
+            dock.postDelayed({ markLook() }, if (keyboardComesBack) Design.MOTION_PANEL + 120 else FULL_TEST_MS + 120)
+        }
+        revealing = true
+        secretScreen.design = settings.labReward
+        // the code's last press doesn't stay lit under the reward
+        guidePicture.held = emptySet(); guidePicture.holding = emptySet(); mirrorPicture()
+        // a beat after the last press: the words land together with the build-up's final note
+        dock.postDelayed({ revealing = false; if (testing) reveal(screen, picture, ::inDock) }, (konami.finalNoteMs - SOUND_LATENCY_MS).coerceAtLeast(300L))
+    }
+    private var revealing = false
+    private fun reveal(screen: android.graphics.RectF?, picture: DevicePictureView, inDock: (View, android.graphics.RectF) -> android.graphics.RectF) {
+        try {
+            if (screen != null) secretScreen.showOn(inDock(fullPicture, screen))
+            else secretScreen.liftOut(picture.drawnRect()?.let { inDock(picture, it) })
+        } catch (e: Throwable) {
+            android.util.Log.e("InlayKonami", "reward failed", e)
+            if (KonamiCode.hasLab(this)) controlBar.show(settings.buttonStyle, listOf(e.toString().take(120)))
+            secretScreen.onDone()
+        }
+    }
+
+    /**
+     * Test builds only: if the app crashed last time, the cause is shown in small red text at the top (and the
+     * next crash is written down for next time). Nothing of this exists in the release build.
+     */
+    private fun labCrashReport(root: LinearLayout) {
+        if (!KonamiCode.hasLab(this)) return
+        val file = java.io.File(filesDir, "last-crash.txt")
+        val before = Thread.getDefaultUncaughtExceptionHandler()
+        Thread.setDefaultUncaughtExceptionHandler { t, e ->
+            runCatching { file.writeText(android.util.Log.getStackTraceString(e).lines().take(14).joinToString("\n")) }
+            before?.uncaughtException(t, e)
+        }
+        if (!file.exists()) return
+        val text = runCatching { file.readText() }.getOrNull(); file.delete()
+        root.addView(android.widget.TextView(this).apply {
+            setText("Last crash (test build):\n$text"); setTextColor(Design.LAB_PROBLEM); textSize = Design.TYPE_CAPTION
+            setPadding(px(16f), px(4f), px(16f), px(4f))
+        }, 0, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+    }
+
+    /**
+     * Look gets its sign: the Look tab makes a little room, then a small spark grows in after its title with one
+     * soft ring opening around it. With the keyboard up (tabs folded into a line) it's a dot by Look's bar.
+     */
+    private fun markLook() {
+        if (lookIndex < 0 || isFinishing) return
+        settings = settings.copy(secretNew = true, secretRowNew = true, retroUnlocked = true); settings.save(this)
+        markTab(lookIndex)
+    }
+    /** A tab gets its sign, grown in (not on the page you're on: there's nothing to find there). */
+    private fun markTab(tab: Int) {
+        if (tab < 0 || currentPage == tab || isFinishing) return
+        tabs.marks = tabs.marks + tab; tabs.growing = tab; tabs.markAlpha = 0f; tabs.signAlpha = 0f
+        android.animation.ValueAnimator.ofFloat(0f, 2f).apply {
+            duration = Design.MOTION_PANEL + SIGN_IN_MS; interpolator = android.view.animation.LinearInterpolator()
+            val split = Design.MOTION_PANEL.toFloat() / duration
+            addUpdateListener {
+                val f = it.animatedFraction
+                tabs.markAlpha = Design.EASE_STANDARD.getInterpolation((f / split).coerceAtMost(1f))
+                tabs.signAlpha = ((f - split) / (1f - split)).coerceIn(0f, 1f)
+            }
+            start()
+        }
+    }
+
+    /**
+     * Theme, in collections once the Retro collection has been found: "Collection" (Inlay or Retro) picks which
+     * themes the Theme row steps through, so new collections never make the list long. A retro theme brings its
+     * own highlight (a switch under Theme turns it back to yours). The spark marks Collection until it's visited.
+     */
+    private fun themeRows(): List<SettingRow> {
+        val retro = settings.retroTheme
+        val rows = mutableListOf<SettingRow>()
+        if (settings.retroUnlocked || retro) rows += ChoiceRow(this, "Collection",
+            if (settings.secretRowNew) "New: Retro, three themes after classic consoles" else "Inlay's own themes, or the Retro set",
+            listOf("Inlay", "Retro"), if (retro) 1 else 0) {
+            val toRetro = it == 1
+            if (toRetro == settings.retroTheme) return@ChoiceRow
+            pickTheme(if (toRetro) Palette.RETRO_BASE else settings.lastInlayTone.coerceIn(0, Palette.tones.lastIndex))
+            reshowPage()
+        }.apply {
+            newMark = settings.secretRowNew
+            onFound = { newMark = false; settings = settings.copy(secretRowNew = false); settings.save(this@SettingsActivity) }
+        }
+        rows += if (retro) StepperRow(this, "Theme", null, Palette.retro.map { it.name }, settings.toneIndex - Palette.RETRO_BASE,
+            descriptions = Palette.retro.map { it.note ?: "" }) { pickTheme(Palette.RETRO_BASE + it) }
+        else StepperRow(this, "Theme", "Dark themes suit OLED screens. Clear lets the app behind show through",
+            Palette.tones.map { it.name }, settings.toneIndex.coerceIn(0, Palette.tones.lastIndex)) { pickTheme(it) }
+        if (settings.tone.ownHighlight != null) rows += ToggleRow(this, "Theme's own highlight",
+            "Off: your highlight colour and style instead", settings.themeHighlight) {
+            update(settings.copy(themeHighlight = it)); reshowPage()
+        }
+        return rows
+    }
+
+    /** A theme was picked: the Clear slider or the retro rows may come or go, and a first retro theme marks its sounds. */
+    private fun pickTheme(index: Int) {
+        val wasRetro = settings.retroTheme
+        val nowRetro = index >= Palette.RETRO_BASE
+        var next = settings.copy(toneIndex = index, lastInlayTone = if (nowRetro) settings.lastInlayTone else index)
+        val firstRetro = nowRetro && !wasRetro && Palette.toneAt(index).ownSound != null && next.themeSound && !settings.secretSoundShown
+        if (firstRetro) next = next.copy(secretSoundNew = true, secretSoundShown = true)
+        update(next)
+        if (firstRetro) markTab(soundIndex)
+        if (nowRetro != wasRetro) reshowPage()
+    }
+    /** A retro theme's own highlight is on: the highlight colour and style rows step aside (they'd change nothing). */
+    private val themeOwnsHighlight get() = settings.tone.ownHighlight != null && settings.themeHighlight
+    private val soundIndex get() = pages.indexOfFirst { it.title == "Sound & haptics" }
+    private fun reshowPage() {
+        val focused = focusableRows.indexOfFirst { it.hasFocus() }.coerceAtLeast(0)
+        showPage(currentPage, focusIndex = focused, animate = false)
+    }
+
     /** While testing, every button only lights up. Holding B (Back) stops; so does a quiet spell. */
     private fun testKey(event: KeyEvent): Boolean {
+        // The reward is showing: any press skips it (and is used up by that)
+        if (revealing) return true
+        if (secretScreen.showing) { if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) secretScreen.finish(); return true }
         val key = DevicePicture.keyFor(event.keyCode) ?: return false
         val back = event.keyCode == KeyEvent.KEYCODE_BUTTON_B || event.keyCode == KeyEvent.KEYCODE_BACK
         scroll.removeCallbacks(stopTest)
@@ -1179,11 +1516,15 @@ class SettingsActivity : Activity() {
                 guidePicture.held = guidePicture.held + key
                 guidePicture.holding = guidePicture.holding + key
                 if (back) backDownAt = event.eventTime
+                konami.press(key)
             }
+            mirrorPicture()
             if (back && event.eventTime - backDownAt >= BUTTON_TEST_STOP_MS) endButtonTest()
         } else if (event.action == KeyEvent.ACTION_UP) {
             guidePicture.held = guidePicture.held - key
             guidePicture.holding = guidePicture.holding - key
+            konami.release(key)
+            mirrorPicture()
             if (back && event.eventTime - backDownAt >= BUTTON_TEST_STOP_MS) endButtonTest()
         }
         return true
@@ -1192,6 +1533,14 @@ class SettingsActivity : Activity() {
     /** Triggers and D-pads that report as axes light up too. */
     override fun dispatchGenericMotionEvent(event: android.view.MotionEvent): Boolean {
         if (!testing) return super.dispatchGenericMotionEvent(event)
+        if (revealing) return true
+        if (secretScreen.showing) {
+            if (kotlin.math.abs(event.getAxisValue(android.view.MotionEvent.AXIS_HAT_X)) > 0.5f || kotlin.math.abs(event.getAxisValue(android.view.MotionEvent.AXIS_HAT_Y)) > 0.5f) secretScreen.finish()
+            return true
+        }
+        // D-pads that report as a hat, sticks and triggers count as using it too: the quiet-spell timer starts over
+        scroll.removeCallbacks(stopTest)
+        scroll.postDelayed(stopTest, BUTTON_TEST_IDLE_MS)
         val hx = event.getAxisValue(android.view.MotionEvent.AXIS_HAT_X)
         val hy = event.getAxisValue(android.view.MotionEvent.AXIS_HAT_Y)
         val lt = maxOf(event.getAxisValue(android.view.MotionEvent.AXIS_LTRIGGER), event.getAxisValue(android.view.MotionEvent.AXIS_BRAKE))
@@ -1207,10 +1556,17 @@ class SettingsActivity : Activity() {
             stick(event.getAxisValue(android.view.MotionEvent.AXIS_X), event.getAxisValue(android.view.MotionEvent.AXIS_Y))?.let { put("LS", it) }
             stick(event.getAxisValue(android.view.MotionEvent.AXIS_Z), event.getAxisValue(android.view.MotionEvent.AXIS_RZ))?.let { put("RS", it) }
         }
+        // A D-pad that reports as a hat counts for the code too: a direction appearing is a press
+        val dpad = setOf("Dleft", "Dright", "Dup", "Ddown")
+        val before = guidePicture.held.filter { it in dpad }.toSet()
         guidePicture.stickPush = pushes
         val clicked = guidePicture.held.filter { it == "LS" || it == "RS" }.filter { it !in pushes }.filter { it in guidePicture.holding }
         guidePicture.held = guidePicture.held - axisKeys - setOf("LS", "RS") + axes + pushes.keys + clicked
         guidePicture.holding = guidePicture.holding - axisKeys + axes.filter { it == "LT" || it == "RT" }
+        val nowDpad = axes.filter { it in dpad }.toSet()
+        (before - nowDpad).forEach { konami.release(it) }
+        (nowDpad - before).forEach { konami.press(it) }
+        mirrorPicture()
         return true
     }
 
@@ -1290,6 +1646,9 @@ class SettingsActivity : Activity() {
         const val COMPACT_ROOM_DP = 150f    // less room than this above the keyboard: rows hide their hints while it's open
         const val BUTTON_TEST_IDLE_MS = 8000L    // the button test ends on its own after this long without a press
         const val BUTTON_TEST_STOP_MS = 700L     // holding B (Back) this long ends it
+        const val FULL_TEST_MS = 400L            // Try your buttons growing to full screen, and back
+        const val SOUND_LATENCY_MS = 30L         // how long a sound takes to be heard after it's played, about
+        const val SIGN_IN_MS = Design.MOTION_SIGN   // Look's sign growing in, with its ring
         const val TOP_SNAP_DP = 72f         // closer to the top than this, a scroll goes right to it
         const val PICTURE_WIDE_DP = 300f
         const val PICTURE_DEVICE_DP = 165f    // the Device tab's picture, with its caption below

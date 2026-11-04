@@ -283,6 +283,48 @@ abstract class SettingRow(
     override fun onFocusChanged(gainFocus: Boolean, direction: Int, previouslyFocusedRect: Rect?) {
         super.onFocusChanged(gainFocus, direction, previouslyFocusedRect)
         onFocusLook(gainFocus)
+        // found once the row has been visited: it goes as you move on (not the moment the page opens on it)
+        if (gainFocus) visited = true else if (newMark && visited) onFound?.invoke()
+    }
+
+    /**
+     * Something new lives in this row (the Konami Code's themes): the same small spark as on its tab sits after the
+     * title, grown in when the page appears, until the row is visited ([onFound]).
+     */
+    var newMark = false
+        set(v) {
+            if (field == v) return
+            field = v; setWillNotDraw(false)
+            if (v) { markIn = 0f; if (isAttachedToWindow) growMark() } else invalidate()
+        }
+    var onFound: (() -> Unit)? = null
+    private var visited = false
+    private var markIn = 1f
+    private val markPaint = Paint()
+    private val markRect = Rect()
+    private fun growMark() {
+        android.animation.ValueAnimator.ofFloat(0f, 1f).apply {
+            duration = Design.MOTION_SIGN; startDelay = Design.MOTION_SIGN_DELAY; interpolator = Design.EASE_OUT
+            addUpdateListener { markIn = it.animatedValue as Float; invalidate() }
+            start()
+        }
+    }
+    override fun onAttachedToWindow() { super.onAttachedToWindow(); if (newMark && markIn < 1f) growMark() }
+    override fun dispatchDraw(canvas: android.graphics.Canvas) {
+        super.dispatchDraw(canvas)
+        if (!newMark || markIn <= 0f) return
+        val layout = titleView.layout ?: return
+        markRect.set(0, 0, titleView.width, titleView.height); offsetDescendantRectToMyCoords(titleView, markRect)
+        val x = markRect.left + titleView.paddingLeft + layout.getLineWidth(0) + 14f * dp
+        val y = markRect.top + titleView.baseline - titleView.textSize * 0.36f
+        val g = (markIn / 0.5f).coerceAtMost(1f)
+        PixelSpark.draw(canvas, x, y, 1.5f * dp * (0.35f + 0.65f * g), SettingsStyle.accent, g, markPaint)
+        if (markIn < 1f) {
+            markPaint.style = Paint.Style.STROKE; markPaint.isAntiAlias = true; markPaint.strokeWidth = Design.STROKE_SIGN * dp
+            markPaint.color = SettingsStyle.accent; markPaint.alpha = (150 * (1f - markIn)).roundToInt()
+            canvas.drawCircle(x, y, (4f + 12f * markIn) * dp, markPaint)
+            markPaint.style = Paint.Style.FILL; markPaint.isAntiAlias = false
+        }
     }
 
     /** A small press-in and release, so every action feels physical. */

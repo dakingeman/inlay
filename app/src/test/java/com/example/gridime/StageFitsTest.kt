@@ -64,4 +64,10 @@ class StageFitsTest {
     @Test @Config(sdk = [34], qualifiers = "w480dp-h432dp-land-hdpi") fun square() = check()
     @Test @Config(sdk = [34], qualifiers = "w472dp-h363dp-land-420dpi") fun pocketClassic() = check()
     @Test @Config(sdk = [34], qualifiers = "w480dp-h312dp-land-xhdpi") fun fourThreeSmall() = check()
+    // 1080p handhelds at small, default and large display size, 3:2 and 4:3 (3 Nov 2026)
+    @Test @Config(sdk = [34], qualifiers = "w1097dp-h617dp-land-280dpi") fun hdSmall() = check()
+    @Test @Config(sdk = [34], qualifiers = "w960dp-h540dp-land-xhdpi") fun hdDefault() = check()
+    @Test @Config(sdk = [34], qualifiers = "w853dp-h480dp-land-360dpi") fun hdLarge() = check()
+    @Test @Config(sdk = [34], qualifiers = "w810dp-h540dp-land-xhdpi") fun threeTwo() = check()
+    @Test @Config(sdk = [34], qualifiers = "w683dp-h512dp-land-xhdpi") fun fourThree() = check()
 }

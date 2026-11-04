@@ -215,6 +215,32 @@ class TabBar(
     val foldedHeightPx: Float get() = FOLDED_DP * dp
     private val tabRects = mutableListOf<RectF>()
 
+    /**
+     * A tab with something new waiting (the Konami Code's themes in Look): it widens a little and carries a small
+     * spark in the highlight colour after its title until that section is opened. [markAlpha] grows it in.
+     */
+    var marks: Set<Int> = emptySet()
+        set(v) { field = v; invalidate() }
+    /** The tab whose sign is growing in right now (the others with a sign show it fully). */
+    var growing = -1
+    /** One tab's sign (or none: -1), for the simple case. */
+    var marked: Int
+        get() = marks.firstOrNull() ?: -1
+        set(v) { marks = if (v < 0) emptySet() else setOf(v); growing = v }
+    private fun room(i: Int) = if (i !in marks) 0f else if (i == growing) markAlpha else 1f
+    private fun sign(i: Int) = if (i !in marks) 0f else if (i == growing) signAlpha else 1f
+    /** How far the marked tab has widened (0..1). */
+    var markAlpha = 1f
+        set(v) { field = v.coerceIn(0f, 1f); invalidate() }
+    /** How far the sign has appeared (0..1): it grows in from a point, with one soft ring opening around it. */
+    var signAlpha = 1f
+        set(v) { field = v.coerceIn(0f, 1f); invalidate() }
+    private val ringPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE }
+    private val signRoom get() = SIGN_ROOM_DP * dp
+    private val signPaint = Paint()
+    /** For the checks: what a tap on tab [index] does. */
+    internal fun onTapForTest(index: Int) = onTap(index)
+
     fun select(index: Int) {
         // The focus ring follows the section, however it was switched (L1/R1 too)
         if (focusSlot < titles.size) focusSlot = index
@@ -243,7 +269,7 @@ class TabBar(
 
     private fun layoutTabs() {
         tabRects.clear()
-        val widths = titles.map { text.measureText(it) + 2 * tabPad }
+        val widths = titles.mapIndexed { i, it -> text.measureText(it) + 2 * tabPad + signRoom * room(i) }
         val total = widths.sum() + tabGap * (titles.size - 1)
         // A remote has no L1/R1 (no badges at the ends); it has the keyboard key at the end instead
         val left = if (remote) Design.SPACE_L * dp else Design.SPACE_L * dp + painter.width(ControllerButton.L1) + Design.SPACE_M * dp
@@ -303,6 +329,11 @@ class TabBar(
             a.left + (b.left - a.left) * t, a.top, a.right + (b.right - a.right) * t, a.bottom, r, r, fill
         )
 
+        if (c > 0.35f) for (m in marks) if (m in tabRects.indices && sign(m) > 0f) {
+            val bar = shaped(tabRects[m])
+            fill.color = SettingsStyle.accent; fill.alpha = (255 * ((c - 0.35f) / 0.65f) * sign(m)).roundToInt()
+            canvas.drawCircle(bar.right + 4f * dp, bar.centerY(), 2f * dp, fill); fill.alpha = 255
+        }
         if (chrome > 0f) {
             val baseline = a.centerY() - (text.descent() + text.ascent()) / 2f
             text.alpha = 255
@@ -310,7 +341,24 @@ class TabBar(
                 val onIndicator = 1f - min(1f, abs(indicator - i))
                 text.color = SettingsStyle.blend(SettingsStyle.textSecondary, SettingsStyle.onAccent, onIndicator)
                 text.alpha = (255 * chrome).roundToInt()
-                canvas.drawText(title, tabRects[i].centerX(), baseline, text)
+                val shift = signRoom * room(i) / 2f
+                val signAlpha = sign(i); val markAlpha = room(i)
+                canvas.drawText(title, tabRects[i].centerX() - shift, baseline, text)
+                if (markAlpha > 0f && signAlpha > 0f) {
+                    // The sign: a small pixel spark after the title (white on the chosen tab). It grows in from a
+                    // point (first half), while one thin ring opens around it and fades (the whole way)
+                    val sx = tabRects[i].right - tabPad - signRoom * markAlpha / 2f + SIGN_GAP_DP * dp / 2f
+                    val sy = baseline - text.textSize * 0.36f
+                    val colour = SettingsStyle.blend(SettingsStyle.accent, SettingsStyle.onAccent, onIndicator)
+                    val grow = (signAlpha / 0.5f).coerceAtMost(1f); val g = 1f - (1f - grow) * (1f - grow)   // eases out
+                    PixelSpark.draw(canvas, sx, sy, SIGN_PX_DP * dp * (0.35f + 0.65f * g), colour, g * chrome, signPaint)
+                    if (signAlpha < 1f) {
+                        val e = 1f - (1f - signAlpha) * (1f - signAlpha)
+                        ringPaint.color = colour; ringPaint.strokeWidth = Design.STROKE_SIGN * dp
+                        ringPaint.alpha = (150 * (1f - signAlpha) * chrome).roundToInt()
+                        canvas.drawCircle(sx, sy, (4f + 12f * e) * dp, ringPaint)
+                    }
+                }
             }
             text.alpha = 255
         }
@@ -377,6 +425,9 @@ class TabBar(
         const val FOLDED_DP = 16f       // the folded line: what still shows of the tabs with the keyboard up
         const val FOLD_BAR_DP = 4f      // each bar's thickness when folded
         const val FOLD_INSET_DP = 8f    // each bar is this much shorter than its tab at both ends
+        const val SIGN_ROOM_DP = 16f    // the marked tab grows this much: a gap and the spark
+        const val SIGN_GAP_DP = 6f
+        const val SIGN_PX_DP = 1.4f     // one pixel of the spark (7 x 7 of them)
     }
 
     override fun onTouchEvent(e: MotionEvent): Boolean {

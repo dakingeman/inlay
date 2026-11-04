@@ -93,7 +93,9 @@ class KeyGridView(context: Context) : View(context) {
     private val edge get() = u(EDGE_DP)
     /** Corner badges share the key corner's centre (nested corners), never closer than 3 units to the edge. */
     private val badgeInset get() = u(max(3f, settings.keyShape.radiusDp - BADGE_RADIUS_DP))
-    private val corner get() = u(settings.keyShape.radiusDp)
+    private val corner get() = u((look?.shape ?: settings.keyShape).radiusDp)
+    /** A retro theme's console look (null for the others, and on the see-through theme). */
+    private var look: RetroLook? = null
     private val maxWidth = 1000f * dp                  // keys stop stretching on very wide screens
 
     // =====================================================================
@@ -109,6 +111,7 @@ class KeyGridView(context: Context) : View(context) {
     /** What sits behind the keys for contrast maths: the background, or black for the Clear theme. */
     private var colBackdrop = Color.BLACK
     private var colEdge = 0                  // key borders (Outline and Clear themes), 0 = none
+    private var specials: Map<KeyType, Int> = emptyMap()   // special keys with a colour of their own (retro themes)
     private var clear = false
     private var chipFill = Contrast.withAlpha(Color.WHITE, Design.ALPHA_FAINT)
     private var chipEdge = Contrast.withAlpha(Color.WHITE, Design.ALPHA_FAINT_STRONG)
@@ -143,15 +146,19 @@ class KeyGridView(context: Context) : View(context) {
             colBackdrop = tone.background
         }
         colEdge = tone.edge
+        specials = if (clear) emptyMap() else tone.specials
+        look = if (clear) null else tone.look
         val chipInk = Contrast.inkFor(colBackdrop)
         // See-through: chips sit on the app behind, which may be white, so they get the special keys' dark tint
         chipFill = if (clear) colSpecialKey else Contrast.withAlpha(chipInk, Design.ALPHA_FAINT)
         chipEdge = Contrast.withAlpha(chipInk, Design.ALPHA_FAINT_STRONG)
         // The highlight must stand out (3:1) on this theme's keys and background: deepened on Light
-        colAccent = if (clear) s.accent else Contrast.accentOn(s.accent, colKey, colSpecialKey, colBackground)
+        // A retro theme's own highlight is chosen for its keys (3:1 on them), so it's used exactly as designed
+        val own = s.tone.ownHighlight != null && s.themeHighlight
+        colAccent = if (clear || own) s.activeAccent else Contrast.accentOn(s.activeAccent, colKey, colSpecialKey, colBackground)
         colAccentSoft = Contrast.withAlpha(colAccent, Design.ALPHA_TINT_SOFT)
         colGlow = Contrast.withAlpha(colAccent, Design.ALPHA_TINT_GLOW)
-        badges.style = s.buttonStyle
+        badges.style = tone.look?.badges ?: s.buttonStyle
         letterRows = Layouts.letterRows(s.layout, s.language, if (s.smartKeys) field else FieldKind.TEXT)
         symbolRows = Layouts.symbolRows(s.layout, s.language, s.numberRow)
         if (!s.wordSuggestions) words = emptyList()
@@ -183,9 +190,10 @@ class KeyGridView(context: Context) : View(context) {
     private val fontMedium = Typeface.create("sans-serif-medium", Typeface.NORMAL)
     private val fontHyperlegible by lazy { runCatching { resources.getFont(R.font.atkinson_next) }.getOrNull() }
     private val fontInter by lazy { runCatching { resources.getFont(R.font.inter) }.getOrNull() }
+    private val fontRounded by lazy { runCatching { resources.getFont(R.font.mplus_rounded) }.getOrNull() }
 
     private val customFont: Typeface?
-        get() = when (settings.font) {
+        get() = if (look?.rounded == true) fontRounded else when (settings.font) {
             FontChoice.HYPERLEGIBLE -> fontHyperlegible
             FontChoice.INTER -> fontInter
             FontChoice.SYSTEM -> null
@@ -203,7 +211,8 @@ class KeyGridView(context: Context) : View(context) {
         lastFontWeight = weight
         paint.fontVariationSettings = null                  // free when it's already empty
         val custom = customFont
-        paint.typeface = if (custom != null) weighted(custom, weight)
+        paint.typeface = if (custom != null && custom === fontRounded) custom        // one weight, as designed
+        else if (custom != null) weighted(custom, weight)
         else if (weight >= 500) fontMedium else fontRegular
     }
 
@@ -1557,6 +1566,7 @@ class KeyGridView(context: Context) : View(context) {
         } else {
             // SRC replaces what's there, so a see-through background really is see-through
             canvas.drawColor(colBackground, android.graphics.PorterDuff.Mode.SRC)
+            drawPattern(canvas)
         }
         clampFocus()
         val rows = allRows()
@@ -1583,7 +1593,7 @@ class KeyGridView(context: Context) : View(context) {
                 val bg = backgroundFor(key) ?: return@forEachIndexed
                 fillPaint.color = if (r == 0) fade(bg, stripAlpha) else bg
                 val rect = keyRect(r, row, c)
-                canvas.drawRoundRect(rect, corner, corner, fillPaint)
+                drawKeyShape(canvas, rect, fillPaint.color, r == 0, stripAlpha)
                 // Key borders: on every key, but not on tool-strip buttons (they have no key shape), except the first word
                 if (colEdge != 0 && (key.type != KeyType.TOOL || key.best)) {
                     ringPaint.color = if (r == 0) fade(colEdge, stripAlpha) else colEdge
@@ -1665,6 +1675,44 @@ class KeyGridView(context: Context) : View(context) {
         }
     }
 
+    /** A retro theme's ground: ridges along the top (Grey brick) or fine stripes all over (Gloss white). */
+    private fun drawPattern(canvas: Canvas) {
+        val l = look ?: return
+        val (gap, until) = when (l.pattern) {
+            RetroLook.Pattern.RIDGES -> u(Design.RETRO_RIDGE_GAP_DP) to stripRect().bottom
+            RetroLook.Pattern.STRIPES -> u(Design.RETRO_STRIPE_GAP_DP) to height.toFloat()
+            RetroLook.Pattern.NONE -> return
+        }
+        fillPaint.color = l.patternColour
+        var y = gap * 0.6f
+        while (y < until) { canvas.drawRect(0f, y, width.toFloat(), y + u(Design.STROKE_HAIRLINE), fillPaint); y += gap }
+    }
+
+    /**
+     * One key's background. Plain themes: a rounded key. Retro looks add a soft shadow under it (white tiles), a
+     * darker lip along its bottom (chunky old buttons) and a glossy top half.
+     */
+    private fun drawKeyShape(canvas: Canvas, rect: RectF, colour: Int, strip: Boolean, stripAlpha: Float) {
+        val l = look
+        if (l == null || strip) { canvas.drawRoundRect(rect, corner, corner, fillPaint); return }
+        if (l.shadow) {
+            fillPaint.color = Design.RETRO_SHADOW
+            canvas.drawRoundRect(rect.left, rect.top + u(2f), rect.right, rect.bottom + u(2f), corner, corner, fillPaint)
+        }
+        if (l.lip != 0) {
+            fillPaint.color = Contrast.over(Contrast.withAlpha(Color.BLACK, Design.RETRO_LIP_SHADE), colour)
+            canvas.drawRoundRect(rect, corner, corner, fillPaint)
+            fillPaint.color = colour
+            canvas.drawRoundRect(rect.left, rect.top, rect.right, rect.bottom - u(Design.RETRO_LIP_DP), corner, corner, fillPaint)
+        } else { fillPaint.color = colour; canvas.drawRoundRect(rect, corner, corner, fillPaint) }
+        if (l.gloss != 0) {
+            fillPaint.color = l.gloss
+            val inset = u(2f); val bottom = rect.top + rect.height() * 0.48f
+            canvas.drawRoundRect(rect.left + inset, rect.top + inset, rect.right - inset, bottom, corner - inset, corner - inset, fillPaint)
+        }
+        fillPaint.color = colour
+    }
+
     private fun fade(colour: Int, alpha: Float) =
         Contrast.withAlpha(colour, (Color.alpha(colour) * alpha).roundToInt().coerceIn(0, 255))
 
@@ -1673,7 +1721,8 @@ class KeyGridView(context: Context) : View(context) {
 
     private fun backgroundFor(key: Key): Int? = when (key.type) {
         KeyType.CLIP -> if (key.index == removedClip) null else colKey   // a removed clip leaves an empty place
-        KeyType.CHAR, KeyType.SPACE -> colKey
+        KeyType.CHAR -> colKey
+        KeyType.SPACE -> specials[KeyType.SPACE] ?: colKey      // Grey brick: the controller's dark grey
         KeyType.EMPTY, KeyType.GAP -> null
         KeyType.DIGIT -> null                                // drawn by drawNumberBar: slim keys, their own radius
         KeyType.TOOL -> when {
@@ -1684,11 +1733,11 @@ class KeyGridView(context: Context) : View(context) {
             else -> null
         }
         KeyType.SHIFT -> when (shiftLook) {
-            ShiftState.OFF -> colSpecialKey
+            ShiftState.OFF -> specials[KeyType.SHIFT] ?: colSpecialKey
             ShiftState.ONCE -> colAccentSoft
             ShiftState.LOCK -> colAccent
         }
-        else -> colSpecialKey
+        else -> specials[key.type] ?: colSpecialKey
     }
 
     /** [ink] made quiet (about half strength) but never below 4.5 : 1 on [bg] (Light theme, design audit 28 Oct 2026). */
@@ -1701,7 +1750,7 @@ class KeyGridView(context: Context) : View(context) {
     }
 
     /** The colour actually visible behind a key's label. */
-    private val style get() = settings.highlightStyle
+    private val style get() = settings.activeHighlightStyle
 
     /**
      * The fill of the highlighted key, per style (after Android TV's focus system):

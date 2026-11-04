@@ -57,6 +57,11 @@ class LegibilityRenderTest {
         val base = KeyboardSettings(tutorialDone = true, wordSuggestions = true)
         Palette.tones.forEachIndexed { i, t -> if (!t.clear) HighlightStyle.values().forEach { h ->
             cases += Triple("${t.name}/$h", base.copy(toneIndex = i, highlightStyle = h), Color.BLACK) } }
+        // the retro themes, with their own highlight and with yours (every style)
+        Palette.retro.forEachIndexed { i, t ->
+            cases += Triple("${t.name}/own", base.copy(toneIndex = Palette.RETRO_BASE + i), Color.BLACK)
+            HighlightStyle.values().forEach { h -> cases += Triple("${t.name}/$h", base.copy(toneIndex = Palette.RETRO_BASE + i, themeHighlight = false, highlightStyle = h), Color.BLACK) }
+        }
         for (level in listOf(0, 5, 10)) for ((name, app) in listOf("white" to Color.WHITE, "black" to Color.BLACK, "yellow" to Color.parseColor("#FFE63C")))
             cases += Triple("see-through $level over $name", base.copy(toneIndex = clear, seeThrough = level), app)
         val problems = mutableListOf<String>(); var worst = 99.0

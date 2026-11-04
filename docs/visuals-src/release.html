@@ -1,0 +1,30 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="inlay.css">
+<script src="../../design/tokens.js"></script><script src="backdrop.js"></script>
+<!-- Release-note images: a headline, one line, and a real screenshot from the Odin, on the Inlay backdrop (VISUAL_SYSTEM.md). -->
+<style>
+.abs{position:absolute}
+.t-h1{font-size:46px}
+.t-body{font-size:21px;margin-top:16px}
+.shot{display:block;border-radius:var(--r-card);box-shadow:0 0 0 2px var(--track),0 2px 4px rgba(0,0,0,.3),0 20px 50px rgba(0,0,0,.4)}
+.hl{color:var(--teal)}
+</style></head><body>
+<div id="c" class="canvas"></div>
+<script>
+const R={
+  'swap-buttons':{index:1,title:'Buttons the wrong way round? <span class="hl">Swap</span> them.',
+    body:'Settings → Device → Swap A/B and X/Y. For handhelds set to a Nintendo button layout, like the Retroid Pocket 6.',
+    shot:'release/swap-shot.png', sw:1920, sh:976}
+};
+const id=new URLSearchParams(location.search).get('id'), F=R[id];
+const W=1600, M=96, w=W-2*M, h=Math.round(F.sh*w/F.sw), Y0=236, H=Y0+h+M;
+const c=document.getElementById('c'); Object.assign(c.style,{width:W+'px',height:H+'px'});
+c.innerHTML=`<div class="abs" style="left:${M}px;top:80px;width:${w}px"><div class="h1 t-h1 m">${F.title}</div><div class="body t-body m">${F.body}</div></div>
+<img class="abs shot" src="${F.shot}" style="left:${M}px;top:${Y0}px;width:${w}px;height:${h}px">`;
+document.title='size '+W+'x'+H;
+document.fonts.ready.then(()=>Promise.all([...document.images].map(i=>i.decode()))).then(()=>{
+  inlayBackdrop(c,id,F.index,{motif:'none'});
+  const r=s=>c.querySelector(s).getBoundingClientRect();
+  window.CHECK={text:r('.t-body'),shot:r('.shot'),W,H};
+  document.title='done';
+});
+</script></body></html>

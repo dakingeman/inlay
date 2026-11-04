@@ -62,6 +62,40 @@ object Design {
     /** Inlay teal: the brand colour, the app icon's colour and the default highlight. */
     val BRAND_ACCENT: Int = Color.parseColor("#72D6E8")
 
+    // ---- The Konami Code's reward (SecretReward.kt): an old game screen ---------------
+    val SECRET_INK: Int = Color.parseColor("#08090C")          // the screen's black
+    val SECRET_GREY: Int = Color.parseColor("#6E7180")         // quieter words, mid stars
+    val SECRET_DIM: Int = Color.parseColor("#343640")          // far stars
+    val SECRET_BODY: Int = Color.parseColor("#14151A")         // the lifted-out screen's bezel
+    val SECRET_OUTLINE: Int = Color.parseColor("#A7AEBC")      // the bezel's outline: the device pictures' line colour
+    val SECRET_CARD_BG: Int = Color.parseColor("#101630")      // Memory card's save screen
+    val SECRET_CARD_LINE: Int = Color.parseColor("#46548C")
+    const val SECRET_DIM_ALPHA = 158                           // the page behind a lifted-out screen
+    const val SECRET_SCANLINE_ALPHA = 48
+    /** The retro themes' pixel versions in the reward: the darker lip under each key (Grey brick, Indigo). */
+    val RETRO_BRICK_LIP: Int = Color.parseColor("#A8A8AA")
+    val RETRO_INDIGO_LIP: Int = Color.parseColor("#3E3F68")
+    /** The retro themes' own highlights (3:1 on their keys) and Indigo's coloured keys (Palette.retro). */
+    val RETRO_BRICK_HIGHLIGHT: Int = Color.parseColor("#2A4FB0")   // a blue pixel cursor
+    val RETRO_INDIGO_HIGHLIGHT: Int = Color.parseColor("#7CE08F")  // the green of a big A button
+    val RETRO_INDIGO_DELETE: Int = Color.parseColor("#D6303A")
+    val RETRO_INDIGO_LAYER: Int = Color.parseColor("#F2C400")
+    val RETRO_WHITE_HIGHLIGHT: Int = Color.parseColor("#0E86BE")   // a soft blue glow, deep enough to show on white
+    val RETRO_BRICK_SPECIAL: Int = Color.parseColor("#5E5E66")     // the controller's darker grey (special keys, space)
+    val RETRO_BRICK_RIDGE: Int = Color.parseColor("#B8B8B6")       // the lid's ridges along the top
+    val RETRO_INDIGO_GLOSS: Int = Color.parseColor("#22FFFFFF")    // the glossy top of each key
+    val RETRO_WHITE_STRIPE: Int = Color.parseColor("#E6E6E6")      // the menu's fine stripes
+    val RETRO_WHITE_GLOSS: Int = Color.parseColor("#78EEF4FA")
+    val RETRO_SHADOW: Int = Color.parseColor("#24000000")          // the white tiles' soft shadow
+    const val RETRO_LIP_SHADE = 0x40   // the lip: the key's own colour, a quarter darker
+    const val RETRO_LIP_DP = 3f        // the darker lip under each chunky key
+    const val RETRO_RIDGE_GAP_DP = 6f  // ridges: one line every 6 dp along the top
+    const val RETRO_STRIPE_GAP_DP = 4f // stripes: one line every 4 dp
+    val LAB_PROBLEM: Int = Color.parseColor("#FF7878")         // test builds only: what went wrong, in red
+    const val MOTION_SIGN = 520L       // the spark sign growing in (with its ring), after the tab has made room
+    const val MOTION_SIGN_DELAY = 200L //   on a row: once the page has settled
+    const val STROKE_SIGN = 1.5f       // the sign's ring
+
     // ---- The tour and What's new backdrop (Backdrop.kt) --------------------------
     val BACKDROP_TOP: Int = Color.parseColor("#16171C")      // graphite, never flat black
     val BACKDROP_MID: Int = Color.parseColor("#101115")

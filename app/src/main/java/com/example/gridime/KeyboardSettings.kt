@@ -104,8 +104,34 @@ data class Tone(
     val key: Int,
     val special: Int,
     val edge: Int = 0,
-    val clear: Boolean = false
+    val clear: Boolean = false,
+    /** Special keys with a colour of their own (Indigo's red delete, yellow ?123...); the rest use [special]. */
+    val specials: Map<KeyType, Int> = emptyMap(),
+    /** A theme that comes with its own highlight (colour and style) and its own sound pack (the retro set). */
+    val ownHighlight: Int? = null,
+    val ownStyle: HighlightStyle? = null,
+    val ownSound: SoundPack? = null,
+    /** One line on what the theme brings, shown under Theme. */
+    val note: String? = null,
+    /** The retro themes' console looks: see [RetroLook]. */
+    val look: RetroLook? = null
 )
+
+/**
+ * What makes a retro theme look like its console, beyond its colours: the ground's pattern, a darker lip under
+ * each key (chunky old buttons), a soft shadow and glossy top (a glossy white menu), rounded letters, its own
+ * corner shape, and the button hints drawn in its controller's style.
+ */
+data class RetroLook(
+    val pattern: Pattern = Pattern.NONE,
+    val patternColour: Int = 0,
+    val lip: Int = 0,
+    val shadow: Boolean = false,
+    val gloss: Int = 0,               // the glossy top half's tint (0: none)
+    val rounded: Boolean = false,
+    val shape: KeyShape? = null,
+    val badges: ButtonStyle? = null   // the button hints in this controller's style (by position, so still right)
+) { enum class Pattern { NONE, RIDGES, STRIPES } }
 
 object Palette {
     val accents: List<Pair<String, Int>> = listOf(
@@ -163,6 +189,31 @@ object Palette {
     }
 
     val tones: List<Tone> get() = baseTones + listOfNotNull(wallpaperTone)
+
+    /**
+     * The Retro collection, found with the Konami Code: three themes after classic consoles, each with its own
+     * highlight and sound pack. Saved as theme number [RETRO_BASE] + its position, so the other themes' numbers
+     * never move.
+     */
+    val retro: List<Tone> = listOf(
+        Tone("Grey brick", Color.parseColor("#C8C8C6"), Color.parseColor("#DEDEDC"), Color.parseColor("#5E5E66"),
+            specials = mapOf(KeyType.SPACE to Design.RETRO_BRICK_SPECIAL),
+            ownHighlight = Design.RETRO_BRICK_HIGHLIGHT, ownStyle = HighlightStyle.OUTLINE, ownSound = SoundPack.RETRO,
+            note = "Light grey keys, the four shapes, a blue cursor and 8-bit sounds",
+            look = RetroLook(RetroLook.Pattern.RIDGES, Design.RETRO_BRICK_RIDGE, lip = Design.RETRO_BRICK_LIP, shape = KeyShape.SOFT, badges = ButtonStyle.PLAYSTATION)),
+        Tone("Indigo", Color.parseColor("#47487A"), Color.parseColor("#585990"), Color.parseColor("#C4C4CC"),
+            specials = mapOf(KeyType.DELETE to Design.RETRO_INDIGO_DELETE, KeyType.LAYER to Design.RETRO_INDIGO_LAYER),
+            ownHighlight = Design.RETRO_INDIGO_HIGHLIGHT, ownStyle = HighlightStyle.SOLID, ownSound = SoundPack.POP,
+            note = "Indigo keys, a big green highlight, round letters and little pops",
+            look = RetroLook(lip = Design.RETRO_INDIGO_LIP, gloss = Design.RETRO_INDIGO_GLOSS, rounded = true, shape = KeyShape.ROUND)),
+        Tone("Gloss white", Color.parseColor("#F3F3F3"), Color.WHITE, Color.parseColor("#E6E6E8"), edge = Color.parseColor("#CECED2"),
+            ownHighlight = Design.RETRO_WHITE_HIGHLIGHT, ownStyle = HighlightStyle.OUTLINE, ownSound = SoundPack.GLASS,
+            note = "White tiles on a striped ground, a soft blue glow and glassy taps",
+            look = RetroLook(RetroLook.Pattern.STRIPES, Design.RETRO_WHITE_STRIPE, shadow = true, gloss = Design.RETRO_WHITE_GLOSS, rounded = true, shape = KeyShape.ROUND))
+    )
+    const val RETRO_BASE = 100
+    fun toneAt(index: Int): Tone = if (index >= RETRO_BASE) retro[(index - RETRO_BASE).coerceIn(0, retro.lastIndex)]
+        else tones[index.coerceIn(0, tones.lastIndex)]
 
     /** A custom accent from a hue (0..359), kept as bright and soft as the preset colours. */
     /**
@@ -234,6 +285,19 @@ data class KeyboardSettings(
     val picture: PictureChoice = PictureChoice.AUTO,   // which device the tour, What's new and Button guide show
     val verticalSticks: Boolean = false,  // a vertical handheld that does have sticks
     val swapFaceButtons: Boolean = false, // the device reports A/B and X/Y by printed letter (Nintendo layout): see FaceButtons
+    val testFullScreen: Boolean = false,  // Try your buttons shows the device across the whole screen
+    val labBuildUp: Int = 0,              // test builds only: which build-up sound the Konami Code plays (see KonamiCode)
+    val labBuzzStrength: Int = 1,         // test builds only: Light, Medium, Strong, Max (Emre: Medium)
+    val labBuzzStyle: Int = 2,            // test builds only: Calibrated, Taps, Pulses, Rumble (Emre: Pulses or Rumble)
+    val secretNew: Boolean = false,       // the Konami Code was found and Look's new themes haven't been seen yet
+    val labReward: Int = 0,
+    val retroUnlocked: Boolean = false,   // the Konami Code was entered: the Retro collection is in Look
+    val themeHighlight: Boolean = true,   // a retro theme's own highlight colour and style
+    val themeSound: Boolean = true,       // a retro theme's own sound pack
+    val lastInlayTone: Int = 0,           // the Inlay theme to go back to when Collection goes back to Inlay
+    val secretSoundNew: Boolean = false,  // a retro theme was picked: its sounds are new in Sound & haptics
+    val secretSoundShown: Boolean = false, // ...shown once already (it isn't marked again)               // test builds only: which reward design (see SecretScreen.design)
+    val secretRowNew: Boolean = false,    // ...and the Theme row (where they are) hasn't been visited yet
     val hasSticks: Boolean = true,        // worked out from the device, never saved (see Controls)
     // Sound & haptics
     val vibration: Boolean = true,
@@ -263,7 +327,12 @@ data class KeyboardSettings(
     val accent: Int
         get() = if (accentIndex < 0) Palette.customAccent(customHue, customStrength, customBrightness)
         else Palette.accents[accentIndex.coerceIn(0, Palette.accents.lastIndex)].second
-    val tone: Tone get() = Palette.tones[toneIndex.coerceIn(0, Palette.tones.lastIndex)]
+    val tone: Tone get() = Palette.toneAt(toneIndex)
+    val retroTheme: Boolean get() = toneIndex >= Palette.RETRO_BASE
+    /** What's in use: a retro theme's own highlight and sounds, unless they've been turned off. */
+    val activeAccent: Int get() = tone.ownHighlight?.takeIf { themeHighlight } ?: accent
+    val activeHighlightStyle: HighlightStyle get() = tone.ownStyle?.takeIf { themeHighlight } ?: highlightStyle
+    val activeSoundPack: SoundPack get() = tone.ownSound?.takeIf { themeSound } ?: soundPack
 
     /**
      * Saved as a small file instead of Android's usual settings store. Settings runs in
@@ -294,6 +363,15 @@ data class KeyboardSettings(
             .put(K_PICTURE, picture.name)
             .put(K_VERTICAL_STICKS, verticalSticks)
             .put(K_SWAP_FACE, swapFaceButtons)
+            .put(K_TEST_FULL, testFullScreen)
+            .put(K_LAB_BUILDUP, labBuildUp)
+            .put(K_LAB_BUZZ, labBuzzStrength)
+            .put(K_LAB_BUZZ_STYLE, labBuzzStyle)
+            .put(K_SECRET_NEW, secretNew)
+            .put(K_SECRET_ROW, secretRowNew)
+            .put(K_LAB_REWARD, labReward)
+            .put(K_RETRO, retroUnlocked).put(K_THEME_HL, themeHighlight).put(K_THEME_SOUND, themeSound)
+            .put(K_LAST_INLAY, lastInlayTone).put(K_SOUND_NEW, secretSoundNew).put(K_SOUND_SHOWN, secretSoundShown)
             .put(K_TV_MODE, tvMode.name)
             .put(K_TUTORIAL, tutorialDone)
             .put(K_WHATS_NEW, whatsNewSeen)
@@ -363,6 +441,19 @@ data class KeyboardSettings(
         private const val K_PICTURE = "device_picture"
         private const val K_VERTICAL_STICKS = "vertical_sticks"
         private const val K_SWAP_FACE = "swap_face_buttons"
+        private const val K_TEST_FULL = "test_full_screen"
+        private const val K_LAB_BUILDUP = "lab_build_up"
+        private const val K_LAB_BUZZ = "lab_buzz_strength"
+        private const val K_LAB_BUZZ_STYLE = "lab_buzz_style"
+        private const val K_SECRET_NEW = "secret_new"
+        private const val K_SECRET_ROW = "secret_row_new"
+        private const val K_LAB_REWARD = "lab_reward"
+        private const val K_RETRO = "retro_unlocked"
+        private const val K_THEME_HL = "theme_highlight"
+        private const val K_THEME_SOUND = "theme_sound"
+        private const val K_LAST_INLAY = "last_inlay_tone"
+        private const val K_SOUND_NEW = "secret_sound_new"
+        private const val K_SOUND_SHOWN = "secret_sound_shown"
         private const val K_TV_MODE = "tv_mode"
         private const val K_TUTORIAL = "tutorial_done"
         private const val K_WHATS_NEW = "whats_new_seen"
@@ -491,6 +582,16 @@ data class KeyboardSettings(
                 picture = enumOr(p.str(K_PICTURE), d.picture),
                 verticalSticks = p.bool(K_VERTICAL_STICKS, d.verticalSticks),
                 swapFaceButtons = p.bool(K_SWAP_FACE, d.swapFaceButtons),
+                testFullScreen = p.bool(K_TEST_FULL, d.testFullScreen),
+                labBuildUp = p.int(K_LAB_BUILDUP, d.labBuildUp),
+                labBuzzStrength = p.int(K_LAB_BUZZ, d.labBuzzStrength),
+                labBuzzStyle = p.int(K_LAB_BUZZ_STYLE, d.labBuzzStyle),
+                secretNew = p.bool(K_SECRET_NEW, d.secretNew),
+                secretRowNew = p.bool(K_SECRET_ROW, d.secretRowNew),
+                labReward = p.int(K_LAB_REWARD, d.labReward),
+                retroUnlocked = p.bool(K_RETRO, d.retroUnlocked), themeHighlight = p.bool(K_THEME_HL, d.themeHighlight),
+                themeSound = p.bool(K_THEME_SOUND, d.themeSound), lastInlayTone = p.int(K_LAST_INLAY, d.lastInlayTone),
+                secretSoundNew = p.bool(K_SOUND_NEW, d.secretSoundNew), secretSoundShown = p.bool(K_SOUND_SHOWN, d.secretSoundShown),
                 tutorialDone = p.bool(K_TUTORIAL, d.tutorialDone),
                 whatsNewSeen = p.str(K_WHATS_NEW) ?: d.whatsNewSeen,
                 keyShape = enumOr(p.str(K_SHAPE), d.keyShape),
