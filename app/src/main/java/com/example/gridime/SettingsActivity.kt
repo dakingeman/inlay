@@ -138,6 +138,12 @@ class SettingsActivity : Activity() {
         feedback = Feedback(this).apply { update(settings) }
         SettingRow.buttonStyle = settings.shownButtonStyle
         SettingRow.sounds = feedback
+        // Updating from before 1.3 (Emre, 8 Nov): the button setup is new, and a Swap A/B and X/Y choice simply carried
+        // over, so people who wanted their own buttons may never hear of it. The Your buttons row (on Device, the page
+        // Settings opens on) carries the spark and says so until it's visited. Controllers only: a remote has no setup.
+        if (savedInstanceState == null && WhatsNew.shouldShow(settings) && WhatsNew.isBefore(settings.whatsNewSeen, 1, 3) && !controls.remote) {
+            settings = settings.copy(buttonsRowNew = true); KeyboardSettings.load(this).copy(buttonsRowNew = true).save(this)
+        }
         setupState = currentSetupState()
         setContentView(buildScreen().also { muteSystemSounds(it); SettingsStyle.useFont(it) })
         showPage(0, focusIndex = 0, animate = false)
@@ -254,7 +260,11 @@ class SettingsActivity : Activity() {
         val f = settings.face
         val newOne = lastFaceDevice >= 0 && ButtonRoles.isNewController(lastFaceDevice)
         val hint = if (newOne) "A new controller: show Inlay its buttons" else f.summary() + ". Press {A} to set up again"
-        return ActionRow(this, ButtonRoles.ROW, hint) { startSetup() }.apply { if (newOne) newMark = true }
+        val told = settings.buttonsRowNew && !newOne
+        return ActionRow(this, ButtonRoles.ROW, if (told) "New: show Inlay your four face buttons and pick which one types" else hint) { startSetup() }.apply {
+            if (newOne || told) newMark = true
+            if (told) onFound = { newMark = false; settings = settings.copy(buttonsRowNew = false); settings.save(this@SettingsActivity) }
+        }
     }
 
     /** The last controller a face button came from (so a new one can be offered its own setup). */
@@ -276,7 +286,7 @@ class SettingsActivity : Activity() {
     private fun finishSetup(result: FaceSetup?) {
         val v = setup ?: return
         setup = null
-        if (result != null) { update(settings.withFace(result, ButtonRoles.descriptor(setupDevice))); feedback.confirm() } else feedback.back()
+        if (result != null) { update(settings.withFace(result, ButtonRoles.descriptor(setupDevice)).copy(buttonsRowNew = false)); feedback.confirm() } else feedback.back()
         v.animate().alpha(0f).setDuration(Design.MOTION_FADE).withEndAction { (v.parent as? ViewGroup)?.removeView(v) }.start()
         val bringBack = keyboardWasUp; keyboardWasUp = false
         if (bringBack && !settings.showPreview) togglePreview()

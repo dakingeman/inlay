@@ -43,6 +43,10 @@ https://github.com/user-attachments/assets/723c8fae-523f-497d-ab7a-cccda66b2d7c
 
 <p align="center"><img src="docs/images/pack/typing.png" alt="Move with the D-pad, press A" width="100%"></p>
 
+<p align="center"><img src="docs/images/pack/split.png" alt="Split keyboard" width="100%"></p>
+
+<p align="center"><img src="docs/images/pack/buttons.png" alt="Show Inlay your buttons" width="100%"></p>
+
 <p align="center"><img src="docs/images/pack/words.png" alt="Words show up as you type" width="100%"></p>
 
 <p align="center"><img src="docs/images/pack/accents.png" alt="Hold A for accents" width="100%"></p>
@@ -50,10 +54,12 @@ https://github.com/user-attachments/assets/723c8fae-523f-497d-ab7a-cccda66b2d7c
 <p align="center"><img src="docs/images/pack/devices.png" alt="Made for what you hold" width="100%"></p>
 
 <details>
-<summary><b>See all 14 screens</b></summary>
+<summary><b>See all 17 screens</b></summary>
 <br>
 
 <p align="center"><img src="docs/images/pack/hold.png" alt="Hold RT for more" width="100%"></p>
+
+<p align="center"><img src="docs/images/pack/symbols.png" alt="Quick symbols" width="100%"></p>
 
 <p align="center"><img src="docs/images/pack/editing.png" alt="Select, copy and paste" width="100%"></p>
 
@@ -69,7 +75,7 @@ https://github.com/user-attachments/assets/723c8fae-523f-497d-ab7a-cccda66b2d7c
 
 <p align="center"><img src="docs/images/pack/sound-packs.png" alt="Nine sound packs" width="100%"></p>
 
-<p align="center"><img src="docs/images/pack/tour.png" alt="A one-minute tour" width="100%"></p>
+<p align="center"><img src="docs/images/pack/tour.png" alt="A tour you play" width="100%"></p>
 
 <p align="center"><img src="docs/images/pack/settings.png" alt="Settings, made for the controller" width="100%"></p>
 

@@ -347,6 +347,7 @@ data class KeyboardSettings(
     val secretSoundShown: Boolean = false, // ...shown once already (it isn't marked again)
     val secretSoundRowNew: Boolean = false, // ...and the Sound pack row (where they are) hasn't been visited yet
     val secretRowNew: Boolean = false,    // ...and the Theme row (where they are) hasn't been visited yet
+    val buttonsRowNew: Boolean = false,   // updated from before 1.3: the Your buttons row carries the spark until visited
     val hasSticks: Boolean = true,        // worked out from the device, never saved (see Controls)
     // Sound & haptics
     val vibration: Boolean = true,
@@ -456,6 +457,7 @@ data class KeyboardSettings(
             .put(K_SECRET_ROW, secretRowNew)
             .put(K_RETRO, retroUnlocked).put(K_THEME_HL, themeHighlight).put(K_THEME_ICONS, themeIcons).put(K_THEME_STYLE, themeStyle).put(K_THEME_SOUND, themeSound)
             .put(K_LAST_INLAY, lastInlayTone).put(K_SOUND_NEW, secretSoundNew).put(K_SOUND_SHOWN, secretSoundShown).put(K_SOUND_ROW, secretSoundRowNew)
+            .put(K_BUTTONS_ROW, buttonsRowNew)
             .put(K_TV_MODE, tvMode.name)
             .put(K_TUTORIAL, tutorialDone)
             .put(K_WHATS_NEW, whatsNewSeen)
@@ -549,6 +551,7 @@ data class KeyboardSettings(
         private const val K_SOUND_NEW = "secret_sound_new"
         private const val K_SOUND_SHOWN = "secret_sound_shown"
         private const val K_SOUND_ROW = "secret_sound_row_new"
+        private const val K_BUTTONS_ROW = "buttons_row_new"
         private const val K_TV_MODE = "tv_mode"
         private const val K_TUTORIAL = "tutorial_done"
         private const val K_WHATS_NEW = "whats_new_seen"
@@ -696,6 +699,7 @@ data class KeyboardSettings(
                 themeSound = p.bool(K_THEME_SOUND, d.themeSound), lastInlayTone = p.int(K_LAST_INLAY, d.lastInlayTone),
                 secretSoundNew = p.bool(K_SOUND_NEW, d.secretSoundNew), secretSoundShown = p.bool(K_SOUND_SHOWN, d.secretSoundShown),
                 secretSoundRowNew = p.bool(K_SOUND_ROW, d.secretSoundRowNew),
+                buttonsRowNew = p.bool(K_BUTTONS_ROW, d.buttonsRowNew),
                 tutorialDone = p.bool(K_TUTORIAL, d.tutorialDone),
                 whatsNewSeen = p.str(K_WHATS_NEW) ?: d.whatsNewSeen,
                 keyShape = enumOr(p.str(K_SHAPE), d.keyShape),

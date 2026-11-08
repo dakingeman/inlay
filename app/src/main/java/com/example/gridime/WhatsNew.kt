@@ -31,6 +31,12 @@ object WhatsNew {
     const val VERSION = "1.3.0"
 
     fun shouldShow(settings: KeyboardSettings) = settings.tutorialDone && settings.whatsNewSeen != VERSION
+    /** [seen] (a What's new version, like "1.2.0") is older than [major].[minor]. Empty (never seen) counts as older. */
+    fun isBefore(seen: String, major: Int, minor: Int): Boolean {
+        val p = seen.split('.').map { it.toIntOrNull() ?: 0 }
+        val a = p.getOrElse(0) { 0 }; val b = p.getOrElse(1) { 0 }
+        return a < major || (a == major && b < minor)
+    }
 
     /**
      * Android's "Remove animations" (accessibility) sets the animation speed to zero.

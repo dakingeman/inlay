@@ -62,8 +62,15 @@ const FEATURES={
     content:()=>`<img class="abs shot m" src="renders/screen-look.png" style="left:260px;top:240px;width:1080px">`},
   'sound-packs':{layout:'top',title:'Nine sound packs',body:'Soft, Thock, Tactile, Typewriter, Felt, Chime, Glass, Pop and Retro, with vibration tuned so even small motors are felt.',
     content:()=>`<img class="abs shot m" src="renders/screen-soundpack.png" style="left:260px;top:240px;width:1080px">`},
-  tour:{layout:'top',title:'A one-minute tour',body:'It opens the first time, shows every button on your own device, and What\u2019s new follows each update.',
-    content:()=>`<img class="abs shot m" src="renders/screen-tour-holdrt.png" style="left:260px;top:240px;width:1080px">`},
+  tour:{layout:'top',title:'A tour you play',body:'Learn every button by typing a few game names, one small step at a time. What\u2019s new follows each update.',
+    content:()=>`<img class="abs shot m" src="renders/screen-tour13.png" style="left:260px;top:240px;width:1080px">`},
+  // 1.3.0 (8 Nov 2026)
+  split:{layout:'stage',textY:140,title:'Split keyboard',body:'Two halves, one under each thumb, with your app showing between them. Made for wide screens like the AYN Odin. Settings \u2192 Look.',
+    pic:'pic-split',screen:{kb:'renders/kb-split.png',kbAspect:2481/552,field:{before:'halo'}}},
+  buttons:{layout:'top',title:'Show Inlay your buttons',body:'Press your four face buttons once, then pick which one selects and which goes back. Any controller, swapped or not, each with its own setup.',
+    content:()=>`<img class="abs shot m" src="renders/screen-buttons.png" style="left:260px;top:240px;width:1080px">`},
+  symbols:{layout:'stage',textY:140,title:'Quick symbols',body:'Hold LT, press A on a symbol and let go: you\u2019re back on your letters. Hold A on a symbol for its relatives, like \u20ac for $ \u00a3 \u00a5.',
+    pic:'pic-symbols',screen:{kb:'renders/kb-symbols.png',kbAspect:1920/534,field:{before:'conker: live '}}},
   controls:{layout:'top',title:'Every button has a job',body:'Settings \u2192 Button guide shows the same list, in your controller\u2019s icons.',
     content:()=>badgeRows([['{A}','Type the highlighted key'],['{X}','Delete \u00b7 hold to speed up'],['{Y}','Space'],['{R2}','Shift \u00b7 tap twice for caps lock'],['{L2}','Symbols and numbers'],['{START}','Enter \u00b7 Search \u00b7 Go'],['{B}','Close the keyboard'],['hold {A}','Accents \u00b7 hold, then choose'],['{R3}','Take the first suggested word'],['{L3}','Keyboard size']],96,240,'Typing',null)
       +badgeRows([['{L1} {R1}','Move the text cursor'],['{R3} left or right','Move the cursor, faster the further'],['{R2} + {L1} {R1}','Jump a whole word'],['{SELECT}','Select text'],['{SELECTx2}','Select everything'],['{R2} + {A}','One capital letter'],['{R2} + {Y}','Accent the last letter'],['{R2} + {X}','Undo'],['{R2} + {L2}','Switch language']],700,240,'Editing and more',null)},

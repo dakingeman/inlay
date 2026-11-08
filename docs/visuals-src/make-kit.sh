@@ -8,7 +8,7 @@ OUT=../images; mkdir -p "$OUT/pack" out/hero
 HP="lab=1&al=optical&wb=1.3&bw=mix&dir=g2&fx=tiles,spill&lit=glow&litop=.6&sk=.55&seed=11"
 
 # 1. README feature images (backdrop.js gives each its own variation, seeded by its id)
-for id in typing words accents devices hold editing tidy looks icons tv-mode languages settings sound-packs tour controls; do
+for id in typing split buttons words accents devices hold symbols editing tidy looks icons tv-mode languages settings sound-packs tour controls; do
   SCALE=1.2 node shoot.js feature.html "$OUT/pack/$id.png" 1600 900 "id=$id"   # laid out at 1600 × 900, saved at 1920 × 1080
   node check.js feature.html 1600 900 "id=$id"
 done

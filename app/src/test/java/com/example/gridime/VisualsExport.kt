@@ -42,8 +42,9 @@ class VisualsExport {
             showHints = true, comboHints = true, wordSuggestions = true, holdAccents = true))
 
     /** A keyboard [widthDp] wide in the state [setup] puts it in. */
-    private fun kb(name: String, s: KeyboardSettings, widthDp: Int = 640, setup: KeyGridView.() -> Unit = {}) {
+    private fun kb(name: String, s: KeyboardSettings, widthDp: Int = 640, split: Boolean = false, setup: KeyGridView.() -> Unit = {}) {
         val v = KeyGridView(context)
+        v.allowSplit = split
         v.applySettings(s)
         v.setField(FieldKind.TEXT)
         v.listener = object : KeyGridView.Listener {
@@ -171,6 +172,9 @@ class VisualsExport {
         kb("kb-clips", x) { setClips(listOf("conker live and reloaded", "jet set radio future", "github.com/dakingeman/inlay", "ninja gaiden")); toggleClips() }
         kb("kb-numrow", base { it.copy(numberRow = true) }) { walkTo("2") }
         kb("kb-tidy", x) { walkTo(".") }
+        // 1.3: the split keyboard at a wide handheld's width, and quick symbols (LT held, A held on € for its relatives)
+        kb("kb-split", base { it.copy(split = true) }, widthDp = 827, split = true) { walkTo("g") }
+        kb("kb-symbols", x) { walkTo("e"); quickLayerStart(); focusLabelNow("&") }
         kb("kb-tv", base { it.copy(tvMode = TvMode.ON) }, widthDp = 520) { setTvMode(true); walkTo("h"); setPreview("stranger t", "", "") }
         // Looks
         kb("look-light", base { it.copy(toneIndex = 8) }) { walkTo("g") }
@@ -200,6 +204,8 @@ class VisualsExport {
         pic("pic-select", w, ButtonStyle.XBOX, held = setOf("SELECT", "RB"))
         pic("pic-tidy", w, ButtonStyle.XBOX, held = setOf("A"))
         pic("pic-numrow", w, ButtonStyle.XBOX, held = setOf("Dup"))
+        pic("pic-split", w, ButtonStyle.XBOX, held = setOf("A"))
+        pic("pic-symbols", w, ButtonStyle.XBOX, held = setOf("LT", "A"), holding = setOf("LT"))
         pic("pic-tv", DeviceKind.REMOTE, ButtonStyle.XBOX, held = setOf("A"))
         pic("dev-controller", DeviceKind.CONTROLLER, ButtonStyle.XBOX, held = setOf("A"))
         pic("dev-wide", w, ButtonStyle.PLAYSTATION, held = setOf("A"))
@@ -279,6 +285,16 @@ class VisualsExport {
         val tour = org.robolectric.Robolectric.buildActivity(TutorialActivity::class.java).setup().get()
         idle(2500); press(tour, android.view.KeyEvent.KEYCODE_BUTTON_A); press(tour, android.view.KeyEvent.KEYCODE_BUTTON_A); press(tour, android.view.KeyEvent.KEYCODE_BUTTON_A)
         idle(2600); save(tour.window.decorView, "screen-tour-holdrt")
+        // 1.3: the new tour as it opens (the first turn: a capital Z for Zelda), and the button setup half-way
+        KeyboardSettings(tutorialDone = false, whatsNewSeen = WhatsNew.VERSION, buttonStyle = ButtonStyle.XBOX, picture = PictureChoice.HANDHELD).save(context)
+        val tour13 = org.robolectric.Robolectric.buildActivity(TutorialActivity::class.java).setup().get()
+        idle(2500); press(tour13, android.view.KeyEvent.KEYCODE_BUTTON_A); idle(4000); save(tour13.window.decorView, "screen-tour13")
+        val host = org.robolectric.Robolectric.buildActivity(android.app.Activity::class.java).setup().get()
+        val setupView = ButtonSetupView(host).apply { accent = TEAL }
+        host.actionBar?.hide(); host.setContentView(setupView); idle(800)
+        setupView.press(android.view.KeyEvent.KEYCODE_BUTTON_X); idle(900)
+        setupView.press(android.view.KeyEvent.KEYCODE_BUTTON_Y); idle(1600)
+        save(host.window.decorView, "screen-buttons")
     }
 
     /** Preview of the tour / What's new background in several highlight colours (presets and the slider). */
