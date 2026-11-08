@@ -1751,7 +1751,7 @@ class KeyGridView(context: Context) : View(context) {
     }
 
     // =====================================================================
-    // SPLIT: two windows, one under each thumb
+    // SPLIT: two windows, one at each side of the screen
     // =====================================================================
     /**
      * Split shows only where it fits: wide screens held sideways, never in TV mode (TV has its own floating panel).

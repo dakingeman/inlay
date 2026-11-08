@@ -65,7 +65,7 @@ const FEATURES={
   tour:{layout:'top',title:'A tour you play',body:'Learn every button by typing a few game names, one small step at a time. What\u2019s new follows each update.',
     content:()=>`<img class="abs shot m" src="renders/screen-tour13.png" style="left:260px;top:240px;width:1080px">`},
   // 1.3.0 (8 Nov 2026)
-  split:{layout:'stage',textY:140,title:'Split keyboard',body:'Two halves, one under each thumb, with your app showing between them. Made for wide screens like the AYN Odin. Settings \u2192 Look.',
+  split:{layout:'stage',textY:140,title:'Split keyboard',body:'The keyboard splits into two halves at the sides of the screen, so you can still see the app you\u2019re typing into. Made for wide screens like the AYN Odin. Settings\u00a0\u2192\u00a0Look.',
     pic:'pic-split',screen:{kb:'renders/kb-split.png',kbAspect:2481/552,field:{before:'halo'}}},
   buttons:{layout:'top',title:'Show Inlay your buttons',body:'Press your four face buttons once, then pick which one selects and which goes back. Any controller, swapped or not, each with its own setup.',
     content:()=>`<img class="abs shot m" src="renders/screen-buttons.png" style="left:260px;top:240px;width:1080px">`},

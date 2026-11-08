@@ -106,7 +106,7 @@ The welcome tour opens the first time, and you can replay it any time from **Abo
 | **Every button has a job** | A types, X deletes (hold to speed up), Y is space, Start is enter. LB and RB move the cursor, RT is shift, LT is symbols, and the right stick moves the cursor too. See [Controls](#controls). |
 | **Word suggestions that learn** | Words you probably mean show in the top row as you type. Press the right stick in for the first, or move up and pick one. It learns the names and titles you use, and only keeps a word once you've really typed it. |
 | **Hold A for accents** | Hold A on a letter and its accents rise into the top row: let go on the one you want. Hold the full stop for punctuation (, ? ! ' " : ; …), and .com in web addresses for other endings like .net, .org and your language's own. |
-| **Split keyboard** | Two halves, one under each thumb, with your app showing between them. On screens wide enough for it. |
+| **Split keyboard** | The keyboard splits into two halves at the sides of the screen, so you can still see the app you're typing into. On screens wide enough for it. |
 | **Your buttons** | Show Inlay your four face buttons once and pick which one selects and which goes back. Works with any controller, swapped or not, and each controller keeps its own. |
 | **A tour you play** | The welcome tour teaches every button by typing a few game names, with each button shown on the key it works on. |
 | **Hold RT for more** | Small tips appear on the keys: a capital letter, word jumps, accents and undo. Nothing to memorise. |

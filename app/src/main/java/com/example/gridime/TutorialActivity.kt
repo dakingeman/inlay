@@ -241,7 +241,7 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
                 "Learn every button by typing a few game names, one small step at a time. Replay it any time in Settings\u00A0\u2192 About.",
                 emptyList(), Demo.MORE, For.CONTROLLER, scene = WhatsNewShowcase.Scene.TOUR),
             Page("Split keyboard",
-                "Two halves, one under each thumb, with your app showing in between. Turn it on in Settings\u00A0\u2192 Look." +
+                "Two halves at the sides of the screen, so you still see the app you're typing into. Turn it on in Settings\u00A0\u2192 Look." +
                     if (SplitRoom.splitPossible(this, settings.language)) "" else " It needs a wide screen held sideways.",
                 emptyList(), Demo.MORE, For.CONTROLLER, scene = WhatsNewShowcase.Scene.SPLIT),
             Page("Show Inlay your buttons",

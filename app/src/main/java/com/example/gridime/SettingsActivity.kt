@@ -1355,7 +1355,7 @@ class SettingsActivity : Activity() {
             },
             // Only where it fits: wide screens held sideways. TV mode keeps its own floating keyboard.
             if (!SplitRoom.splitPossible(this, settings.language)) null else ToggleRow(this, "Split",
-                "Two halves, one under each thumb. Not in TV mode", settings.split) {
+                "Two halves at the sides of the screen. Not in TV mode", settings.split) {
                 update(settings.copy(split = it))
             },
             // Android 13 and newer draw an empty strip under keyboards (a hide arrow and a keyboard switcher)

@@ -321,7 +321,7 @@ data class KeyboardSettings(
     val wordSuggestions: Boolean = true, // words in the tool strip while typing (R3 takes the first)
     val holdAccents: Boolean = true,     // hold A on a letter for its accents
     val numberRow: Boolean = false,      // a slim row of 1 to 0 above the letters
-    val split: Boolean = false,          // Split: two windows, one under each thumb (wide screens only, never in TV mode)
+    val split: Boolean = false,          // Split: two windows, one at each side of the screen (wide screens only, never in TV mode)
     val picture: PictureChoice = PictureChoice.AUTO,   // which device the tour, What's new and Button guide show
     val verticalSticks: Boolean = false,  // a vertical handheld that does have sticks
     val swapFaceButtons: Boolean = false, // the device reports A/B and X/Y by printed letter (Nintendo layout): see FaceButtons
