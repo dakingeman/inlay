@@ -56,4 +56,37 @@ class AccentResetTest {
             v.releaseA(); idle(300)
         }
     }
+
+    /** Let go without moving: a controller keeps the accent it's on (Emre, 6 Nov: é for Pokémon); a TV remote keeps them open to choose. */
+    @Test fun lettingGoWithoutMovingKeepsTheAccentYoureOn() {
+        val host = Robolectric.buildActivity(android.app.Activity::class.java).setup().get()
+        val frame = android.widget.FrameLayout(host); host.setContentView(frame)
+        val v = KeyGridView(context)
+        var text = ""
+        v.listener = object : KeyGridView.Listener {
+            override fun onText(t: String) { text += t }
+            override fun onDelete() {}; override fun onEnter() {}; override fun onTool(tool: Tool) {}; override fun onClip(index: Int) {}
+            override fun onReplaceLast(expected: String, replacement: String): Boolean {
+                if (!text.endsWith(expected)) return false
+                text = text.dropLast(expected.length) + replacement; return true
+            }
+        }
+        v.applySettings(KeyboardSettings(tutorialDone = true, holdAccents = true))
+        frame.addView(v, android.widget.FrameLayout.LayoutParams(context.resources.displayMetrics.widthPixels, -2))
+        idle(100)
+        repeat(30) { if (v.stepTowards("n") == true) return@repeat }
+        for (remote in listOf(false, true)) {
+            text = ""
+            v.pressA(); idle(900)
+            assertTrue("the accents should be open", v.isAccentsOpen())
+            v.releaseA(remote); idle(400)
+            if (!remote) {
+                assertTrue("a controller: letting go without moving should close the accents", !v.isAccentsOpen())
+                assertTrue("a controller: the accent it's on should stay, got \"$text\"", text == "ñ")
+            } else {
+                assertTrue("a remote: the accents should stay open to choose", v.isAccentsOpen())
+                v.cancelAccents(); idle(400)
+            }
+        }
+    }
 }

@@ -282,7 +282,9 @@ class ConsistencyTest {
                 pages.forEachIndexed { i, (title, _) ->
                     idle(500)
                     val welcome = !whatsNew && i == 0
-                    if (t.loopBarShown == welcome) problems += "$pic ${if (whatsNew) "What's new" else "tour"} page ${i + 1} ($title): loop bar ${if (welcome) "shown" else "missing"}"
+                    // the last page shows, nothing loops; What's new's close-ups loop on their own, without the bar
+                    val end = (!whatsNew && title == "You're all set") || whatsNew
+                    if (!end && t.loopBarShown == welcome) problems += "$pic ${if (whatsNew) "What's new" else "tour"} page ${i + 1} ($title): loop bar ${if (welcome) "shown" else "missing"}"
                     if (i < pages.size - 1) press(t, KeyEvent.KEYCODE_BUTTON_A)
                 }
             }

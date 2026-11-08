@@ -607,7 +607,8 @@ class DevicePictureView(context: Context) : View(context) {
         flashes.entries.removeAll { it.value < now }
         // The remote only lights what it has (A shows as OK, B as Back)
         val remote = kind == DeviceKind.REMOTE
-        fun onThis(keys: Set<String>) = if (remote) keys.mapNotNull { DevicePicture.onRemote(it) }.toSet() else keys
+        // A controller lights the button you really press (the typing button may be on the right: ButtonRoles)
+        fun onThis(keys: Set<String>) = if (remote) keys.mapNotNull { DevicePicture.onRemote(it) }.toSet() else keys.map { ButtonRoles.position(it) }.toSet()
         val lit = onThis(held + flashes.keys)
         val geo = css?.optJSONObject("_geo")
         // Sticks that move or click in are drawn by hand on top, so their own drawing steps aside
@@ -694,7 +695,7 @@ class DevicePictureView(context: Context) : View(context) {
             val g = geo.optJSONObject(k) ?: return@forEach
             var p = 0f
             if (k in held) {
-                val since = holdSince[k] ?: holdSince[holding.firstOrNull { DevicePicture.onRemote(it) == k }] ?: now
+                val since = holdSince[holding.firstOrNull { (if (remote) DevicePicture.onRemote(it) else ButtonRoles.position(it)) == k }] ?: holdSince[k] ?: now
                 val t = if (!animationsOn()) 1f else ((now - since - HOLD_DELAY_MS).toFloat() / HOLD_FILL_MS).coerceIn(0f, 1f)
                 if (t < 1f) animating = true
                 p = if (t <= 0f || t >= 1f) t else Design.EASE_STANDARD.getInterpolation(t)

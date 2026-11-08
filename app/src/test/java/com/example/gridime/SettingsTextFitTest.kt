@@ -31,7 +31,8 @@ class SettingsTextFitTest {
     private fun idle(ms: Long) = shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(ms))
     private fun all(v: View): List<View> = if (v is ViewGroup) listOf(v) + (0 until v.childCount).flatMap { all(v.getChildAt(it)) } else listOf(v)
 
-    private fun check(where: String) {
+    private fun check(where: String, fontScale: Float = 1f) {
+        if (fontScale != 1f) RuntimeEnvironment.setFontScale(fontScale)
         val problems = mutableListOf<String>()
         for (style in ButtonStyle.values()) {
             KeyboardSettings(tutorialDone = true, whatsNewSeen = WhatsNew.VERSION, buttonStyle = style, showPreview = false).save(context)
@@ -63,4 +64,8 @@ class SettingsTextFitTest {
     @Test @Config(sdk = [34], qualifiers = "w827dp-h412dp-land-xhdpi") fun handheld() = check("handheld")
     @Test @Config(sdk = [34], qualifiers = "w472dp-h363dp-land-420dpi") fun vertical() = check("vertical")
     @Test @Config(sdk = [34], qualifiers = "w360dp-h640dp-port-xxhdpi") fun phone() = check("phone")
+    // The biggest text size Android offers before 14's extra steps (1.3): every word still shows in full (UX law, 8 Nov)
+    @Test @Config(sdk = [34], qualifiers = "w827dp-h412dp-land-xhdpi") fun handheldLargestText() = check("handheld at largest text", 1.3f)
+    @Test @Config(sdk = [34], qualifiers = "w472dp-h363dp-land-420dpi") fun verticalLargestText() = check("vertical at largest text", 1.3f)
+    @Test @Config(sdk = [34], qualifiers = "w360dp-h640dp-port-xxhdpi") fun phoneLargestText() = check("phone at largest text", 1.3f)
 }

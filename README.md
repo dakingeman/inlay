@@ -34,7 +34,7 @@ Free and open source. No ads, no tracking, no internet permission.
 
 https://github.com/user-attachments/assets/723c8fae-523f-497d-ab7a-cccda66b2d7c
 
-<p align="center"><b>The one-minute teaser</b> (turn the sound on) · <a href="../../releases/tag/v1.2.0">What's new in 1.2.0</a></p>
+<p align="center"><b>The one-minute teaser</b> (turn the sound on) · <a href="../../releases/tag/v1.3.0">What's new in 1.3.0</a></p>
 <p align="center"><sub>The keyboard, the screens and the devices in these pictures and videos are drawn by the app's own code, and every sound is the app's own.</sub></p>
 
 <br>
@@ -82,11 +82,13 @@ https://github.com/user-attachments/assets/723c8fae-523f-497d-ab7a-cccda66b2d7c
 3. Open **Inlay** and choose **About → Turn on Inlay**.
 4. Choose **About → Switch keyboard** to make it the active keyboard.
 
-A one-minute tour opens the first time, and you can replay it any time from **About**.
+The welcome tour opens the first time, and you can replay it any time from **About**.
 
 **Updates:** the free [Obtainium](https://github.com/ImranR98/Obtainium) app can watch this page and install new versions for you. In Inlay, choose **About → Get updates automatically**, or tap the Obtainium button at the top of this page on your device.
 
 **Android TV or Google TV:** install the same `.apk` (for example with a file manager or "Send files to TV"), open **Inlay** from the apps row and follow the set-up card. TV mode turns on by itself there.
+
+**Keyboard not showing up?** Open **Inlay → About**: a row there says whether Inlay is turned on and in use, and A takes you straight to the fix.
 
 **Requirements:** Android 10 or newer, and a built-in controller or a connected gamepad.
 
@@ -94,22 +96,27 @@ A one-minute tour opens the first time, and you can replay it any time from **Ab
 
 | Feature | What it does |
 |-|-|
-| **Made for controllers** | D-pad or left stick moves the highlight the instant you press, with smart repeat when you hold a direction. A light stick push moves gently, a full push fast. |
+| **Made for controllers** | D-pad or left stick moves the highlight the instant you press, with smart repeat when you hold a direction (set how fast with D-pad speed). A light stick push moves gently, a full push fast. |
 | **Every button has a job** | A types, X deletes (hold to speed up), Y is space, Start is enter. LB and RB move the cursor, RT is shift, LT is symbols, and the right stick moves the cursor too. See [Controls](#controls). |
 | **Word suggestions that learn** | Words you probably mean show in the top row as you type. Press the right stick in for the first, or move up and pick one. It learns the names and titles you use, and only keeps a word once you've really typed it. |
-| **Hold A for accents** | Hold A on a letter and its accents rise into the top row: move to one and let go. |
+| **Hold A for accents** | Hold A on a letter and its accents rise into the top row: let go on the one you want. Hold the full stop for punctuation (, ? ! ' " : ; …), and .com in web addresses for other endings like .net, .org and your language's own. |
+| **Split keyboard** | Two halves, one under each thumb, with your app showing between them. On screens wide enough for it. |
+| **Your buttons** | Show Inlay your four face buttons once and pick which one selects and which goes back. Works with any controller, swapped or not, and each controller keeps its own. |
+| **A tour you play** | The welcome tour teaches every button by typing a few game names, with each button shown on the key it works on. |
 | **Hold RT for more** | Small tips appear on the keys: a capital letter, word jumps, accents and undo. Nothing to memorise. |
 | **Tidies up as you type** | A capital starts each sentence, a lone i becomes I, and a space typed before a full stop or comma moves after it. Each has its own switch. |
 | **Edit text properly** | Select, cut, copy, paste and undo from the controller. Press Select twice to select everything. The right stick moves the cursor or grows a selection, faster the further you push (turn it off in Settings → Typing). |
-| **Clipboard history** | Your last six copies, one button away. Anything marked as sensitive (passwords) is never kept. |
-| **11 languages** | English, German, French (AZERTY), Spanish, Portuguese, Norwegian, Danish, Swedish/Finnish, Turkish, Russian and Ukrainian. Pick up to three and switch with RT + LT. Hold A (or press RT + Y) for accents (é, ñ, ł and more), so Italian, Dutch, Polish and others work too. |
+| **Clipboard history** | Your last six copies, one button away. Press Y on one to pin it, so it stays however much you copy after it. Anything marked as sensitive (passwords) is never kept. |
+| **11 languages** | English, German, French (AZERTY), Spanish, Portuguese, Norwegian, Danish, Swedish/Finnish, Turkish, Russian and Ukrainian. Pick up to three and switch with RT + LT, and Inlay can remember each app's language. Hold A (or press RT + Y) for accents (é, ñ, ł and more), so Italian, Dutch, Polish and others work too. |
+| **Quick symbols** | Hold LT, press A on a symbol and let go: you're back on your letters, like RT for one capital. A tap on LT still swaps to the symbols. |
+| **Voice typing** | With a voice typing app installed (FUTO Voice Input is free and works offline), a microphone in the top row hands over to it. Inlay itself never listens. Settings → Typing shows whether it's ready. |
 | **Smart keys** | / and .com in web addresses, @ in email boxes, a big number pad for numbers. |
 | **TV mode** | A compact floating keyboard with a big line showing what you type, readable from the sofa. Turns on by itself when you dock. |
 | **Made for what you hold** | A controller, a handheld, a vertical handheld (with or without sticks) or a TV remote. Automatic recognises handhelds like the AYN Odin and Retroid Pocket, or pick one yourself. The pictures, tips and tour show your own buttons, and Settings → Device lets you try them. |
-| **Make it yours** | 12 themes (including a see-through one), 16 highlight colours plus a custom colour you shape with Colour, Strength and Brightness (always readable), four highlight styles, three key shapes, two layouts, three sizes, a number row, and Xbox, PlayStation or Switch button icons. |
+| **Make it yours** | 12 themes (including a see-through one), 16 highlight colours plus a custom colour you shape with Colour, Strength and Brightness (always readable), four highlight styles, three key shapes, two layouts, three sizes, a number row, Select, Cut, Copy and Paste as words or icons, and Xbox, PlayStation or Switch button icons. |
 | **Nine sound packs** | Soft, Thock, Tactile, Typewriter and Felt for real-key sounds; Chime, Glass, Pop and Retro for little notes in one scale. Vibration is tuned so even small motors are felt. |
-| **Fits every screen** | Wide, 4:3, portrait or split screen. The keyboard never covers more than 60 % of the screen. |
-| **A Settings app for the controller** | Six tabs, each about one thing. A live keyboard preview (press Y), the tour, a short What's new after each update, and your highlight colour all through it. |
+| **Fits every screen** | Wide, 4:3, portrait or split screen. The keyboard never covers more than 60 % of the screen. On Android 13 and newer with gesture navigation, it also uses the empty strip Android adds under keyboards (Use the full screen height, on by default). |
+| **A Settings app for the controller** | Six tabs, each about one thing, a slim bar showing where you are on long pages, and Find (RB) for any setting. A live keyboard preview (press Y), the tour, a short What's new after each update, back up and restore, and your highlight colour all through it. |
 | **Types straight into the app** | No full-screen typing box covering your game or launcher. |
 
 ## Controls
@@ -123,7 +130,7 @@ A one-minute tour opens the first time, and you can replay it any time from **Ab
 | Button | What it does |
 |-|-|
 | D-pad or left stick | Move the highlight |
-| A | Type the highlighted key · hold for accents |
+| A | Type the highlighted key · hold for accents, or for punctuation on the full stop |
 | X | Delete · hold to speed up, then whole words |
 | Y | Space |
 | RT | Shift · tap twice for caps lock |
@@ -182,6 +189,10 @@ Yes. No ads, no in-app purchases, no account. The code is open source under GPL-
 | AYN Odin 2 Portal | 13 | Everything tested |
 | AYN Odin 3 | 15 | Works ([reported by a user](../../issues/1)) |
 | AYN Odin 3 Pro | – | Works (reported by a user on Reddit) |
+| Retroid Pocket 5 | – | Works (reported by a user) |
+| Retroid Pocket 6 | – | Works (reported by users on Reddit) |
+| Anbernic RG Slide | – | Works (reported by a user) |
+| Nvidia Shield TV | – | Works with the remote (reported by a user) |
 
 Tried it on something else? Please [tell me how it went](../../issues/new/choose), even if it worked perfectly. That's how this list grows.
 
@@ -200,7 +211,8 @@ Open the project in Android Studio and press **Run**. No extra libraries are nee
 ## Brand and credits
 
 * The icon, colours and type are in [docs/brand](docs/brand/BRAND.md), with the rules for using them.
-* Fonts: [Atkinson Hyperlegible Next](https://github.com/googlefonts/atkinson-hyperlegible-next) and [Inter](https://github.com/rsms/inter), both under the SIL Open Font Licence (see `licenses/`).
+* Fonts: [Atkinson Hyperlegible Next](https://github.com/googlefonts/atkinson-hyperlegible-next), [Inter](https://github.com/rsms/inter), [M PLUS Rounded 1c](https://fonts.google.com/specimen/M+PLUS+Rounded+1c) and [Press Start 2P](https://fonts.google.com/specimen/Press+Start+2P), all under the SIL Open Font Licence (see `licenses/`).
+* Use the full screen height is our own code, after the idea in [Odin KB](https://github.com/duhmojo/odin-kb) by duhmojo. Thank you.
 * The PlayStation controller drawing is traced from ["Dualshock 4 Layout.svg"](https://commons.wikimedia.org/wiki/File:Dualshock_4_Layout.svg) by Tokyoship, [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/), redrawn in Inlay's line style. The Xbox and Switch Pro drawings are traced from reference pictures, logos left out. Controller names belong to their makers.
 * All sounds were made for this project from scratch. `tools/sounds.py` makes them and `tools/soundcheck.py` checks them (rules in `docs/brand/SOUND.md`).
 * The 1.1 icon refresh followed the testing checklist from [logo-design-skill](https://github.com/kaankiziltug/logo-design-skill).

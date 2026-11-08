@@ -40,6 +40,7 @@ Never varies: base colours, the whisper's colour rule, the accent colour. Decide
 ## 4b. Feature images
 
 - **Release notes and changelog images** use the same system: `release.html` (+ `shot-release.js`), a 46 px headline with one teal word, a 21 px line, and a real screenshot from the Odin on `inlayBackground` with no motif. Never an improvised dark background (Emre, 1 Nov 2026).
+- **Release covers** (1.3.0, Emre, 8 Nov 2026): `cover.html` layout R4 via `make-cover.sh`, 1280 x 640 for GitHub and 1080 x 1080 square. The lockup top left (bigger on the square), the version as the app's New in pill but bold and large ("Version 1.3", teal on teal at 18 %) top right and level with it, one big headline, one line under it with the key words in white and the joining words grey, ending on the app's own pixel spark, and the real keyboard (the app's render, top row with icons and words) full width along the bottom. Big, few elements; nothing cut off. The What's new clip's title card uses the same tag (`finish-wn13.py`).
 
 - **Imagery always matches the words.** Each image shows exactly the setting or moment its text talks about (the sound-packs image shows the Sound pack row, not vibration). Check this before shipping any image.
 - **Stage images** (device on the left, screen on the right): the device stands on the same line as the bottom of the screen next to it, whatever the device (handheld, remote). Device 530 px wide, text from y 140, at least 24 px between the text and the device.

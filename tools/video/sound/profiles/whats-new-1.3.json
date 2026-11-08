@@ -1,0 +1,31 @@
+{
+ "video": "whats-new-1.3",
+ "fx_pack": "felt",
+ "note": "1.3.0 (8 Nov 2026): the same song and shape, plus 1.3's touches: the chimes answer left and right on Split, the melody turns 8-bit on the secret page",
+ "arc": {
+  "start": 0,
+  "peak_at": 0.66,
+  "top": 4,
+  "end": 2,
+  "breaths": {
+   "secret": 2
+  }
+ },
+ "off": {
+  "motif": [
+   "secret"
+  ],
+  "motifdeep": [
+   "secret"
+  ]
+ },
+ "touches": {
+  "pan_phrases": {
+   "split": 0.7
+  },
+  "chip_melody": {
+   "secret": -3
+  }
+ },
+ "key_sounds": false
+}

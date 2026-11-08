@@ -66,14 +66,16 @@ class FaceButtonsTest {
 
     @Test fun theEventKeepsEverythingButItsButton() {
         val e = KeyEvent(100L, 200L, KeyEvent.ACTION_UP, KeyEvent.KEYCODE_BUTTON_A, 3, 0, 7, 42, 0, android.view.InputDevice.SOURCE_GAMEPAD)
-        val m = FaceButtons.event(e, swap = true)
+        ButtonRoles.apply(KeyboardSettings(swapFaceButtons = true))     // a handheld that sends them swapped
+        val m = FaceButtons.event(e)
         assertEquals(KeyEvent.KEYCODE_BUTTON_B, m.keyCode)
         assertEquals(e.action, m.action); assertEquals(e.repeatCount, m.repeatCount)
         assertEquals(e.downTime, m.downTime); assertEquals(e.eventTime, m.eventTime)
         assertEquals(e.deviceId, m.deviceId); assertEquals(e.scanCode, m.scanCode); assertEquals(e.source, m.source)
-        assertSame("off: the very same event", e, FaceButtons.event(e, swap = false))
         val dpad = KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_LEFT)
-        assertSame("not a face button: the very same event", dpad, FaceButtons.event(dpad, swap = true))
+        assertSame("not a face button: the very same event", dpad, FaceButtons.event(dpad))
+        ButtonRoles.apply(KeyboardSettings())
+        assertSame("the usual setup: the very same event", e, FaceButtons.event(e))
     }
 
     @Test fun theSettingIsSavedAndOffByDefault() {

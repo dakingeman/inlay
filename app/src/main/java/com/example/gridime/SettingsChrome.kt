@@ -144,6 +144,18 @@ class TabBar(
         set(v) { field = v; invalidate() }
     var onKeyboard: () -> Unit = {}
     var onDown: () -> Unit = {}
+    /**
+     * A controller: Find sits at the top right, "{START} Find", where people look for search (Emre, 5 Nov 2026).
+     * It moved up from the bottom bar, which also lost "{L1} {R1} Sections" since the badges here say it.
+     */
+    var findKey = false
+        set(v) { field = v; invalidate() }
+    var onFind: () -> Unit = {}
+    private val findRect = RectF()
+    /** Small screens: the Find pill keeps its button and loses the word, so the tabs keep their room (5 Nov audit). */
+    private val findWord get() = width >= FIND_WORD_MIN_DP * dp
+    private fun findWidth() = if (!findKey || remote) 0f else if (!findWord) tabPad * 0.6f * 2 + painter.width(ControllerButton.START) + Design.SPACE_S * dp + 16f * dp else
+        tabPad * 0.75f + painter.width(ControllerButton.START) + Design.SPACE_S * dp + text.measureText(FIND) + tabPad
     /** The slot the focus is on: a tab, or titles.size for the keyboard key. */
     private var focusSlot = 0
     private val keyRect = RectF()
@@ -221,14 +233,14 @@ class TabBar(
      */
     var marks: Set<Int> = emptySet()
         set(v) { field = v; invalidate() }
-    /** The tab whose sign is growing in right now (the others with a sign show it fully). */
-    var growing = -1
+    /** The tabs whose signs are growing in right now, together (the others with a sign show it fully). */
+    var growing: Set<Int> = emptySet()
     /** One tab's sign (or none: -1), for the simple case. */
     var marked: Int
         get() = marks.firstOrNull() ?: -1
-        set(v) { marks = if (v < 0) emptySet() else setOf(v); growing = v }
-    private fun room(i: Int) = if (i !in marks) 0f else if (i == growing) markAlpha else 1f
-    private fun sign(i: Int) = if (i !in marks) 0f else if (i == growing) signAlpha else 1f
+        set(v) { marks = if (v < 0) emptySet() else setOf(v); growing = marks }
+    private fun room(i: Int) = if (i !in marks) 0f else if (i in growing) markAlpha else 1f
+    private fun sign(i: Int) = if (i !in marks) 0f else if (i in growing) signAlpha else 1f
     /** How far the marked tab has widened (0..1). */
     var markAlpha = 1f
         set(v) { field = v.coerceIn(0f, 1f); invalidate() }
@@ -274,7 +286,8 @@ class TabBar(
         // A remote has no L1/R1 (no badges at the ends); it has the keyboard key at the end instead
         val left = if (remote) Design.SPACE_L * dp else Design.SPACE_L * dp + painter.width(ControllerButton.L1) + Design.SPACE_M * dp
         val right = if (remote) Design.SPACE_L * dp + tabHeight * 1.3f + Design.SPACE_S * dp
-            else Design.SPACE_L * dp + painter.width(ControllerButton.R1) + Design.SPACE_M * dp
+            else Design.SPACE_L * dp + painter.width(ControllerButton.R1) + Design.SPACE_M * dp +
+                (if (findKey) findWidth() + Design.SPACE_L * dp else 0f)
         clipLeft = left; clipRight = width - right
         val available = width - left - right
         // Centre the tabs; if they don't fit, they slide (with the indicator) so the chosen one stays in view
@@ -408,7 +421,24 @@ class TabBar(
         } else {
             // Shoulder button badges at each end
             painter.draw(canvas, ControllerButton.L1, Design.SPACE_L * dp, cy)
-            painter.draw(canvas, ControllerButton.R1, width - Design.SPACE_L * dp - painter.width(ControllerButton.R1), cy)
+            val fw = if (findKey) findWidth() + Design.SPACE_L * dp else 0f
+            painter.draw(canvas, ControllerButton.R1, width - Design.SPACE_L * dp - fw - painter.width(ControllerButton.R1), cy)
+            if (findKey) {
+                // Find: a quiet pill like a tab, its button first, then the word
+                val right = width - Design.SPACE_L * dp
+                findRect.set(right - findWidth(), tabRects[0].top, right, tabRects[0].bottom)
+                fill.color = SettingsStyle.surface
+                canvas.drawRoundRect(findRect, tabHeight / 2f, tabHeight / 2f, fill)
+                val bx = findRect.left + tabPad * (if (findWord) 0.75f else 0.6f)
+                val end = painter.draw(canvas, ControllerButton.START, bx, cy)
+                if (!findWord) Icons.magnifier(canvas, end + Design.SPACE_S * dp + 7f * dp, cy, 5.5f * dp, Icons.line(ring, dp, SettingsStyle.textPrimary))
+                if (findWord) {
+                    text.color = SettingsStyle.textPrimary
+                    text.textAlign = Paint.Align.LEFT
+                    canvas.drawText(FIND, end + Design.SPACE_S * dp, cy - (text.descent() + text.ascent()) / 2f, text)
+                    text.textAlign = Paint.Align.CENTER
+                }
+            }
         }
         // The keyboard key's own focus ring
         if (hasFocus() && focusSlot >= titles.size) {
@@ -422,6 +452,8 @@ class TabBar(
     }
 
     companion object {
+        const val FIND = "Find"
+        const val FIND_WORD_MIN_DP = 700f   // narrower than this, Find shows only its button
         const val FOLDED_DP = 16f       // the folded line: what still shows of the tabs with the keyboard up
         const val FOLD_BAR_DP = 4f      // each bar's thickness when folded
         const val FOLD_INSET_DP = 8f    // each bar is this much shorter than its tab at both ends
@@ -431,6 +463,7 @@ class TabBar(
     }
 
     override fun onTouchEvent(e: MotionEvent): Boolean {
+        if (e.actionMasked == MotionEvent.ACTION_UP && findKey && !remote && findRect.contains(e.x, e.y)) { onFind(); return true }
         if (e.actionMasked == MotionEvent.ACTION_UP) {
             tabRects.indexOfFirst { it.contains(e.x, e.y) }.takeIf { it >= 0 }?.let { onTap(it) }
         }

@@ -28,7 +28,7 @@ import android.os.SystemClock
  */
 object WhatsNew {
     /** The update these highlights belong to. Change it only when there's something to show. */
-    const val VERSION = "1.2.0"
+    const val VERSION = "1.3.0"
 
     fun shouldShow(settings: KeyboardSettings) = settings.tutorialDone && settings.whatsNewSeen != VERSION
 
@@ -60,7 +60,10 @@ class LoopClock {
     internal val runsForCheck = mutableListOf<Pair<Long, Long>>()
 
     /** A new page: nothing until its demo begins its first run. */
-    fun restart() { loopMs = 0L; fadeFrom = -1L; runsForCheck.clear() }
+    fun restart() { loopMs = 0L; fadeFrom = -1L; runsForCheck.clear(); onFirstRunDone = null }
+
+    /** Told once, when the first run has played through (the tour's "Your turn" begins). */
+    var onFirstRunDone: (() -> Unit)? = null
 
     /** A run of the demo begins [at] (its timetable) and takes [runMs]. */
     /** Told when each run begins (the live caption starts its round of rows again). */
@@ -68,7 +71,7 @@ class LoopClock {
 
     fun begin(runMs: Long, at: Long = SystemClock.uptimeMillis()) {
         onRun?.invoke()
-        if (loopMs > 0L) fadeFrom = at
+        if (loopMs > 0L) { fadeFrom = at; onFirstRunDone?.let { onFirstRunDone = null; it() } }
         loopStart = at
         loopMs = runMs.coerceAtLeast(1L)
         if (runsForCheck.size < 64) runsForCheck += at to loopMs

@@ -25,6 +25,8 @@ sealed class HintPart {
 class BadgePainter(private val dp: Float) {
 
     var style = ButtonStyle.XBOX
+    /** Draw A, B, X, Y as positions (bottom, right, left, top), not jobs: the Typing button choice shows the buttons themselves. */
+    var positions = false
 
     companion object {
         /** One stroke weight for every icon line in every badge (brand: one unified stroke). */
@@ -270,6 +272,8 @@ class BadgePainter(private val dp: Float) {
      * Draws chips in a centred row inside [area]. If they don't all fit,
      * chips are dropped from the end, so list the most useful first.
      */
+    /** How many chips the last [drawChipRow] fitted (the rest were dropped from the end), for the checks. */
+    var lastShown = 0
     fun drawChipRow(
         canvas: Canvas,
         chips: List<List<HintPart>>,
@@ -281,6 +285,7 @@ class BadgePainter(private val dp: Float) {
         var shown = chips
         fun total() = shown.sumOf { chipWidth(it, text).toDouble() }.toFloat() + chipGap * (shown.size - 1)
         while (shown.size > 1 && total() > area.width() - 2 * chipGap) shown = shown.dropLast(1)
+        lastShown = shown.size
 
         chipFill.color = fill
         chipEdge.color = edge
@@ -359,7 +364,8 @@ class BadgePainter(private val dp: Float) {
         }
     }
 
-    private fun drawFace(canvas: Canvas, button: ControllerButton, cx: Float, cy: Float, g: Float) {
+    private fun drawFace(canvas: Canvas, job: ControllerButton, cx: Float, cy: Float, g: Float) {
+        val button = if (positions) job else ButtonRoles.position(job)   // {A} is the typing button: draw the one you really press
         when (style) {
             ButtonStyle.PLAYSTATION -> {
                 glyph.color = Design.FACE_PLAYSTATION.getValue(faceKey(button))

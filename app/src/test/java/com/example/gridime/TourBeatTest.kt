@@ -47,7 +47,8 @@ class TourBeatTest {
             pages.forEachIndexed { p, (title, rows) ->
                 idle(50)
                 val where = "$name, ${if (whatsNew) "What's new" else "tour"} page ${p + 1} \"$title\""
-                if (rows.isNotEmpty()) {
+                // The last two pages show rather than act out: their card's rows take turns (RowLight), with no beats
+                if (rows.isNotEmpty() && title != "Make it yours" && title != "You're all set") {
                     if (t.beatsForCheck != rows.indices.toList()) problems += "$where: beats ${t.beatsForCheck} for ${rows.size} rows"
                     // Lit buttons during each beat (a later run, so the first row's extra page-reading time is out)
                     val lit = mutableMapOf<Int, MutableSet<String>>()

@@ -12,6 +12,8 @@
 .shot img{display:block;width:100%;height:100%}
 .devname{position:absolute;font-family:I;font-size:28px;color:var(--paper);text-align:center}
 .card{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+/* the release tag (1.3, Emre: as on the cover): the app's New in pill, bold and large: teal on teal at 18 % */
+.pill13{display:inline-block;font-family:A;font-weight:700;font-size:60px;line-height:1;color:var(--teal);background:color-mix(in srgb, var(--teal) 18%, transparent);border-radius:999px;padding:21px 39px}
 .tag{font-family:I;font-weight:600;letter-spacing:.14em;font-size:24px;color:var(--teal);padding:10px 22px;border-radius:999px;box-shadow:inset 0 0 0 2px color-mix(in srgb, var(--teal) 75%, transparent)}
 </style></head><body>
 <div id="c" class="canvas" style="width:1920px;height:1080px">
@@ -246,7 +248,7 @@ window.Card=async function(kind,sec,index,o={}){
   const html=kind==='intro'
     ? `${logo}${head('Type with your <span style="color:var(--teal)">controller</span>')}${sub('A free keyboard for Android handhelds, controllers and TV.')}`
     : kind==='new'
-    ? `${logo}<div class="tag m" style="margin-top:56px;opacity:${a}">NEW IN ${esc(o.version||'')}</div>${head(esc(o.title||''))}`
+    ? `${logo}<div style="margin-top:56px;opacity:${a}"><span class="pill13 m">Version ${esc((o.version||'').replace(/\.0$/,''))}</span></div>${head(esc(o.title||''))}`
     : OPT.end==='A'||OPT.end==='B'?typedEnd(sec,L):endCard(sec, L);
   document.getElementById('scene').innerHTML=kind==='outro'&&(OPT.end==='A'||OPT.end==='B')?html:`<div class="card" style="text-align:center;padding:0 160px">${html}</div>`;
   motion({gsec:o.gsec}); await settle(); cropCheck(); return true;

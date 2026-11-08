@@ -18,7 +18,8 @@ import sounds as S
 
 warnings.filterwarnings("ignore")
 RAW = os.path.join(os.path.dirname(__file__), "..", "app", "src", "main", "res", "raw")
-TONAL = {"chime", "glass", "pop", "retro"}
+TONAL_BASE = {"chime", "glass", "pop", "retro", "brick", "indigo", "jewel", "brick_disc", "indigo_bounce", "indigo_tine", "white_breeze", "psx_memory", "psx_crystal", "cube_bubble", "cube_toybox", "wii_cursor", "wii_piano", "psx_spu", "psx_sweep", "cube_menu", "cube_chime", "wii_plaza", "xbox_glow", "psx_bios", "cube_ipl", "xbox_take3", "xbox_take4"}
+TONAL = TONAL_BASE | {n + s for n in TONAL_BASE for s in ("_aged", "_tv", "_tv2", "_tv3", "_tv4", "_valve", "_tape", "_crunch", "_hot")}
 BIG = {"lock", "confirm", "select_all"}
 MAX_MS = {"move": 60, "type": 160, "space": 160, "delete": 160, "back": 160,
           "on": 200, "off": 200, "select_all": 200, "lock": 300, "confirm": 300}

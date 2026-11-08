@@ -30,6 +30,7 @@ def read_cues(path):
     out, cur = {}, None
     for line in open(path, encoding="utf-8"):
         if line.startswith("## Teaser"): cur = out.setdefault("teaser", [])
+        elif line.startswith("## What's new 1.3"): cur = out.setdefault("whats-new-1.3", [])    # cues-1.3.md
         elif line.startswith("## What"): cur = out.setdefault("whats-new", [])
         m = re.match(r"\|\s*([\d.]+)\s*\|\s*(\w+)\s*\|\s*(.*?)\s*\|", line)
         if cur is not None and m: cur.append((float(m.group(1)), m.group(2), m.group(3)))
@@ -38,7 +39,7 @@ def read_cues(path):
 # End card beats after the end card's cut (+0.27 s crossfade)
 END_BEATS = {"logo": 0.0, "divider": 0.25, "foss": 0.6, "ads": 1.25, "tracking": 1.9, "link": 2.6}
 # Which pack each "name" cue shows (read from the frames). None = the cut hides it, stay silent.
-PACK_ORDER = {"teaser": [],
+PACK_ORDER = {"teaser": [], "whats-new-1.3": [],
               "whats-new": ["thock", "tactile", "typewriter", "felt", "chime", "glass", "pop", "retro"]}
 
 # ---------------------------------------------------------------- basics
@@ -236,7 +237,9 @@ CHORDS = {   # name: (bass, voicing)
 }
 # The chord for each part of each video, by its name in the cue sheet
 PART_CHORD = {"intro": "C", "new": "C", "words": "Am", "accents": "G", "devices": "C", "auto": "Em",
-              "packrow": "C", "colour": "Am", "tourlook": "G", "tv": "Em", "settings": "G", "outro": "C"}
+              "packrow": "C", "colour": "Am", "tourlook": "G", "tv": "Em", "settings": "G", "outro": "C",
+              # 1.3.0's What's new (the app's own pages)
+              "tour": "Am", "split": "G", "buttons": "C", "symbols": "Em", "more": "Am", "secret": "G"}
 RETRO_TUNE = {"C": ["C4", "G4", "D5", "G4"], "Am": ["A3", "C4", "G4", "C4"], "G": ["G3", "D4", "A4", "D4"], "Em": ["A3", "D4", "G4", "D4"]}
 ARP = {"C": ["C4", "G4", "D5", "E5"], "Am": ["A3", "E4", "G4", "C5"], "G": ["G3", "D4", "A4", "E5"], "Em": ["E4", "A4", "D5", "G5"]}
 
@@ -868,7 +871,7 @@ def read_wav(path):
     b = raw.reshape(-1, 3); v = (b[:, 0].astype(np.int32) | (b[:, 1].astype(np.int32) << 8) | (b[:, 2].astype(np.int32) << 16))
     v = np.where(v >= 1 << 23, v - (1 << 24), v); return v.reshape(-1, 2).T / 8388608
 
-LENGTH = {"teaser": 64.27, "whats-new": 54.07}   # the remade videos (31 Oct 2026)
+LENGTH = {"teaser": 64.27, "whats-new": 54.07, "whats-new-1.3": 48.20}   # the remade videos (31 Oct 2026)
 MUSIC_DB = -6.5          # the bed sits under the key presses
 
 def render(cue_path, direction, out):

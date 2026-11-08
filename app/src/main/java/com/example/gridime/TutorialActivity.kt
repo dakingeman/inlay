@@ -13,6 +13,7 @@ import android.os.Handler
 import android.os.Looper
 import android.view.Gravity
 import android.view.KeyEvent
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowInsets
@@ -62,6 +63,8 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
     private lateinit var panel: StagePanel
     private lateinit var keyboardBox: View
     private lateinit var pictureCol: LinearLayout
+    /** What's new: the page's designed close-up, in place of the device and the keyboard. */
+    private var showcaseView: WhatsNewStage? = null
     private var stageRow: LinearLayout? = null
     /** Small screens: the words and the device beside them. */
     private var header: LinearLayout? = null
@@ -79,26 +82,34 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
 
     /** One page: a title, one plain sentence, up to five button rows, and what the keyboard acts out. */
     private class Page(val title: String, val body: String, val rows: List<Pair<String, String>>, val demo: Demo,
-                       val audience: For = For.ALL, val sticks: Boolean? = null)
-    private enum class Demo { WANDER, TYPE, SHIFT_AND_SYMBOLS, HOLD_RT, EDIT, YOURS,
-        WORDS, ACCENTS, ACCENTS_AND_WORDS, NUMBER_ROW, DEVICES, SHIFT_REMOTE, SMART, SOUNDS }
+                       val audience: For = For.ALL, val sticks: Boolean? = null, val scene: WhatsNewShowcase.Scene? = null)
+    private enum class Demo { WANDER, TYPE, SHIFT_AND_SYMBOLS, HOLD_RT, EDIT, YOURS, DONE,
+        WORDS, ACCENTS, ACCENTS_AND_WORDS, NUMBER_ROW, DEVICES, SHIFT_REMOTE, SMART, SOUNDS, SPLIT, MORE }
 
-    /** What the bottom face button (A on Xbox) is called on this controller, so the words match the badge. */
-    private val aName get() = when (settings.buttonStyle) {
+    /** What the typing button is called on this controller (bottom, or right with ButtonRoles), so the words match the badge. */
+    private val aName get() = if (ButtonRoles.position(ControllerButton.A) == ControllerButton.A) when (settings.shownButtonStyle) {
         ButtonStyle.XBOX -> "A"
         ButtonStyle.PLAYSTATION -> "Cross"
         ButtonStyle.SWITCH -> "B"
+    } else when (settings.shownButtonStyle) {
+        ButtonStyle.XBOX -> "B"
+        ButtonStyle.PLAYSTATION -> "Circle"
+        ButtonStyle.SWITCH -> "A"
     }
 
     /** What the right trigger is called on this controller. */
-    private val rtName get() = when (settings.buttonStyle) {
+    private val rtName get() = when (settings.shownButtonStyle) {
         ButtonStyle.XBOX -> "RT"
         ButtonStyle.PLAYSTATION -> "R2"
         ButtonStyle.SWITCH -> "ZR"
     }
 
+    /** What the left trigger and the right bumper are called on this controller (What's new speaks your controller's names). */
+    private val ltName get() = when (settings.shownButtonStyle) { ButtonStyle.XBOX -> "LT"; ButtonStyle.PLAYSTATION -> "L2"; ButtonStyle.SWITCH -> "ZL" }
+    private val rbName get() = when (settings.shownButtonStyle) { ButtonStyle.XBOX -> "RB"; ButtonStyle.PLAYSTATION -> "R1"; ButtonStyle.SWITCH -> "R" }
+
     /** What the "select" button is called on this controller, so the words match the badge. */
-    private val selectName get() = when (settings.buttonStyle) {
+    private val selectName get() = when (settings.shownButtonStyle) {
         ButtonStyle.XBOX -> "View"
         ButtonStyle.PLAYSTATION -> "Create"
         ButtonStyle.SWITCH -> "Minus"
@@ -126,7 +137,7 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
         val numbers: String                 // Number row
     )
 
-    private val texts: DemoTexts get() = if (remote) TV_TEXTS else when (settings.buttonStyle) {
+    private val texts: DemoTexts get() = if (remote) TV_TEXTS else when (settings.shownButtonStyle) {
         ButtonStyle.SWITCH -> DemoTexts(
             search = "ocarina of time",
             shiftLine = "Kirby's Dream Land (1992)",
@@ -203,6 +214,12 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
 
     /** For the consistency checks: each page shown on this device, with its button rows. */
     internal fun pageCheck(): List<Pair<String, List<String>>> = pages.map { it.title to it.rows.map { r -> r.second } }
+    /** For WhatsNewSenseTest: each page shown on this device, as title, words and scene. */
+    internal fun pageWordsCheck(): List<Triple<String, String, String?>> = pages.map { Triple(it.title, it.body, it.scene?.name) }
+    internal val pageCountShownForCheck get() = eyebrowCount.visibility == View.VISIBLE && eyebrowCount.text.isNotEmpty()
+    /** The release film (WhatsNewFilmExport.clip): no button prompts at the bottom, the page fills the frame (Emre, 8 Nov). */
+    internal fun hideControlsForFilm() { controlBar.visibility = View.GONE; dots.visibility = View.GONE }
+    internal val dotsShownForCheck get() = (dots.visibility == View.VISIBLE && dots.childCount > 0) || controlBar.dots != null
 
     /** For the consistency checks: whether this page shows the loop bar, and its runs so far. */
     internal val loopBarShown get() = panel.loopShown
@@ -216,52 +233,36 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
 
     private fun offNote(on: Boolean, what: String) = if (on) "" else " $what switched off right now: turn it on in Settings → Typing."
 
-    /** The highlights of [WhatsNew.VERSION], each acted out like the tour. */
+    /** The highlights of [WhatsNew.VERSION], each acted out like the tour. (The retro set stays a secret; one page teases it.) */
     private val whatsNewPages: List<Page> by lazy {
-        val learns = " It learns your words, like names and game titles."
-        listOf(
-            Page("Word suggestions that learn",
-                "While you type, the words you probably mean show in the top row." + learns +
-                    offNote(settings.wordSuggestions, "They're"),
-                listOf("Take the first word" to "{R3}", "Pick another one" to "{DUP} then {A}"),
-                Demo.WORDS, For.CONTROLLER, sticks = true),
-            Page("Word suggestions that learn",
-                "While you type, the words you probably mean show in the top row." + learns +
-                    offNote(settings.wordSuggestions, "They're"),
-                listOf("Take a word" to "{DUP} then {A}"),
-                Demo.WORDS, For.CONTROLLER, sticks = false),
-            Page("Word suggestions that learn",
-                "While you type, the words you probably mean show in the top row." + learns +
-                    offNote(settings.wordSuggestions, "They're"),
-                listOf("Take a word" to "up, then OK"),
-                Demo.WORDS, For.REMOTE),
-            Page("Nine sound packs, all remade",
-                "From soft real keys to little notes in one scale. Each pack plays here as it types its own name. Pick yours in Settings\u00A0\u2192 Sound\u00A0&\u00A0haptics." +
-                    (if (settings.soundVolume <= 0) " Sound is off right now: turn up Volume there to hear them."
-                    else if (!settings.soundInSilent && Feedback.silentNow(this)) " Your device is on silent: turn on Play in silent mode there to hear them."
-                    else ""),
-                emptyList(), Demo.SOUNDS),
-            Page("Hold $aName for accents",
-                "Hold $aName on a letter and its accents rise into the top row. Move to one and let go, or let go first and choose later." +
-                    offNote(settings.holdAccents, "It's"),
-                listOf("Show the accents" to "hold {A}", "Type the one you chose" to "let go of {A}",
-                    "Kept open: type it" to "{A}", "Keep the plain letter" to "{B}"),
-                Demo.ACCENTS, For.CONTROLLER),
-            Page("Hold OK for accents",
-                "Hold OK on a letter and its accents rise into the top row. Move to one and let go, or let go first and choose later." +
-                    offNote(settings.holdAccents, "It's"),
-                listOf("Show the accents" to "hold OK", "Type the one you chose" to "let go of OK",
-                    "Kept open: type it" to "OK", "Keep the plain letter" to "Back"),
-                Demo.ACCENTS, For.REMOTE),
-            Page("Tidies up as you type",
-                "A capital starts each sentence and a lone i becomes I. A space typed just before a full stop or comma moves after it. Each one has its own switch in Settings → Typing.",
-                emptyList(), Demo.SMART),
-            Page("Made for what you hold",
-                "Inlay knows if you hold a controller, a handheld, a vertical handheld or a TV remote, and fits its buttons and tips to it. Pick yours and try your buttons in Settings → Device.",
-                emptyList(), Demo.DEVICES),
-            Page("A number row, and tidier Settings",
-                "Turn on Number row in Settings → Look for 1 to 0 above the letters. Settings now has six tabs, each about one thing.",
-                emptyList(), Demo.NUMBER_ROW)
+        // Each page has its own designed close-up of the feature (WhatsNewShowcase), not a typing demo (Emre, 7 Nov)
+        listOfNotNull(
+            Page("A new welcome tour",
+                "Learn every button by typing a few game names, one small step at a time. Replay it any time in Settings\u00A0\u2192 About.",
+                emptyList(), Demo.MORE, For.CONTROLLER, scene = WhatsNewShowcase.Scene.TOUR),
+            Page("Split keyboard",
+                "Two halves, one under each thumb, with your app showing in between. Turn it on in Settings\u00A0\u2192 Look." +
+                    if (SplitRoom.splitPossible(this, settings.language)) "" else " It needs a wide screen held sideways.",
+                emptyList(), Demo.MORE, For.CONTROLLER, scene = WhatsNewShowcase.Scene.SPLIT),
+            Page("Show Inlay your buttons",
+                "Press your four face buttons once, then choose which one selects and which goes back. Works with any controller. Settings\u00A0\u2192 Device.",
+                emptyList(), Demo.MORE, For.CONTROLLER, scene = WhatsNewShowcase.Scene.BUTTONS),
+            Page("Quick symbols",
+                "Hold $ltName and press $aName on a symbol to type just that one, then let go to get back to your letters. Hold $aName on a symbol for related ones, like \u20AC\u00A0\u2192 \$\u00A0\u00A3\u00A0\u00A5.",
+                emptyList(), Demo.MORE, For.CONTROLLER, scene = WhatsNewShowcase.Scene.SYMBOLS),
+            Page("And a few more",
+                "Find any setting with $rbName, type by voice with a voice app, keep each app's language, and back up your settings.",
+                emptyList(), Demo.MORE, For.CONTROLLER, scene = WhatsNewShowcase.Scene.MORE),
+            // A teaser for the Konami Code, never the answer (Emre, 8 Nov: light words; the D-pad does the hinting).
+            // Controllers only (a remote can't enter it), and gone once the secret has been found.
+            if (settings.retroUnlocked) null else Page("Something's hidden",
+                "There's a secret somewhere in Inlay. Happy hunting.",
+                emptyList(), Demo.MORE, For.CONTROLLER, scene = WhatsNewShowcase.Scene.SECRET),
+            // A remote's What's new is this one page, so it stands on its own: never "And a few more" (Emre, 8 Nov).
+            // WhatsNewSenseTest holds every audience's set to that.
+            Page("Four small upgrades",
+                "Find any setting from the top of Settings, hold OK on the full stop for punctuation, keep each app's language, and back up your settings in Settings\u00A0\u2192 About.",
+                emptyList(), Demo.MORE, For.REMOTE, scene = WhatsNewShowcase.Scene.MORE_REMOTE)
         )
     }
 
@@ -287,8 +288,8 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
                 "Move the highlight with the ring on your remote, then press OK. Space, Delete and Enter are keys on the keyboard itself.",
                 listOf("Move the highlight" to "the ring", "Type the highlighted key" to "OK", "Close the keyboard" to "Back"),
                 Demo.TYPE, For.REMOTE),
-            Page("Capitals, numbers and symbols",
-                "Tap the triggers to switch what the keys show.",
+            Page("Typing faster",
+                "Accents, a suggestion and numbers.",
                 listOf("Shift · tap twice for caps lock" to "{R2}", "Numbers and symbols" to "{L2}") +
                     (if (controls.sticks) listOf("Keyboard size" to "{L3}") else emptyList()),
                 Demo.SHIFT_AND_SYMBOLS, For.CONTROLLER),
@@ -296,32 +297,27 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
                 "Shift and ?123 are keys on the keyboard: move to one and press OK. Shift twice is caps lock.",
                 listOf("Capitals" to "Shift key, then OK", "Numbers and symbols" to "?123, then OK"),
                 Demo.SHIFT_REMOTE, For.REMOTE),
-            Page("Hold $rtName for more",
-                "While you hold $rtName, these tips show on the keyboard too.",
-                listOf("One capital letter" to "{R2} + {A}", "Jump a whole word" to "{R2} + {L1} {R1}",
-                    "Accent the last letter (é, ñ, å…)" to "{R2} + {Y}", "Undo" to "{R2} + {X}"),
-                Demo.HOLD_RT, For.CONTROLLER),
-            Page("Accents and word suggestions",
-                "Hold $aName on a letter for é, ñ and more. Inlay also suggests words as you type.",
-                listOf("Type an accent · move, then let go" to "hold {A}", "Keep the plain letter" to "{B}", "Take the first word" to "{R3}"),
-                Demo.ACCENTS_AND_WORDS, For.CONTROLLER, sticks = true),
-            Page("Accents and word suggestions",
-                "Hold $aName on a letter for é, ñ and more. Inlay also suggests words as you type.",
-                listOf("Type an accent · move, then let go" to "hold {A}", "Keep the plain letter" to "{B}", "Take a word" to "{DUP} then {A}"),
-                Demo.ACCENTS_AND_WORDS, For.CONTROLLER, sticks = false),
             Page("Accents and word suggestions",
                 "Hold OK on a letter for é, ñ and more. Inlay also suggests words as you type.",
                 listOf("Type an accent · move, then let go" to "hold OK", "Keep the plain letter" to "Back", "Take a word" to "up, then OK"),
                 Demo.ACCENTS_AND_WORDS, For.REMOTE),
-            Page("Select, copy and paste",
-                "Press $selectName to select. Cut, Copy, Paste and your last six copies are in the top row.",
+            Page("Fixing and editing",
+                "The cursor, selecting and copying, undo, and closing the keyboard.",
                 listOf("Move the text cursor" to "{L1} {R1}", "Start selecting" to "{SELECT}",
                     "Grow the selection" to "{L1} {R1}", "Select everything" to "{SELECTx2}"),
                 Demo.EDIT, For.CONTROLLER),
             Page("Make it yours",
-                "Themes, sound packs, languages and a number row are all in Settings" +
-                    (if (remote) "." else ", and Xbox, PlayStation or Switch button icons.") + " Settings → Device lets you try your buttons, and About replays this tour.",
-                emptyList(), Demo.YOURS)
+                if (remote) "Themes, sound packs, languages and a number row are all in Settings. About replays this tour."
+                else "A few more things, for when you want them. Settings → About replays this tour.",
+                if (remote) emptyList() else listOfNotNull(
+                    if (controls.sticks) "Keyboard size · Normal, Large, Largest" to "{L3}" else null,
+                    "Switch language" to "hold {R2} + {L2}",
+                    "Find any setting · in Settings" to "{R1}",
+                    "Themes, Split and icons · in Look" to "Settings",
+                    "Sound packs · in Sound & haptics" to "Settings"),
+                Demo.YOURS),
+            // The end: what you've learnt, and a second go at anything that took a few tries
+            Page("You're all set", "", if (remote) emptyList() else listOf("Hold it any time · see what the keys do" to "hold {R2}"), Demo.DONE)
         )
     }
 
@@ -341,7 +337,7 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
         Palette.init(this)
         SettingsStyle.init(this)
         settings = KeyboardSettings.load(this)
-        SettingsStyle.accent = settings.accent
+        SettingsStyle.accent = settings.activeAccent
         volumeControlStream = AudioManager.STREAM_MUSIC
         feedback = Feedback(this).apply { update(settings) }
         // Our own black from the very first frame, never the system theme's grey
@@ -354,6 +350,44 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
         goFullScreen()
         // Turning the device rebuilds the screen; stay on the same page
         show(savedInstanceState?.getInt(KEY_PAGE) ?: 0, animate = false)
+        // First of all, on a controller: show Inlay your buttons, so everything after presses the right ones
+        if (savedInstanceState == null && !whatsNew && !remote && !settings.faceSetUp && askSetup) startSetup()
+    }
+
+    // ---- The button setup, before the tour (ButtonSetup.kt): once, on a controller --------------------------------
+    private var setup: ButtonSetupView? = null
+    private var setupDevice = -1
+    private val leaveSetup = Runnable { setup?.leave() }
+    internal val setupForCheck get() = setup
+
+    private fun startSetup() {
+        val v = ButtonSetupView(this, settings.face).apply { accent = settings.activeAccent }
+        v.onDone = { result ->
+            if (result != null) {
+                settings = settings.withFace(result, ButtonRoles.descriptor(setupDevice)); settings.save(this); ButtonRoles.apply(settings)
+                feedback.confirm()
+                show(page, animate = false)                     // every {A} on the pages now shows the button you chose
+            }
+            setup = null
+            v.animate().alpha(0f).setDuration(Design.MOTION_FADE).withEndAction { (v.parent as? ViewGroup)?.removeView(v) }.start()
+        }
+        setup = v
+        (findViewById<View>(android.R.id.content) as ViewGroup).addView(v, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+    }
+
+    /** A press while the setup shows: raw, as sent. Hold Start leaves it (then the tour, with the buttons as they were). */
+    private fun setupKey(raw: KeyEvent): Boolean {
+        val v = setup ?: return false
+        if (raw.keyCode == KeyEvent.KEYCODE_BUTTON_START) {
+            if (raw.action == KeyEvent.ACTION_DOWN && raw.repeatCount == 0) dots.postDelayed(leaveSetup, Design.SETUP_LEAVE_HOLD_MS)
+            else if (raw.action == KeyEvent.ACTION_UP) dots.removeCallbacks(leaveSetup)
+            return true
+        }
+        if (raw.action == KeyEvent.ACTION_DOWN && raw.repeatCount == 0) {
+            if (FaceSetup.isFace(raw.keyCode)) setupDevice = raw.deviceId
+            v.press(raw.keyCode); feedback.move()
+        }
+        return true
     }
 
     /**
@@ -464,7 +498,7 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             // Graphite with a soft light in the user's highlight colour; What's new is lit differently from the tour
-            background = Backdrop(settings.accent, whatsNew)
+            background = Backdrop(settings.activeAccent, whatsNew)
             // The controller never "focuses" anything here (that is what drew a grey box
             // around the words): the whole screen listens for buttons instead.
             descendantFocusability = ViewGroup.FOCUS_BLOCK_DESCENDANTS
@@ -492,12 +526,12 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
             typeface = SettingsStyle.medium
             // Your colour as a soft tint, never a ring: rings mean "you are here" (audit + Emre, 28 Oct 2026).
             // The words are measured on the backdrop's light (and the tag's tint): 4.5:1 with any colour
-            setTextColor(labelColor(settings.accent, whatsNew))
+            setTextColor(labelColor(settings.activeAccent, whatsNew))
             includeFontPadding = false
             if (whatsNew) {
                 background = android.graphics.drawable.GradientDrawable().apply {
                     cornerRadius = Design.RADIUS_PILL
-                    setColor(Contrast.withAlpha(settings.accent, Design.ALPHA_TINT_TAG))
+                    setColor(Contrast.withAlpha(settings.activeAccent, Design.ALPHA_TINT_TAG))
                 }
                 setPadding(px(Design.SPACE_S), px(Design.SPACE_XS), px(Design.SPACE_S), px(Design.SPACE_XS))
             }
@@ -549,14 +583,16 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
         // ---- The stage: the device you hold and the keyboard it drives, side by side ----
         field = DemoFieldView(this)
         picture = DevicePictureView(this).apply {
-            accent = settings.accent
+            accent = settings.activeAccent
             maxHeightDp = if (wide) 2000f else PICTURE_NARROW_DP   // side by side: as tall as the stage allows
             tallBoost = false                                       // the stage (or the portrait cap) sets the size
-            show(controls.kind, settings.buttonStyle, controls.sticks)
+            show(controls.kind, settings.shownButtonStyle, controls.sticks)
             importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
         }
         demo = KeyGridView(this).apply {
+            clearsBehind = false                     // inside the page (never cut a hole through the tour)
             isFocusable = false
+            allowSplit = false        // the tour's scripted demos show the standard keyboard; Split gets its own What's new page
             listener = this@TutorialActivity
             // The picture lights whatever the keyboard acts out: D-pad steps, A, RT, LT
             onDemoInput = { key, held ->
@@ -607,10 +643,12 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
         }
         panel.loop = loop
         panel.addOnLayoutChangeListener { _, _, top, _, bottom, _, oldTop, _, oldBottom -> if (bottom - top != oldBottom - oldTop) fitCardToPanel() }
-        panel.loopAccent = settings.accent
+        panel.loopAccent = settings.activeAccent
 
         // The screen's side margin; small screens keep a little less, so the keyboard gets the width
         val side = px(if (short) Design.SPACE_XL else Design.SPACE_XXL)
+        val sc = if (whatsNew) WhatsNewStage(this, settings, controls) else null
+        showcaseView = sc
         words.addView(rows, lpMatchWrap(topMargin = if (short) Design.SPACE_S else if (wide) Design.SPACE_M else Design.SPACE_XL))
         rowsPane = rows
         if (split) {
@@ -626,8 +664,11 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
             splitRight = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER_HORIZONTAL
-                addView(pictureCol, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
-                addView(stage, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = px(Design.SPACE_M) })
+                if (sc != null) addView(sc, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
+                else {
+                    addView(pictureCol, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
+                    addView(stage, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = px(Design.SPACE_M) })
+                }
             }
             root.addView(LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL
@@ -656,7 +697,7 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
             header = LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL
                 addView(bodyCol, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f))
-                addView(pictureCol, LinearLayout.LayoutParams(deviceColumnPx(), ViewGroup.LayoutParams.MATCH_PARENT).apply {
+                if (sc == null) addView(pictureCol, LinearLayout.LayoutParams(deviceColumnPx(), ViewGroup.LayoutParams.MATCH_PARENT).apply {
                     marginStart = px(DEVICE_HEADER_GAP_DP) })
             }
             words.addView(header, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
@@ -667,7 +708,8 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
                 // Centred in its room: the number row's page shows a taller keyboard, which grows evenly both ways
                 gravity = Gravity.CENTER_VERTICAL
                 setPadding(side, px(if (short) Design.SPACE_S else Design.SPACE_L), side, px(if (short) Design.SPACE_S else Design.SPACE_M))
-                addView(stage, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+                if (sc != null) addView(sc, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f))
+                else addView(stage, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
             }
             root.addView(stageRow, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
         } else {
@@ -676,9 +718,15 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
             wordsScroll = wordsPane
             wordsPane.setPadding(side, px(Design.SPACE_M), side, px(Design.SPACE_M))
             root.addView(wordsPane, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
-            root.addView(pictureCol, lpMatchWrap().apply { bottomMargin = px(Design.SPACE_M) })
-            if (onTv) stage.setPadding(side, 0, side, 0)
-            root.addView(stage, lpMatchWrap().apply { if (!onTv) { marginStart = side; marginEnd = side } })
+            if (sc != null) {
+                // Upright: the words take what they need, the close-up the rest (it scales to fit)
+                (wordsPane.layoutParams as LinearLayout.LayoutParams).apply { height = ViewGroup.LayoutParams.WRAP_CONTENT; weight = 0f }
+                root.addView(sc, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f).apply { marginStart = side; marginEnd = side; bottomMargin = px(Design.SPACE_M) })
+            } else {
+                root.addView(pictureCol, lpMatchWrap().apply { bottomMargin = px(Design.SPACE_M) })
+                if (onTv) stage.setPadding(side, 0, side, 0)
+                root.addView(stage, lpMatchWrap().apply { if (!onTv) { marginStart = side; marginEnd = side } })
+            }
         }
         controlBar = ControlBar(this)
         root.addView(controlBar, lpMatchWrap())
@@ -707,22 +755,34 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
         val p = pages[index]
         eyebrow.text = if (whatsNew) "New in ${WhatsNew.VERSION}" else "Welcome tour"
         eyebrowCount.text = if (whatsNew) "${index + 1} of ${pages.size}" else "· ${index + 1} of ${pages.size}"
+        // one page is nothing to count: no "1 of 1"
+        eyebrowCount.visibility = if (pages.size > 1) View.VISIBLE else View.GONE
         title.text = p.title
         body.text = p.body
         buildRows(p.rows)
         rowsPane.visibility = if (rows.childCount == 0) View.GONE else View.VISIBLE
         refreshDots()
         val next = if (index < pages.lastIndex) "Next" else if (whatsNew) "Got it" else "Done"
-        controlBar.show(settings.buttonStyle, if (remote) listOf(
+        controlBar.show(settings.shownButtonStyle, if (remote) listOf(
             // A remote has OK and Back, no badges: Back steps back, or leaves from the first page
             "OK · $next",
             if (index > 0) "Back · Previous" else if (whatsNew) "Back · Close" else "Back · Skip the tour"
         ) else listOfNotNull(
             "{A} $next",
             if (index > 0) "{B} Back" else null,
-            if (index < pages.lastIndex) (if (whatsNew) "{START} Close" else "{START} Skip the tour") else null
+            if (index < pages.lastIndex) (if (whatsNew) "{START} Close" else "hold {START} Skip the tour") else null
         ))
-        startDemo(p.demo)
+        endTurn()
+        dots.removeCallbacks(hint); hinted = false; watching = false
+        if (p.demo == Demo.DONE) showDone()
+        val sc = showcaseView
+        if (sc != null) { handler.removeCallbacksAndMessages(null); sc.scene = p.scene } else startDemo(p.demo)
+        // The last two pages show, they don't act out: no loop to wait for; the card lights its buttons on the picture
+        // The last page shows, nothing loops. (The card's rows take turns on their own, lit on the picture: RowLight.)
+        if (p.demo == Demo.DONE) panel.loopShown = false
+        // Try first (Emre's pick, 5 Nov 2026): a page with a try asks straight away. The demo is the help, played
+        // once if nothing's pressed for a few seconds ([HINT_AFTER_MS])
+        if (tryFor(p) != null) beginTurn()
         wordsScroll?.scrollTo(0, 0)
         fitWhenLaidOut()
         if (animate) {
@@ -758,7 +818,7 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
         val shared = if (list.size >= 2 && matches.all { it != null } && matches.map { it!!.groupValues[1] }.distinct().size == 1)
             matches.first()!!.groupValues[1] else null
         val shown = if (shared != null) list.mapIndexed { i, (what, _) -> what to matches[i]!!.groupValues[2] } else list
-        if (shared != null) rows.addView(BadgeLineView(this, HintText.parse("$shared +"), settings.buttonStyle, Design.TYPE_CAPTION,
+        if (shared != null) rows.addView(BadgeLineView(this, HintText.parse("$shared +"), settings.shownButtonStyle, Design.TYPE_CAPTION,
             SettingsStyle.textSecondary, badgeScale = badgeScale, gapBadgeToBadge = BADGE_GAP, gapBadgeToText = TEXT_GAP),
             lpMatchWrap().apply { bottomMargin = px(Design.SPACE_XS) })
         val parsed = shown.map { (what, buttons) -> what to HintText.parse(buttons) }
@@ -785,7 +845,7 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
         allowMarkerMargin()
     }
 
-    private fun badgeLine(parts: List<HintPart>) = BadgeLineView(this, parts, settings.buttonStyle, Design.TYPE_CAPTION,
+    private fun badgeLine(parts: List<HintPart>) = BadgeLineView(this, parts, settings.shownButtonStyle, Design.TYPE_CAPTION,
         SettingsStyle.textSecondary, badgeScale = badgeScale, gapBadgeToBadge = BADGE_GAP, gapBadgeToText = TEXT_GAP)
 
     private fun rowLabel(what: String) = TextView(this).apply {
@@ -812,7 +872,7 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
         tag = MARKER_TAG
         background = android.graphics.drawable.GradientDrawable().apply {
             cornerRadius = px(MARKER_WIDTH_DP / 2f).toFloat()
-            setColor(markerColor(settings.accent, whatsNew))
+            setColor(markerColor(settings.activeAccent, whatsNew))
         }
         layoutParams = LinearLayout.LayoutParams(px(MARKER_WIDTH_DP), badgeHeight(parts).roundToInt()).apply { marginEnd = px(MARKER_GAP_DP) }
         importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
@@ -835,7 +895,7 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
     }
 
     private fun badgeHeight(parts: List<HintPart>): Float =
-        BadgePainter(dp).apply { style = settings.buttonStyle; scale = badgeScale; gapBadgeToBadge = BADGE_GAP; gapBadgeToText = TEXT_GAP }.lineHeight(parts)
+        BadgePainter(dp).apply { style = settings.shownButtonStyle; scale = badgeScale; gapBadgeToBadge = BADGE_GAP; gapBadgeToText = TEXT_GAP }.lineHeight(parts)
 
     // ---- The card: one step at a time, the one the demo is acting out (every screen, 30 Oct 2026) ----------
     /**
@@ -880,7 +940,7 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
     private val actionSp get() = if (compactCard) bodySp() else Design.TYPE_TITLE
 
     /** The card's buttons at the card's size. */
-    private fun cardBadges(parts: List<HintPart>) = BadgeLineView(this, parts, settings.buttonStyle, Design.TYPE_CAPTION, SettingsStyle.textSecondary,
+    private fun cardBadges(parts: List<HintPart>) = BadgeLineView(this, parts, settings.shownButtonStyle, Design.TYPE_CAPTION, SettingsStyle.textSecondary,
         badgeScale = cardBadgeScale, gapBadgeToBadge = BADGE_GAP, gapBadgeToText = TEXT_GAP)
 
     /**
@@ -1030,7 +1090,7 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
 
     private fun pip(on: Boolean) = android.graphics.drawable.GradientDrawable().apply {
         shape = android.graphics.drawable.GradientDrawable.OVAL
-        setColor(if (on) settings.accent else Design.DOT_IDLE)
+        setColor(if (on) settings.activeAccent else Design.DOT_IDLE)
     }
 
     private fun setCaption(i: Int) {
@@ -1080,10 +1140,10 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
         addView(TextView(context).apply {
             text = "${k + 1}"; gravity = Gravity.CENTER; textSize = Design.TYPE_MIN; typeface = SettingsStyle.medium
             includeFontPadding = false
-            setTextColor(if (on) Contrast.inkFor(settings.accent) else SettingsStyle.textSecondary)
+            setTextColor(if (on) Contrast.inkFor(settings.activeAccent) else SettingsStyle.textSecondary)
             background = android.graphics.drawable.GradientDrawable().apply {
                 shape = android.graphics.drawable.GradientDrawable.OVAL
-                if (on) setColor(settings.accent) else setStroke(max(2, px(1f)), Design.DOT_IDLE)
+                if (on) setColor(settings.activeAccent) else setStroke(max(2, px(1f)), Design.DOT_IDLE)
             }
         }, LinearLayout.LayoutParams(size, size))
         addView(TextView(context).apply {
@@ -1177,7 +1237,10 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
         val full = shownRows.map { HintText.parse(it.second) }
         // The buttons each row presses (not the ones it holds first): the keys on the keyboard they point at
         val pressed = full.map { parts -> parts.filterIsInstance<HintPart.Badge>().filter { !it.held }.map { it.button }.toSet() }
-        val r = RowLight(full, takeTurns = captionMode) { i, byDemo ->
+        // The end pages (Make it yours, You're all set) are for reading: each row stays a good while (Emre, 6 Nov)
+        val reading = pages.getOrNull(page)?.demo.let { it == Demo.YOURS || it == Demo.DONE }
+        val r = RowLight(full, takeTurns = captionMode, dwell = if (reading) READ_ROW_MS else RowLight.DWELL_MS,
+            idle = if (reading) READ_ROW_MS else RowLight.IDLE_MS) { i, byDemo ->
             lightRow(i)
             demo.spotlight = pressed[i]
             // A row having its turn while the demo does something else: its buttons show on the device as
@@ -1340,6 +1403,29 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
      */
     private fun reserveWords() {
         val now = page
+        if (showcaseView != null) {
+            // What's new: the words keep the tallest page's height, so the close-up below or beside them never moves
+            // (counted in lines, so it works in every layout: beside the close-up, above it, or across the top)
+            var titleLines = 1; var bodyLines = 1
+            for (p in pages) {
+                title.text = p.title; body.text = p.body
+                title.measure(View.MeasureSpec.makeMeasureSpec(max(1, title.width), View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED))
+                body.measure(View.MeasureSpec.makeMeasureSpec(max(1, body.width), View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED))
+                titleLines = max(titleLines, title.layout?.lineCount ?: 1); bodyLines = max(bodyLines, body.layout?.lineCount ?: 1)
+            }
+            title.minLines = titleLines; body.minLines = bodyLines
+            if (header != null) {
+                // Small screens: the words sit across the top at their own height, and the close-up takes the rest
+                words.measure(View.MeasureSpec.makeMeasureSpec(words.width, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED))
+                (words.layoutParams as LinearLayout.LayoutParams).height = words.measuredHeight
+            }
+            wordsHeight = max(1, words.height)
+            val p = pages[now]
+            title.text = p.title; body.text = p.body; buildRows(p.rows)
+            rowsPane.visibility = if (rows.childCount == 0) View.GONE else View.VISIBLE
+            words.requestLayout()
+            return
+        }
         if (split) {
             val room = words.height - words.paddingTop - words.paddingBottom
             val tooTall = pages.any { p ->
@@ -1448,6 +1534,26 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
         startRowLight()
     }
 
+    /** For the checks: where What's new's close-up is drawn (in the window) and how big a design unit is, in dp. */
+    internal fun showcaseForCheck(): Pair<android.graphics.Rect, Float>? {
+        val sc = showcaseView ?: return null
+        val l = IntArray(2); sc.getLocationInWindow(l); val d = sc.drawnForCheck
+        return android.graphics.Rect(l[0] + d.left.toInt(), l[1] + d.top.toInt(), l[0] + d.right.toInt(), l[1] + d.bottom.toInt()) to
+            (sc.unitPxForCheck / dp)
+    }
+
+    internal fun splitGapShareForCheck(): Float? = showcaseView?.splitGapShareForCheck()
+    /** For the checks: how much of the What's new page you left still shows (the dissolve). */
+    internal fun crossLeftForCheck(): Float = showcaseView?.crossLeftForCheck ?: 0f
+    /** For the checks: where What's new's window and device sit now, and where the stage itself is in the window. */
+    internal fun stageSteadyForCheck(): List<String>? {
+        val sc = showcaseView ?: return null
+        val l = IntArray(2); sc.getLocationInWindow(l)
+        return listOf("stage ${l[0]},${l[1]} ${sc.width}x${sc.height}") + sc.steadyForCheck()
+    }
+
+    internal fun showcaseTooSmallForCheck(): String? = showcaseView?.apply { minFit = minFitForCheck }?.tooSmallForCheck()
+
     /** For the checks: what TourBalanceTest measures on the page on show. */
     internal class Balance(val pieces: String, val scale: Float, val titlePx: Float, val screenShortPx: Int, val screenH: Int, val cardFill: Float?, val biggestBand: Float)
     internal fun balanceForCheck(): Balance {
@@ -1458,7 +1564,7 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
             if (v is TextView && v.text.isNullOrEmpty()) return null
             v.getLocationInWindow(loc); return android.graphics.Rect(loc[0], loc[1], loc[0] + v.width, loc[1] + v.height)
         }
-        val pieces = listOfNotNull(box(eyebrowRow), box(dots), box(title), box(body), box(cardBox()), box(picture), box(panel), box(controlBar))
+        val pieces = listOfNotNull(box(eyebrowRow), box(dots), box(title), box(body), box(cardBox()), box(picture), box(panel), box(showcaseView), box(controlBar))
         // Where on the screen's height something is shown, then the tallest stretch right across the screen with nothing
         var reach = 0; var biggest = 0
         pieces.sortedBy { it.top }.forEach { r -> biggest = maxOf(biggest, r.top - reach); reach = maxOf(reach, r.bottom) }
@@ -1519,6 +1625,11 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
         fun win(v: View): android.graphics.Rect { val l = IntArray(2); v.getLocationInWindow(l); return android.graphics.Rect(l[0], l[1], l[0] + v.width, l[1] + v.height) }
         val b = win(box).apply { top += box.paddingTop; bottom -= box.paddingBottom }
         var worst = 0
+        showcaseView?.let { sc ->
+            // What's new: the close-up must sit whole inside its room
+            val r = win(sc); val d = sc.drawnForCheck
+            return maxOf(b.top - (r.top + d.top.toInt()), (r.top + d.bottom.toInt()) - b.bottom, b.left - (r.left + d.left.toInt()), (r.left + d.right.toInt()) - b.right, 0)
+        }
         for (v in listOf(picture, panel)) {
             if (v.visibility != View.VISIBLE || (v === picture && pictureCol.parent !== box)) continue   // beside the words: checked there
             val r = win(v)
@@ -1549,8 +1660,9 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
 
     /** Progress: one dot per page, the current one a wider accent pill. On short screens they sit in the control bar. */
     private fun refreshDots() {
-        if (short) { dots.visibility = View.GONE; controlBar.dots = pages.size to page; return }
+        if (short) { dots.visibility = View.GONE; controlBar.dots = if (pages.size > 1) pages.size to page else null; return }
         dots.removeAllViews()
+        if (pages.size < 2) return                                    // one page: no lone dot
         pages.indices.forEach { i ->
             dots.addView(View(this).apply {
                 background = android.graphics.drawable.GradientDrawable().apply {
@@ -1589,14 +1701,14 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
     private fun showcase(kind: DeviceKind, sticks: Boolean) {
         // The vertical handheld with and without sticks are nearly the same: one turns into the other in place
         if (kind == picture.kind && kind == DeviceKind.VERTICAL) {
-            picture.morphTo(kind, settings.buttonStyle, sticks, SHOWCASE_MORPH_MS)
+            picture.morphTo(kind, settings.shownButtonStyle, sticks, SHOWCASE_MORPH_MS)
             return
         }
         picture.animate().cancel()
         picture.animate().alpha(0f).scaleX(SHOWCASE_SCALE).scaleY(SHOWCASE_SCALE)
             .setDuration(SHOWCASE_OUT_MS).setInterpolator(Design.EASE_IN)
             .withEndAction {
-                picture.show(kind, settings.buttonStyle, sticks)
+                picture.show(kind, settings.shownButtonStyle, sticks)
                 picture.animate().alpha(1f).scaleX(1f).scaleY(1f)
                     .setDuration(SHOWCASE_IN_MS).setInterpolator(Design.EASE_OUT).start()
             }.start()
@@ -1605,6 +1717,7 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
     private fun startDemo(demoKind: Demo) {
         handler.removeCallbacksAndMessages(null)
         beatList = emptyList(); beatHeld = false; beatsShown.clear()
+        panel.holdLevel = null
         demo.animate().cancel(); demo.translationY = 0f; demo.alpha = 1f
         feedback.update(settings)            // your own sound pack again (the sound showcase borrows others)
         field.tag = null
@@ -1612,13 +1725,14 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
         picture.alpha = 1f; picture.scaleX = 1f; picture.scaleY = 1f
         smartDemo = false
         // Every page starts from your own colour and device: the theme demo and the device tour change them
-        picture.accent = settings.accent
-        picture.show(controls.kind, settings.buttonStyle, controls.sticks)
-        field.accent = settings.accent
+        picture.accent = settings.activeAccent
+        picture.show(controls.kind, settings.shownButtonStyle, controls.sticks)
+        field.accent = settings.activeAccent
         // Normal size, so the words always have room above it; hints on, as a new user sees them.
         // The number row only on its own page, and suggestions and accents always on, so every demo looks the same for everyone.
         val base = settings.copy(showHints = true, comboHints = true).forControls(controls).copy(sizeLevel = 0,
-            numberRow = demoKind == Demo.NUMBER_ROW, wordSuggestions = true, holdAccents = true)
+            numberRow = demoKind == Demo.NUMBER_ROW, wordSuggestions = true, holdAccents = true,
+            split = demoKind == Demo.SPLIT && SplitRoom.splitPossible(this, settings.language))
         demo.applySettings(base)
         demoBase = base
         demo.setSuggestions(emptyList(), "")
@@ -1626,7 +1740,7 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
         picture.held = emptySet()
         picture.holding = emptySet()
         picture.stickPush = emptyMap()
-        picture.show(controls.kind, settings.buttonStyle, controls.sticks)
+        picture.show(controls.kind, settings.shownButtonStyle, controls.sticks)
         demo.setField(FieldKind.TEXT)
         demo.closeClips(focusOnHistoryButton = false)
         demo.setHeldShift(false)
@@ -1634,7 +1748,7 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
         demo.setSelecting(false, 0)
         demo.setClips(emptyList())
         typed = ""
-        field.accent = settings.accent
+        field.accent = settings.activeAccent
         field.placeholder = if (remote) "Type with your remote" else "Type with your controller"
         demo.placeholder = field.placeholder
         field.visibility = if (onTv) View.GONE else View.VISIBLE
@@ -1647,7 +1761,7 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
         // has none, and its devices get that room to be bigger. Elsewhere INVISIBLE when still, so the
         // picture keeps its size.
         loop.restart()
-        panel.loopAccent = settings.accent
+        panel.loopAccent = settings.activeAccent
         panel.loopShown = demoKind != Demo.WANDER && moving
         picture.requestLayout()
         val path = listOf(1 to 0, 1 to 0, 0 to -1, -1 to 0, 0 to 1, 1 to 0)
@@ -1736,6 +1850,10 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
                 typeLoop(sentence)
             }
             Demo.SOUNDS -> runSteps(soundSteps(), moving, still = 1)
+            // 1.3: the keyboard in two halves (where the screen allows), typing a line, and again
+            Demo.SPLIT -> { if (!moving) showText(texts.numbers); typeLoop(texts.numbers) }
+            // 1.3: the smaller things: the microphone in the top row, typing a line
+            Demo.MORE -> { if (!moving) showText(texts.numbers); typeLoop(texts.numbers) }
             Demo.NUMBER_ROW -> {
                 // Types a short line with letters and the number row, pauses, clears, and goes again
                 val sentence = texts.numbers
@@ -1755,7 +1873,7 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
                     val shown = if (k == 0) base else base.copy(
                         toneIndex = (settings.toneIndex + k) % tones.size,
                         accentIndex = (settings.accentIndex.coerceAtLeast(0) + k * 3) % Palette.accents.size,
-                        buttonStyle = styles[(settings.buttonStyle.ordinal + k) % styles.size])
+                        buttonStyle = styles[(settings.buttonStyle.ordinal + k) % styles.size], themeIcons = false)
                     demo.applySettings(shown)
                     picture.accent = shown.accent
                     panel.loopAccent = shown.accent
@@ -1921,7 +2039,10 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
         return true
     }
 
-    private fun setTyped(text: String) { typed = text; showText(text) }
+    private fun setTyped(text: String) { typed = text; tail = ""; showText(text) }
+    /** A turn's text: [before] the cursor and [after] it (Mario|Kart). Typing goes in at the cursor. */
+    private var tail = ""
+    private fun setField(before: String, after: String) { typed = before; tail = after; showText(before, after = after) }
 
     /** The beats for this page's rows (each page's rows are known, so every row has its beat; TourBeatTest checks). */
     private fun beatsFor(kind: Demo): List<Beat>? = when (kind) {
@@ -1981,12 +2102,12 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
     /** Triggers: RT shift, then caps lock; LT the symbols and back; L3 each keyboard size and back. */
     private fun shiftBeats(): List<Beat> = shownRows.indices.map { i ->
         val keys = keysOfRow(i)
-        val reset = { demo.resetShift(); demo.resetLayer(); field.tag = null; showText(texts.shiftLine) }
+        val reset = { panel.holdLevel = null; demo.resetShift(); demo.resetLayer(); field.tag = null; showText(texts.shiftLine) }
         when {
             "RT" in keys -> Beat(i, reset, listOf(act(SHIFT_SEE_MS) { demo.cycleShift() }, act(0L) { demo.cycleShift() }))
             "LT" in keys -> Beat(i, reset, listOf(act(SHIFT_SEE_MS + 400L) { demo.toggleLayer() }, act(0L) { demo.toggleLayer() }))
             // Each press of L3 the next size; the text box names it, since the stage fits the keyboard to its room
-            else -> Beat(i, { reset(); demo.applySettings(demoBase); field.tag = SIZE_NAMES[0] }, (1..SIZE_NAMES.size).map { k ->
+            else -> Beat(i, { reset(); panel.holdLevel = SIZE_NAMES.lastIndex; demo.applySettings(demoBase); field.tag = SIZE_NAMES[0] }, (1..SIZE_NAMES.size).map { k ->
                 act(if (k < SIZE_NAMES.size) SHIFT_SEE_MS else 0L) {
                     picture.flash("LS")
                     demo.applySettings(demoBase.copy(sizeLevel = k % SIZE_NAMES.size))
@@ -2064,18 +2185,20 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
                 act(0L) { setTyped(typed + t.accentAfter) })
     }
 
-    /** Hold A, let go: the accents stay open; B: the plain letter stays. */
+    /**
+     * The plain letter. A controller: hold A, the accents rise, let go without moving and they close, the letter stays.
+     * A TV remote: let go and they stay open, then Back keeps the plain letter.
+     */
     private fun plainLetterBeat(row: Int): Beat {
         val t = texts
+        val start = listOf(walk(press = false, wait = 0L) { demo.stepTowards(t.accentLetter.toString()) }, act(ACCENT_OPEN_MS) { demo.pressA() })
         return Beat(row, { demo.resetAccents(); setTyped(t.accentBefore) },
-            listOf(walk(press = false, wait = 0L) { demo.stepTowards(t.accentLetter.toString()) },
-                act(ACCENT_OPEN_MS) { demo.pressA() },
-                act(ACCENT_STEP_MS) { demo.releaseA() },
-                act(ACCENT_STEP_MS) { demo.moveFocus(1, 0) },
+            if (!remote) start + act(ACCENT_TYPED_MS) { demo.releaseA() }
+            else start + listOf(act(ACCENT_STEP_MS) { demo.releaseA(remote = true) }, act(ACCENT_STEP_MS) { demo.moveFocus(1, 0) },
                 act(0L) { picture.flash("B"); demo.cancelAccents() }))
     }
 
-    /** What's new, Hold A: show them (held), let go to type one, let go first and choose later, and B. */
+    /** What's new, Hold A: show them (held), let go to type one, and let go without moving to keep the letter (a remote: choose later, then Back). */
     private fun accentPageBeats(): List<Beat> {
         val t = texts
         val (_, target) = accentTarget()
@@ -2089,11 +2212,13 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
                 val p: () -> Long? = { if (done) null else { done = true; if (demo.isAccentsOpen()) 0L else { setTyped(t.accentBefore); demo.pressA(); ACCENT_OPEN_MS } } }
                 p
             }) + along + act(ACCENT_TYPED_MS) { demo.releaseA() } + act(0L) { setTyped(typed + t.accentAfter) }),
+        ) + (if (!remote) listOf(plainLetterBeat(2)) else listOf(
+            // a TV remote: let go first and choose later, then Back keeps the plain letter
             Beat(2, { demo.resetAccents(); setTyped(t.accentBefore) },
-                listOf(toLetter, act(ACCENT_OPEN_MS) { demo.pressA() }, act(ACCENT_STEP_MS) { demo.releaseA() }) + along +
-                    act(PRESS_MS) { demo.pressA() } + act(ACCENT_TYPED_MS) { demo.releaseA() } + act(0L) { setTyped(typed + t.accentAfter) }),
+                listOf(toLetter, act(ACCENT_OPEN_MS) { demo.pressA() }, act(ACCENT_STEP_MS) { demo.releaseA(remote = true) }) + along +
+                    act(PRESS_MS) { demo.pressA() } + act(ACCENT_TYPED_MS) { demo.releaseA(remote = true) } + act(0L) { setTyped(typed + t.accentAfter) }),
             plainLetterBeat(3)
-        ).filter { it.row < shownRows.size }
+        )).filter { it.row < shownRows.size }
     }
 
     /** Types the start of a word, the suggestions follow each letter; then takes one (the right stick, or up and A). */
@@ -2216,7 +2341,7 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
      * Sound only, no vibration, and your own pack comes back when the page changes. A new pack shows
      * up here by itself: nothing to add.
      */
-    private fun soundSteps(): List<Step> = SoundPack.values().flatMap { pack ->
+    private fun soundSteps(): List<Step> = SoundPack.listed(false).flatMap { pack ->
         val name = pack.label.lowercase()
         listOf(Step(SOUND_LEAD_MS) {
             feedback.showcasePack(pack)                // loads while its name shows, before the first key
@@ -2238,18 +2363,20 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
         typed = typed.dropLast(wordPrefix.length) + word + " "
         wordPrefix = ""
         demo.setSuggestions(emptyList(), "")
-        showText(typed)
+        showText(typed, after = tail)
+        if (lessons.isNotEmpty()) dots.post { lessonCheck() }
     }
 
     override fun onReplaceLast(expected: String, replacement: String): Boolean {
         if (!typed.endsWith(expected)) return false
         typed = typed.dropLast(expected.length) + replacement
-        showText(typed)
+        showText(typed, after = tail)            // the text after the cursor stays (it vanished: "Piñata", Emre 6 Nov)
+        if (lessons.isNotEmpty()) dots.post { lessonCheck() }
         return true
     }
 
     // ---- What the demo keyboard types lands in the text box ----------------
-    override fun onText(text: String) { typed += text; if (smartDemo) typed = smartFix(typed); showText(typed) }
+    override fun onText(text: String) { typed += text; if (smartDemo) typed = smartFix(typed); showText(typed, after = tail); if (lessons.isNotEmpty()) dots.post { lessonCheck() } }
 
     /** The "Tidies up" demo: the same three fixes the keyboard makes, applied to the demo's text. */
     private var smartDemo = false
@@ -2262,20 +2389,39 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
         t = Regex("(^|[.!?] )(\\p{Ll})").replace(t) { it.groupValues[1] + it.groupValues[2].uppercase() }   // a capital to start
         return t
     }
-    override fun onDelete() { typed = typed.dropLast(1); showText(typed) }
-    override fun onEnter() = Unit
-    override fun onTool(tool: Tool) = Unit
+    override fun onDelete() { typed = typed.dropLast(1); showText(typed, after = tail); if (lessons.isNotEmpty()) dots.post { lessonCheck() } }
+    override fun onEnter() { if (lessons.isNotEmpty()) { if (lesson?.send == true) sent = true else note("Start sends it. Not yet."); dots.post { lessonCheck() } } }
+    override fun onTool(tool: Tool) {
+        if (lessons.isEmpty()) return
+        when (tool) {
+            Tool.COPY -> if (selected.isNotEmpty()) { copied = selected; note("Copied.", good = true) } else note("Select something first.")
+            Tool.SELECT -> select()
+            else -> note("Not that one.")
+        }
+        dots.post { lessonCheck() }
+    }
     override fun onClip(index: Int) = Unit
 
     // =====================================================================
     // CONTROLLER
     // =====================================================================
     /** Face buttons by position, before the tour sees them (FaceButtons). */
-    override fun dispatchKeyEvent(event: KeyEvent): Boolean =
-        super.dispatchKeyEvent(FaceButtons.event(event, ::settings.isInitialized && settings.swapFaceButtons))
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        if (setup != null) return setupKey(event)                // the setup reads presses as they arrive
+        return super.dispatchKeyEvent(FaceButtons.event(event))
+    }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
         if (event.repeatCount > 0) return true
+        // The tour (not What's new): tap Start skips this step, hold it skips the tour
+        if (keyCode == KeyEvent.KEYCODE_BUTTON_START && !whatsNew) {
+            dots.removeCallbacks(skipTour); dots.postDelayed(skipTour, START_HOLD_MS); startDown = true
+            return true
+        }
+        if (watchingKey(keyCode)) return true
+        if (lessons.isNotEmpty() && lessonKey(keyCode, down = true)) return true
+        if (keyCode == KeyEvent.KEYCODE_BUTTON_Y && pages.getOrNull(page)?.demo == Demo.DONE && reviewAgain()) return true
+        if (turn != null && turnKey(keyCode, down = true)) return true
         when (keyCode) {
             KeyEvent.KEYCODE_BUTTON_A, KeyEvent.KEYCODE_DPAD_RIGHT, KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> next()
             KeyEvent.KEYCODE_BUTTON_B, KeyEvent.KEYCODE_BACK, KeyEvent.KEYCODE_DPAD_LEFT -> back()
@@ -2288,8 +2434,727 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
         return true
     }
 
-    override fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean =
-        if (keyCode in UNUSED_PAD_KEYS) true else super.onKeyUp(keyCode, event)
+    override fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean {
+        if (keyCode == KeyEvent.KEYCODE_BUTTON_START && !whatsNew) {
+            dots.removeCallbacks(skipTour)
+            if (startDown && !finishing) {
+                startDown = false
+                // a tap: the Search turn's answer, otherwise skip this step
+                if (lessons.isNotEmpty()) lessonKey(KeyEvent.KEYCODE_BUTTON_START, true)
+                else if (turn?.key == "START" && !turnDone) { turnKey(KeyEvent.KEYCODE_BUTTON_START, true); turnKey(KeyEvent.KEYCODE_BUTTON_START, false) }
+                else next()
+            }
+            return true
+        }
+        if (lessons.isNotEmpty()) { lessonKey(keyCode, down = false); return true }
+        if (turn != null && turnKey(keyCode, down = false)) return true
+        return if (keyCode in UNUSED_PAD_KEYS) true else super.onKeyUp(keyCode, event)
+    }
+
+    /** The triggers send an axis on most controllers (the Odin's too), not a key: RT for a turn that asks for it. */
+    override fun onGenericMotionEvent(event: MotionEvent): Boolean {
+        // Only the trigger is the lesson's: everything else in the event (a hat D-pad, the sticks) carries on as usual,
+        // so Android still turns it into D-pad presses (taking the whole event left the D-pad dead: Emre, 6 Nov)
+        if (lessons.isNotEmpty() && event.action == MotionEvent.ACTION_MOVE) {
+            val rt = maxOf(event.getAxisValue(MotionEvent.AXIS_RTRIGGER), event.getAxisValue(MotionEvent.AXIS_GAS))
+            if (rt > TRIGGER_DOWN && !rtDown) { rtDown = true; lessonKey(KeyEvent.KEYCODE_BUTTON_R2, down = true) }
+            else if (rt < TRIGGER_UP && rtDown) { rtDown = false; lessonKey(KeyEvent.KEYCODE_BUTTON_R2, down = false) }
+            // LT the same (the Odin sends both triggers as axes: LT did nothing in "Add the 5", Emre 6 Nov)
+            val lt = maxOf(event.getAxisValue(MotionEvent.AXIS_LTRIGGER), event.getAxisValue(MotionEvent.AXIS_BRAKE))
+            if (lt > TRIGGER_DOWN && !ltDown) { ltDown = true; lessonKey(KeyEvent.KEYCODE_BUTTON_L2, down = true) }
+            else if (lt < TRIGGER_UP && ltDown) ltDown = false
+        }
+        val t = turn
+        if (t != null && t.key == "RT" && event.action == MotionEvent.ACTION_MOVE) {
+            val rt = maxOf(event.getAxisValue(MotionEvent.AXIS_RTRIGGER), event.getAxisValue(MotionEvent.AXIS_GAS))
+            if (rt > TRIGGER_DOWN && !rtDown) { rtDown = true; turnKey(KeyEvent.KEYCODE_BUTTON_R2, down = true) }
+            else if (rt < TRIGGER_UP && rtDown) { rtDown = false; turnKey(KeyEvent.KEYCODE_BUTTON_R2, down = false) }
+            return true
+        }
+        return super.onGenericMotionEvent(event)
+    }
+    private var rtDown = false
+    private var ltDown = false
+    private var rtSince = 0L
+
+    private var startDown = false
+    /** Start held: skip the whole tour (a tap only skips this step). */
+    private val skipTour = Runnable { startDown = false; finishTour() }
+
+    // =====================================================================
+    // YOUR TURN
+    // =====================================================================
+    /**
+     * A try at the end of a tour page (1.3, picked with Emre: "Your turn", option C). The page acts its rows out once,
+     * then the keyboard is yours: the card asks for one thing, the picture lights the button for it, and the keyboard
+     * does it for real. Right, and "That's it" moves on; another button, and the card says which one is lit.
+     *
+     * [key] as the picture names it (A, RT, SELECT), so it is the typing button wherever ButtonRoles puts it.
+     * [press] says if a press already did it; a hold (accents) checks on [release] instead.
+     */
+    /**
+     * One thing to do on your turn. Learn by typing (1.3, option B): a turn can be a small goal in a few steps
+     * ([then]: "Type hi" = the h, the i, then Space), with what you'll type shown faintly in the text box ([ghost]).
+     * [check] says what's wrong before a press counts ("That's the g. Move to the h first"); null = fine.
+     */
+    private class Try(val key: String, val badge: String, val headline: String, val ask: String, val setup: () -> Unit,
+                      val press: () -> Boolean, val release: (() -> Boolean)? = null, val moves: Boolean = false, val tooSoon: String = "",
+                      val then: Try? = null, val ghost: String? = null, val check: (() -> String?)? = null,
+                      val guide: KeyGridView.Guide? = null, val where: Boolean = false) {
+        val steps: Int get() = 1 + (then?.steps ?: 0)
+        /** The turns in this chain: steps with their own headline start a new one ("Add the capital Z"). */
+        val turns: Int get() = (if (headline.isNotEmpty()) 1 else 0) + (then?.turns ?: 0)
+    }
+
+    /** The keyboard's guide for a key type, with the button that does it. */
+    private fun on(type: KeyType, button: ControllerButton?) = KeyGridView.Guide(button) { it.type == type }
+    private fun onLetter(c: Char) = KeyGridView.Guide(ControllerButton.A) { (it.type == KeyType.CHAR || it.type == KeyType.DIGIT) && it.label.equals(c.toString(), true) }
+    private fun onTool(tool: Tool, button: ControllerButton?) = KeyGridView.Guide(button) { it.tool == tool && (tool != Tool.WORD || it.best) }
+    private var turnRoot: Try? = null
+
+    /** A step that types one letter: the highlight has to be on it first. */
+    private fun letter(c: Char, ask: String, then: Try? = null, headline: String = "", ghost: String? = null, setup: () -> Unit = {}) =
+        Try("A", "{A}", headline, ask, setup, { demo.pressSelected(); true }, moves = true, then = then, ghost = ghost, guide = onLetter(c), check = {
+            val on = demo.focusedLetter()
+            when { on == null -> "Move onto the $c first."; on.equals(c.toString(), ignoreCase = true) -> null; else -> "That's the $on. Move to the $c first." }
+        })
+
+    private var turn: Try? = null
+    private var turnDone = false
+
+    /** The try for page [p], if it has one: the controller tour only (What's new and the remote stay as they are). */
+    private fun tryFor(p: Page): Try? {
+        if (whatsNew || remote || !yourTurn) return null
+        val t = texts
+        return when (p.demo) {
+            // Typing, in four short turns: each button shows up on the key it works on (1.3, Emre's direction A)
+            Demo.TYPE -> {
+                val search = Try("START", "{START}", "Search for it", "Press Start: it sends what you typed, like Search or Go.",
+                    { setField("Celeste", "") }, { demo.pressShortcut("START", KeyType.ENTER); true }, moves = true,
+                    guide = on(KeyType.ENTER, ControllerButton.START), where = true)
+                val space = Try("Y", "{Y}", "Add the space", "Press Y. It adds a space where the cursor is.",
+                    { setField("Mario", "Kart") }, { demo.pressShortcut("Y", KeyType.SPACE); true }, moves = true,
+                    guide = on(KeyType.SPACE, ControllerButton.Y), then = search)
+                val delete = Try("X", "{X}", "Delete the extra d", "Press X. Hold it to delete faster.",
+                    { setField("Metroidd", "") }, { demo.pressShortcut("X", KeyType.DELETE); true }, moves = true,
+                    guide = on(KeyType.DELETE, ControllerButton.X), then = space)
+                Try("RT", "{R2}", "Add the capital Z", "Tap $rtName. The next letter comes out as a capital.",
+                    { demo.resetShift(); demo.resetLayer(); setField("", "elda") }, { demo.cycleShift(); true }, moves = true,
+                    guide = on(KeyType.SHIFT, ControllerButton.R2), where = true,
+                    then = letter('z', "Now move to the z and press $aName.", then = delete))
+            }
+            Demo.SHIFT_AND_SYMBOLS -> Try("RT", "{R2}", "Type \"Hi\" with a capital", "Tap $rtName once: the next letter comes out as a capital.",
+                { demo.resetShift(); demo.resetLayer(); field.tag = null; setTyped("") }, { demo.cycleShift(); true }, moves = true, ghost = "Hi",
+                then = letter('h', "Now the h.", then = letter('i', "And the i. It's small again by itself.")))
+            Demo.ACCENTS_AND_WORDS -> Try("A", "{A}", "Hold $aName for accents", "Hold $aName on the ${t.accentLetter} until its accents rise.",
+                {
+                    demo.resetAccents(); setTyped(t.accentBefore)
+                    var guard = 0
+                    while (demo.stepTowards(t.accentLetter.toString()) == false && guard++ < 60) Unit
+                },
+                { demo.pressA(); false },
+                { val open = demo.isAccentsOpen(); demo.releaseA(); open }, moves = true,
+                tooSoon = "Hold $aName a little longer, until the accents rise.")
+            Demo.HOLD_RT -> Try("RT", "{R2}", "Hold $rtName for more", "Hold it, and the keyboard shows what else each button does.",
+                { demo.setHeldShift(false) }, { demo.setHeldShift(true); rtSince = android.os.SystemClock.uptimeMillis(); false },
+                { val long = android.os.SystemClock.uptimeMillis() - rtSince >= RT_HOLD_MS; demo.setHeldShift(false); long },
+                tooSoon = "Keep $rtName held a moment, and read the tips on the keys.")
+            Demo.EDIT -> Try("SELECT", "{SELECT}", "Press $selectName to select", "The text starts to highlight as you go.",
+                { demo.setSelecting(false, 0); showText("", "", wordsOf(t.copy).joinToString("")) },
+                { demo.setSelecting(true, 0); picture.flash("SELECT"); true })
+            else -> null
+        }
+    }
+
+    // ---- Guided turns (1.3): learn the controller by typing ----------------------------------------------------
+    /*
+     * The rules (Emre, 6 Nov 2026), from the user's side:
+     * - a turn is a small goal ("Zelda"); it's done the moment the text is right, however you got there: the button
+     *   (X) or the key on the keyboard (Delete, then A) both count, and using the key earns a one-line tip
+     * - the card on the left is the guide: the step you're on, its button, and the one line that answers you
+     * - the button sits big on the key it works on; the controller picture is always there, the same size: the
+     *   button to press has a soft ring (pointed at), a press flashes filled
+     * - nothing is blocked: the keyboard works as it does in any app. A wrong letter really types, and the card says
+     *   how to fix it; too far off and the turn starts again by itself. B goes back a page, holding Start skips
+     * - the same button pressed again and again with nothing happening gets a gentle word; help comes only after a
+     *   long quiet (never a demo taking over), and much later, the way to skip
+     * - each turn notes whether it went cleanly (no slips, no help): the tour's way of telling it's been learnt
+     */
+    private class LessonStep(val action: String, val buttons: String, val guide: KeyGridView.Guide?, val pic: String, val done: () -> Boolean)
+    /**
+     * [lock]: the highlight stays on its key until something opens (the accents page: Emre, 6 Nov, "show how the
+     * accent feature works"). [finish]: done by something other than the text (copied, closed). [undo]: RT + X brings
+     * [goal] back. [close]: B is the answer here, not "back a page". [setup]: anything else the turn starts with.
+     */
+    private class Lesson(val title: String, val before: String, val after: String, val goal: String, val steps: List<LessonStep>,
+                         val shortcut: String? = null, val tip: String? = null, val send: Boolean = false,
+                         val lock: Char? = null, val finish: (() -> Boolean)? = null, val undo: Boolean = false,
+                         val close: Boolean = false, val setup: () -> Unit = {})
+    private var lessons: List<Lesson> = emptyList()
+    private var lessonAt = -1
+    private val lesson get() = lessons.getOrNull(lessonAt)
+    private var stepAt = 0
+    private var sent = false
+    private var usedKey = false
+    private var lessonBusy = false
+    private var lastButton = ""
+    private var samePresses = 0
+    private var slips = 0
+    private var helped = false
+    /** Each turn's title and whether it went cleanly: what the tour learnt about how you're doing. */
+    internal val learnt = mutableListOf<Pair<String, Boolean>>()
+
+    private fun typingLessons(): List<Lesson> = listOf(
+        Lesson("Add the capital Z", "", "elda", "Zelda", listOf(
+            LessonStep("Tap $rtName · for a capital", "{R2}", on(KeyType.SHIFT, ControllerButton.R2), "RT") { demo.shiftOn || typed.startsWith("Z") },
+            LessonStep("Go to the z, press $aName", "{A}", onLetter('z'), "A") { typed == "Z" })),
+        Lesson("Delete the extra d", "Metroidd", "", "Metroid", listOf(
+            LessonStep("Press X · deletes", "{X}", on(KeyType.DELETE, ControllerButton.X), "X") { typed == "Metroid" }),
+            shortcut = "X", tip = "X does this from anywhere."),
+        Lesson("Add the space", "Mario", "Kart", "Mario Kart", listOf(
+            LessonStep("Press Y · adds a space", "{Y}", on(KeyType.SPACE, ControllerButton.Y), "Y") { typed == "Mario " }),
+            shortcut = "Y", tip = "Y does this from anywhere."),
+        Lesson("Search for it", "Celeste", "", "Celeste", listOf(
+            LessonStep("Press Start · sends it", "{START}", on(KeyType.ENTER, ControllerButton.START), "START") { sent }),
+            shortcut = "START", tip = "Start does this from anywhere.", send = true),
+    )
+
+    /** Typing faster: accents, a suggestion, numbers. */
+    private fun fasterLessons(): List<Lesson> = listOf(
+        Lesson("Add the é", "Pok", "mon", "Pokémon", listOf(
+            LessonStep("Hold $aName on the e", "hold {A}", KeyGridView.Guide(ControllerButton.A, dim = true) { it.type == KeyType.CHAR && it.label == "e" }, "A") { demo.isAccentsOpen() || typed.endsWith("é") },
+            LessonStep("Let go on é", "{A}", null, "A") { false }), lock = 'e'),
+        Lesson("Take the suggestion", "Castlev", "", "Castlevania ", listOf(
+            if (controls.sticks) LessonStep("Press R3 · takes the word", "{R3}", onTool(Tool.WORD, ControllerButton.R3), "RS") { false }
+            else LessonStep("Go up to the word, press $aName", "{A}", onTool(Tool.WORD, ControllerButton.A), "A") { false }),
+            setup = { wordPrefix = "Castlev"; demo.setSuggestions(listOf("Castlevania", "Castle", "Castles"), "Castlev") }),
+        Lesson("Add the 5", "Persona ", "", "Persona 5", listOf(
+            LessonStep("Tap LT · numbers", "{L2}", on(KeyType.LAYER, ControllerButton.L2), "LT") { demo.onSymbols || typed.endsWith("5") },
+            LessonStep("Go to the 5, press $aName", "{A}", onLetter('5'), "A") { false })),
+    )
+
+    /** Fixing: the cursor, selecting and copying, selecting it all, undo, closing. */
+    private fun fixingLessons(): List<Lesson> = listOf(
+        Lesson("Fix the typo", "Sonc", "", "Sonic", listOf(
+            LessonStep("Press LB · cursor back", "{L1}", null, "LB") { typed == "Son" },
+            LessonStep("Type the i", "{A}", onLetter('i'), "A") { false })),
+        Lesson("Copy the 3", "Dark Souls 3", "", "Dark Souls 3", listOf(
+            LessonStep("Press $selectName · start selecting", "{SELECT}", null, "SELECT") { selecting },
+            LessonStep("Press LB · grows it", "{L1}", null, "LB") { selected == "3" },
+            LessonStep("Go up to Copy, press $aName", "{A}", onTool(Tool.COPY, ControllerButton.A), "A") { copied == "3" }),
+            finish = { copied == "3" }),
+        Lesson("Clear it all", "Dark Souls 3", "", "", listOf(
+            LessonStep("Press $selectName twice · selects all", "{SELECTx2}", null, "SELECT") { selected == "Dark Souls 3" },
+            LessonStep("Press X · deletes it", "{X}", on(KeyType.DELETE, ControllerButton.X), "X") { false })),
+        Lesson("Bring it back", "Hollow ", "", "Hollow Knight", listOf(
+            LessonStep("Hold $rtName · keep holding", "hold {R2}", null, "RT") { rtHeld },
+            LessonStep("Press X · undo", "{X}", on(KeyType.DELETE, ControllerButton.X), "X") { false }), undo = true),
+        Lesson("Close the keyboard", "Hades", "", "Hades", listOf(
+            LessonStep("Press B · closes it", "{B}", null, "B") { closed }), finish = { closed }, close = true),
+    )
+    private var selecting = false
+    private var selected = ""
+    private var copied = ""
+    private var rtHeld = false
+    private var closed = false
+    private var lastSelectAt = 0L
+    private var aDown = false
+
+    private fun startLessons(list: List<Lesson>) {
+        handler.removeCallbacksAndMessages(null)
+        beatList = emptyList(); beatHeld = false; panel.loopShown = false
+        lessons = list; lessonAt = -1
+        turnLook(true)
+        nextLesson()
+    }
+
+    private fun nextLesson() {
+        lessonAt++
+        val l = lesson ?: return finishLessons()
+        stepAt = 0; sent = false; usedKey = false; lessonBusy = false; offerSkip = false; samePresses = 0; slips = 0; helped = false; lastButton = ""
+        demo.resetShift(); demo.resetLayer(); demo.setHeldShift(false); demo.resetAccents()
+        demo.setSuggestions(emptyList(), ""); demo.setSelecting(false, 0); demo.animate().cancel(); demo.alpha = 1f; demo.translationY = 0f
+        selecting = false; selected = ""; copied = ""; rtHeld = false; closed = false
+        setField(l.before, l.after)
+        l.setup()
+        l.lock?.let { c -> var guard = 0; while (demo.stepTowards(c.toString()) == false && guard++ < 60) Unit }
+        title.text = l.title
+        body.visibility = View.GONE                         // the card says it all; no second set of words
+        eyebrowCount.text = "· ${lessonAt + 1} of ${lessons.size}"; eyebrowCount.visibility = View.VISIBLE
+        buildRows(l.steps.map { it.action to it.buttons })
+        rowsPane.animate().cancel(); rowsPane.alpha = 1f; rowsPane.visibility = View.VISIBLE
+        showLessonStep()
+        armStuck()
+    }
+
+    private fun showLessonStep() {
+        val l = lesson ?: return
+        val s = l.steps[stepAt]
+        setCaption(stepAt)
+        demo.guide = s.guide
+        picture.holding = emptySet()
+        picture.held = setOf(s.pic)          // its ring: "this one" (only a press fills, and only for a moment)
+        controlBar.show(settings.shownButtonStyle, listOf("Hold {START} Skip the tour", "{B} Back"))
+    }
+
+    /** The card's answer line: what just happened, or how to put it right. */
+    private fun note(text: String, good: Boolean = false) {
+        val d = card?.detail ?: return
+        d.text = text; d.visibility = View.VISIBLE; d.maxLines = 1; d.ellipsize = android.text.TextUtils.TruncateAt.END
+        // Always readable: a note that's too long for its line gets a touch smaller first (Emre, 6 Nov: "Nearly…" was cut)
+        d.textSize = Design.TYPE_CAPTION
+        d.post {
+            val room = d.width - d.paddingLeft - d.paddingRight
+            if (room <= 0) return@post
+            val w = d.paint.measureText(text)
+            if (w > room) d.textSize = Design.TYPE_CAPTION * max(NOTE_MIN_SCALE, room / w)
+        }
+        d.setTextColor(if (good) TutorialActivity.labelColor(settings.activeAccent, whatsNew) else SettingsStyle.textPrimary)
+    }
+
+    /** After anything that changed the text or Shift: on track, done, or how to fix it. */
+    private fun lessonCheck() {
+        val l = lesson ?: return
+        if (lessonBusy) return
+        val full = typed + selected + tail
+        l.finish?.let { if (it()) return lessonDone() }
+        if (l.finish == null && full == l.goal && (!l.send || sent) && !demo.isAccentsOpen()) return lessonDone()
+        // The accents: let go too soon, or without moving, and the plain letter types: put it back and say so
+        if (l.lock != null && !aDown && !demo.isAccentsOpen() && full == l.before + l.lock + l.after) {
+            val why = if (stepAt == 0) "Hold it a bit longer." else "Let go on é."
+            lessonBusy = true
+            handler.postDelayed({ if (lesson === l) { lessonBusy = false; setField(l.before, l.after); stepAt = 0; showLessonStep(); note(why) } }, Design.MOTION_PAGE)
+            note(why); slips++
+            return
+        }
+        // While A is held on the accents page, the letter and its accents come and go: not a slip
+        if (l.lock != null && (aDown || demo.isAccentsOpen())) {
+            val now3 = l.steps.indexOfFirst { !it.done() }.let { if (it < 0) l.steps.lastIndex else it }
+            if (now3 != stepAt) { stepAt = now3; showLessonStep() }
+            return
+        }
+        if (l.finish != null || selecting) {
+            val now2 = l.steps.indexOfFirst { !it.done() }.let { if (it < 0) l.steps.lastIndex else it }
+            if (now2 != stepAt) { stepAt = now2; showLessonStep() }
+            armStuck(); return
+        }
+        val now = l.steps.indexOfFirst { !it.done() }.let { if (it < 0) l.steps.lastIndex else it }
+        val start = l.before + l.after
+        if (full == start || (l.goal.startsWith(typed) && tail == l.after && full.length <= l.goal.length && now > 0)) {
+            if (now != stepAt) { stepAt = now; showLessonStep() }
+            samePresses = 0; armStuck(); return
+        }
+        // Off the path: say how to put it right, in the card
+        slips++
+        val missing = if (l.goal.endsWith(tail) && l.goal.startsWith(typed) && full.length < l.goal.length)
+            l.goal.substring(typed.length, l.goal.length - tail.length) else null
+        when {
+            full.equals(l.goal, ignoreCase = true) -> note("Small ${typed.lastOrNull() ?: ""}. X deletes it, then $rtName first.")
+            missing != null -> note("One too many. Type ${missing.trim().ifEmpty { "a space" }} again.")
+            full.length - l.goal.length > 2 || slips > 4 -> { note("Let's try that again."); restartSoon() }
+            typed.isNotEmpty() -> note("Typed ${typed.last()}. X deletes it.")
+            else -> { note("Let's try that again."); restartSoon() }
+        }
+        armStuck()
+    }
+
+    private fun restartSoon() {
+        lessonBusy = true
+        handler.postDelayed({ lessonAt--; nextLesson() }, RESTART_MS)
+    }
+
+    private fun lessonDone() {
+        val l = lesson ?: return
+        lessonBusy = true
+        dots.removeCallbacks(stuck)
+        feedback.confirm()
+        learnt += l.title to (slips == 0 && !helped); learntLesson[l.title] = l
+        val tip = if (usedKey && l.tip != null) l.tip else null
+        note(if (l.close) "Closed. Any text box brings it back." else if (tip != null) "Nice. $tip" else "Done.", good = true)
+        for (k in 0 until (card?.pips?.childCount ?: 0)) card?.pips?.getChildAt(k)?.background = pip(true)
+        handler.postDelayed({ if (lesson === l) nextLesson() },
+            if (l.close) CLOSED_MS + 2 * Design.MOTION_PANEL + TURN_GAP_MS else if (tip != null) TIP_MS else TURN_GAP_MS)
+    }
+
+    private fun finishLessons() {
+        endLessons()
+        if (reviewing) { reviewing = false; show(page, animate = true); return }   // back to the summary, now updated
+        next()
+    }
+
+    private fun endLessons() {
+        if (lessons.isEmpty()) return
+        dots.removeCallbacks(stuck)
+        lessons = emptyList(); lessonAt = -1; lessonBusy = false
+        demo.guide = null; picture.held = emptySet(); tail = ""
+        body.visibility = View.VISIBLE
+        turnLook(false)
+    }
+
+    /** Help after a long quiet, in the card: first a hand, much later the way to skip. Never a demo. */
+    private val stuck = Runnable {
+        val l = lesson ?: return@Runnable
+        if (lessonBusy) return@Runnable
+        if (!helped) { helped = true; note("Look for the ringed key.")
+            dots.postDelayed(stuckLater, STUCK_SKIP_MS - STUCK_MS) }
+    }
+    private val stuckLater = Runnable { if (lesson != null && !lessonBusy && lesson?.send != true) { offerSkip = true; note("Stuck? Tap Start to skip.") } }
+    /** After the long quiet, a tap on Start skips the turn (on the Search turn, Start is the answer anyway). */
+    private var offerSkip = false
+    private fun skipLesson() {
+        val l = lesson ?: return
+        lessonBusy = true; learnt += l.title to false; learntLesson[l.title] = l
+        handler.postDelayed({ if (lesson === l) nextLesson() }, Design.MOTION_FADE)
+    }
+    private fun armStuck() { dots.removeCallbacks(stuck); dots.removeCallbacks(stuckLater); dots.postDelayed(stuck, STUCK_MS) }
+
+    /** A press during a lesson: the keyboard works as it does in any app. True: the lesson took it. */
+    private fun lessonKey(keyCode: Int, down: Boolean): Boolean {
+        val l = lesson ?: return false
+        if (keyCode == KeyEvent.KEYCODE_BUTTON_B || keyCode == KeyEvent.KEYCODE_BACK) {
+            if (!down) return true
+            if (l.close && !lessonBusy) {                       // here B is the answer: the keyboard goes down, and comes back
+                picture.flash("B"); closed = true
+                val drop = (demo.height + px(Design.SPACE_XL)).toFloat()
+                demo.animate().translationY(drop).alpha(0f).setDuration(Design.MOTION_PANEL).setInterpolator(Design.EASE_STANDARD).withEndAction {
+                    demo.postDelayed({ demo.animate().translationY(0f).alpha(1f).setDuration(Design.MOTION_PANEL).start() }, CLOSED_MS)
+                }.start()
+                lessonCheck(); return true
+            }
+            if (demo.isAccentsOpen()) { demo.cancelAccents(); return true }
+            if (lessonAt > 0) { feedback.back(); lessonAt -= 2; nextLesson(); return true }   // the turn before
+            endLessons(); back()
+            return true
+        }
+        if (lessonBusy) return true
+        val key = DevicePicture.keyFor(keyCode) ?: return true
+        // Let go: A ends a hold (the accents), RT ends the held combos
+        if (!down) {
+            if (key == "A") { aDown = false; if (l.lock != null) demo.releaseA(); dots.post { lessonCheck() } }
+            if (key == "RT" && rtHeld) { rtHeld = false; demo.setHeldShift(false)
+                if (lesson?.undo == true && typed + tail != l.goal) { stepAt = 0; showLessonStep(); note("Keep $rtName held, then X.") } }
+            return true
+        }
+        if (key in DPAD_KEYS) {
+            // The accents page: the highlight stays on the e until its accents are up (then it moves along them)
+            if (l.lock != null && !demo.isAccentsOpen()) { note("Just the ${l.lock} this time."); return true }
+            when (keyCode) {
+                KeyEvent.KEYCODE_DPAD_LEFT -> demo.moveFocus(-1, 0); KeyEvent.KEYCODE_DPAD_RIGHT -> demo.moveFocus(1, 0)
+                KeyEvent.KEYCODE_DPAD_UP -> demo.moveFocus(0, -1); else -> demo.moveFocus(0, 1)
+            }
+            return true
+        }
+        picture.flash(key)
+        val before = typed + selected + tail + demo.shiftOn + sent + demo.onSymbols + selecting + copied + rtHeld
+        when (key) {
+            "A" -> { usedKey = true; aDown = true; if (l.lock != null) demo.pressA() else demo.pressSelected() }
+            "X" -> {
+                usedKey = false
+                when {
+                    l.undo && rtHeld -> { setField(l.goal, ""); demo.pressShortcut("X", KeyType.EMPTY, lit = false) }
+                    l.undo -> { note("Hold $rtName first, then X."); return true }
+                    selecting && selected.isNotEmpty() -> { selected = ""; selecting = false; demo.setSelecting(false, 0); showText(typed, after = tail); feedback.delete() }
+                    else -> demo.pressShortcut("X", KeyType.DELETE, lit = false)
+                }
+            }
+            "LB", "RB" -> moveCursor(if (key == "LB") -1 else 1)
+            "SELECT" -> select()
+            "LT" -> { usedKey = false; demo.toggleLayer() }
+            "RS" -> if (controls.sticks) { usedKey = false; demo.wordsForCheck().firstOrNull()?.let { onWord(it) } }
+            "Y" -> { usedKey = false; demo.pressShortcut("Y", KeyType.SPACE, lit = false) }
+            "START" -> { if (offerSkip && !l.send) { skipLesson(); return true }; usedKey = false; demo.pressShortcut("START", KeyType.ENTER, lit = false) }
+            "RT" -> { usedKey = false; if (l.undo) { rtHeld = true; demo.setHeldShift(true) } else demo.cycleShift() }
+        }
+        val changed = before != (typed + selected + tail + demo.shiftOn + sent + demo.onSymbols + selecting + copied + rtHeld)
+        if (changed) { lastButton = ""; samePresses = 0; lessonCheck(); return true }
+        // Nothing happened: the same button again and again gets a gentle word; one press, just the step again
+        samePresses = if (key == lastButton) samePresses + 1 else 1
+        lastButton = key
+        if (samePresses >= SPAM_PRESSES) note("That one does nothing here.")
+        else if (key !in listOf("A")) note("Not that one.")
+        return true
+    }
+
+    /** LB and RB: the cursor a letter back or on; while selecting, the selection grows (back) or shrinks. */
+    private fun moveCursor(dir: Int) {
+        if (selecting) {
+            if (dir < 0 && typed.isNotEmpty()) { selected = typed.last() + selected; typed = typed.dropLast(1) }
+            else if (dir > 0 && selected.isNotEmpty()) { typed += selected.first(); selected = selected.drop(1) }
+            demo.setSelecting(true, selected.length)
+            showText(typed, selected, tail); feedback.move(); dots.post { lessonCheck() }; return
+        }
+        if (dir < 0 && typed.isNotEmpty()) { tail = typed.last() + tail; typed = typed.dropLast(1) }
+        else if (dir > 0 && tail.isNotEmpty()) { typed += tail.first(); tail = tail.drop(1) }
+        else return
+        showText(typed, after = tail); feedback.move(); dots.post { lessonCheck() }
+    }
+
+    /** View: starts selecting; twice quickly (or again while selecting) selects everything. */
+    private fun select() {
+        val now = android.os.SystemClock.uptimeMillis()
+        val gap = now - lastSelectAt
+        // The same timing as the keyboard itself, so what you learn here works in your apps
+        if (selecting && gap < KEYBOARD_TWICE_MS) {
+            selected = typed + selected + tail; typed = ""; tail = ""
+        } else if (selecting && selected.isEmpty() && gap < NEARLY_TWICE_MS && lesson?.steps?.firstOrNull()?.buttons == "{SELECTx2}") {
+            // Twice, but not quite fast enough for "everything": say so, and start over cleanly
+            selecting = false
+            lastSelectAt = 0L
+            demo.setSelecting(false, 0); showText(typed, after = tail); feedback.back()
+            note("Nearly: a little quicker.")
+            return
+        } else if (!selecting) { selecting = true; selected = "" }
+        else { selecting = false; typed += selected; selected = "" }
+        lastSelectAt = now
+        demo.setSelecting(selecting, selected.length)
+        showText(typed, selected, tail); feedback.move()
+        dots.post { lessonCheck() }
+    }
+
+    /** The guided pages (controllers): typing, typing faster, fixing. */
+    private fun lessonsFor(p: Page): List<Lesson>? = if (p.audience != For.CONTROLLER) null else when (p.demo) {
+        Demo.TYPE -> typingLessons()
+        Demo.SHIFT_AND_SYMBOLS -> fasterLessons()
+        Demo.EDIT -> fixingLessons()
+        else -> null
+    }
+
+    // ---- The end of the tour ----------------------------------------------------------------------------------
+    /** The turns that took a few tries (or help), with the lessons themselves, for a second go. */
+    private val learntLesson = HashMap<String, Lesson>()
+    private fun toReview(): List<Lesson> = learnt.filter { !it.second }.map { it.first }.distinct().mapNotNull { learntLesson[it] }
+        .filter { t -> learnt.lastOrNull { it.first == t.title }?.second == false }
+    private var reviewing = false
+
+    /** You're all set: one line on how it went; a second go at what took a few tries, if anything did. */
+    private fun showDone() {
+        val again = toReview()
+        title.text = if (learnt.isEmpty() || again.isEmpty()) "You're all set" else "Nicely done"
+        body.text = when {
+            remote || learnt.isEmpty() -> "That's everything. Settings → About replays this tour."
+            again.isEmpty() -> "Every turn, first time. Hold $rtName any time to see what the keys do."
+            else -> "Worth another go: ${again.joinToString(", ") { it.title.replaceFirstChar { c -> c.lowercase() } }}."
+        }
+        controlBar.show(settings.shownButtonStyle, if (remote) listOf("OK · Done", "Back · Previous") else listOfNotNull(
+            "{A} Start typing", if (again.isNotEmpty() && !remote) "{Y} Try those again" else null, "{B} Back"))
+    }
+
+    /** Y on the last page: the turns that took a few tries, once more, then back here. */
+    private fun reviewAgain(): Boolean {
+        val again = toReview()
+        if (again.isEmpty() || lessons.isNotEmpty()) return false
+        reviewing = true
+        startLessons(again)
+        return true
+    }
+
+    /** For the checks. */
+    internal val lessonForCheck get() = lesson?.title
+    internal val fieldForCheck get() = typed + tail
+    internal fun startTypingForCheck() = startLessons(typingLessons())
+    internal fun skipLessonsForCheck() { if (lessons.isNotEmpty()) finishLessons() }
+    internal fun lessonJumpForCheck(i: Int) { lessonAt = i - 1; nextLesson() }
+    internal val lessonCountForCheck get() = lessons.size
+    internal val stepCountForCheck get() = lesson?.steps?.size ?: 0
+    internal fun lessonStepForCheck(i: Int) { stepAt = i; showLessonStep() }
+    internal val demoForCheck get() = demo
+    internal val selectedForCheck get() = selected
+    internal val copiedForCheck get() = copied
+
+    /** The page's demo has played once: over to you. */
+    private fun beginTurn() {
+        lessonsFor(pages[page])?.let { if (!finishing && lessons.isEmpty()) startLessons(it); return }
+        val t = tryFor(pages[page]) ?: return
+        if (finishing || turn != null) return
+        handler.removeCallbacksAndMessages(null)        // the demo stops where it is: the keyboard is yours now
+        beatList = emptyList(); beatHeld = false
+        panel.loopShown = false
+        picture.held = emptySet(); picture.holding = emptySet(); picture.stickPush = emptyMap()
+        demo.setHeldShift(false)
+        turn = t; turnRoot = t; turnDone = false
+        t.setup()
+        field.ghost = t.ghost
+        turnLook(true)
+        showStep(t)
+        title.text = t.headline
+        say(t.ask)
+        stepCount(t)
+        // A goal in steps: the page's button card steps right out (it lists the page, not this step). The words say
+        // what to do, the picture lights the button, the text box shows what's still to type
+        if (t.steps > 1) { rowsPane.animate().cancel(); rowsPane.alpha = 0f }   // at once: fading it let it flash up (Emre, 6 Nov)
+        // Turns with guides: the button shows on the keyboard, so the controller picture steps out (it read as the
+        // button being held: Emre, 6 Nov). It comes back, smaller, only to show where a button you may not know is
+        // (showStep does both)
+        controlBar.show(settings.shownButtonStyle, listOf("${t.badge} Try it",
+            if (t.turns >= 2) "Hold {START} Skip the tour" else "{START} Skip this step", "{B} Back"))
+        armHint()
+    }
+
+    /** The clip as help: once per page, when nothing has been pressed for [HINT_AFTER_MS]. */
+    private var hinted = false
+    /** The clip is playing as help: any button (but Start and B) goes straight back to trying. */
+    private var watching = false
+    private val hint = Runnable { playHint() }
+    private fun armHint() { dots.removeCallbacks(hint); if (!hinted && !turnDone) dots.postDelayed(hint, HINT_AFTER_MS) }
+
+    private fun playHint() {
+        if (turn == null || turnDone || finishing) return
+        val p = pages[page]
+        hinted = true
+        endTurn()
+        startDemo(p.demo)
+        watching = true
+        eyebrow.text = "Here's how"
+        eyebrowCount.visibility = View.GONE
+        title.text = p.title; body.text = p.body
+        controlBar.show(settings.shownButtonStyle, listOf("{A} Try it now", "{START} Skip this step", "{B} Back"))
+        // One run of the clip, then over to you again (posted: the clip's own step finishes and stops first)
+        val back = { if (watching) { watching = false; eyebrowCount.visibility = View.VISIBLE; beginTurn() } }
+        if (WhatsNew.motionAllowed()) loop.onFirstRunDone = { dots.post(back) } else handler.postDelayed(back, STILL_TURN_MS)
+    }
+
+    /** A button while the help clip plays: Start and B as usual, anything else is "let me try". */
+    private fun watchingKey(keyCode: Int): Boolean {
+        if (!watching || keyCode == KeyEvent.KEYCODE_BUTTON_B || keyCode == KeyEvent.KEYCODE_BACK) return false
+        watching = false
+        eyebrowCount.visibility = View.VISIBLE
+        beginTurn()
+        return true
+    }
+
+    /**
+     * Your turn must look like a different moment from the demo (Emre, 5 Nov 2026: "ambiguous and subtle"). The label
+     * says YOUR TURN, the title becomes what to do, the button list steps back, and the keyboard's window takes your
+     * highlight colour on its edge: the keyboard is yours. The words arrive like a new page.
+     */
+    private fun turnLook(on: Boolean) {
+        if (on) {
+            eyebrow.text = "Your turn"
+            eyebrowCount.visibility = View.GONE
+            rowsPane.animate().alpha(TURN_ROWS_ALPHA).setDuration(Design.MOTION_PAGE).start()
+            (panel.background as? android.graphics.drawable.GradientDrawable)?.setStroke(px(TURN_EDGE_DP), markerColor(settings.activeAccent, whatsNew))
+            if (WhatsNew.motionAllowed()) {
+                words.alpha = 0f; words.translationX = px(12f).toFloat()
+                words.animate().alpha(1f).translationX(0f).setDuration(Design.MOTION_PAGE).setInterpolator(Design.EASE_OUT).start()
+            }
+        } else {
+            eyebrowCount.visibility = View.VISIBLE
+            rowsPane.animate().cancel(); rowsPane.alpha = 1f
+            (panel.background as? android.graphics.drawable.GradientDrawable)?.setStroke(max(2, px(1f)), PANEL_EDGE)
+        }
+    }
+
+    /** What to do; a lead ("Nearly.", "Not that one.") in bold and the label colour first. */
+    private fun say(what: String, lead: String = "") {
+        if (lead.isEmpty()) { body.text = what; return }          // the label already says Your turn
+        val text = android.text.SpannableString("$lead $what")
+        text.setSpan(android.text.style.StyleSpan(android.graphics.Typeface.BOLD), 0, lead.length, 0)
+        text.setSpan(android.text.style.ForegroundColorSpan(labelColor(settings.activeAccent, whatsNew)), 0, lead.length, 0)
+        body.text = text
+    }
+
+    /** A button during a turn. True when the turn took it. */
+    private fun turnKey(keyCode: Int, down: Boolean): Boolean {
+        val t = turn ?: return false
+        if (turnDone) return true
+        if (keyCode == KeyEvent.KEYCODE_BUTTON_B || keyCode == KeyEvent.KEYCODE_BACK) {
+            if (down) { endTurn(); back() }                 // the page before (try first: no demo phase to go back to)
+            return true
+        }
+        val key = DevicePicture.keyFor(keyCode) ?: return false
+        if (down) armHint()
+        if (t.moves && key in DPAD_KEYS) {                  // a turn that types lets you move the highlight
+            if (down) when (keyCode) {
+                KeyEvent.KEYCODE_DPAD_LEFT -> demo.moveFocus(-1, 0); KeyEvent.KEYCODE_DPAD_RIGHT -> demo.moveFocus(1, 0)
+                KeyEvent.KEYCODE_DPAD_UP -> demo.moveFocus(0, -1); else -> demo.moveFocus(0, 1)
+            }
+            return true
+        }
+        if (key == t.key) {
+            val wrong = if (down) t.check?.invoke() else null
+            if (wrong != null) { feedback.back(); say(wrong, "Not quite."); return true }
+            if (down) { picture.holding = setOf(t.key); if (t.press()) doneTurn() }
+            else {
+                picture.holding = emptySet()
+                t.release?.let { if (it()) doneTurn() else { feedback.back(); say(t.tooSoon, "Nearly.") } }
+            }
+            return true
+        }
+        // Another button: nothing happens, and the card points at the lit one
+        if (down) { feedback.back(); picture.flash(t.key, NUDGE_MS)
+            say(if (t.guide != null) t.ask else "${t.ask} It's lit on the picture.", "Not that one.") }
+        return true
+    }
+
+    /** "Your turn · 2 of 3" while a goal has more than one step. */
+    private fun stepCount(t: Try) {
+        val root = turnRoot ?: return
+        if (root.turns >= 2) {      // turns with their own headlines: count turns ("1 of 4"), not steps
+            eyebrowCount.text = "· ${root.turns - t.turns + (if (t.headline.isEmpty()) 0 else 1)} of ${root.turns}"
+            eyebrowCount.visibility = View.VISIBLE; return
+        }
+        val all = root.steps
+        if (all < 2) return
+        eyebrowCount.text = "· ${all - t.steps + 1} of $all"; eyebrowCount.visibility = View.VISIBLE
+    }
+
+    /** A step's look: the key it's about on the keyboard, and the picture only when it says where a button is. */
+    private fun showStep(t: Try) {
+        demo.guide = t.guide
+        picture.held = setOf(t.key); picture.holding = emptySet()
+        if (t.guide == null) return
+        // Where a button is: the picture, smaller, as a pointer rather than a stage (pivot: its top middle)
+        picture.pivotX = picture.width / 2f; picture.pivotY = 0f
+        val s = if (t.where) WHERE_SCALE else 1f
+        picture.animate().alpha(if (t.where) 1f else 0f).scaleX(s).scaleY(s).setDuration(Design.MOTION_FADE).start()
+    }
+
+    private fun doneTurn() {
+        val t = turn
+        val next = t?.then
+        if (next != null && next.headline.isNotEmpty()) {     // a turn done, the next one after a breath
+            feedback.confirm()
+            turnDone = true                       // the guide stays until the next one: the keys' small badges don't flicker back
+            say("", "Done.")
+            handler.postDelayed({
+                if (turn !== t) return@postDelayed
+                turnDone = false; turn = next
+                next.setup(); title.text = next.headline
+                showStep(next); say(next.ask); stepCount(next)
+                controlBar.show(settings.shownButtonStyle, listOf("${next.badge} Try it", "Hold {START} Skip the tour", "{B} Back"))
+                armHint()
+            }, TURN_GAP_MS)
+            return
+        }
+        if (next != null) {                       // a step within a turn: the next one, straight away
+            feedback.confirm()
+            turn = next
+            showStep(next)
+            say(next.ask, "Good.")
+            stepCount(next)
+            controlBar.show(settings.shownButtonStyle, listOf("${next.badge} Try it",
+                if ((turnRoot?.turns ?: 0) >= 2) "Hold {START} Skip the tour" else "{START} Skip this step", "{B} Back"))
+            armHint()
+            return
+        }
+        turnDone = true
+        dots.removeCallbacks(hint)
+        feedback.confirm()
+        demo.guide = null
+        picture.held = emptySet(); picture.holding = emptySet()
+        picture.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(Design.MOTION_FADE).start()
+        title.text = "That's it"
+        say("On to the next one.", "Nice.")
+        handler.postDelayed({ endTurn(); next() }, TURN_DONE_MS)
+    }
+
+    private fun endTurn() { if (turn != null) { turnLook(false); field.ghost = null; demo.guide = null; picture.alpha = 1f; picture.scaleX = 1f; picture.scaleY = 1f; tail = "" }; turn = null; turnRoot = null; turnDone = false; rtDown = false }
+
+    /** For the checks: whether a turn is on, and its button. */
+    internal val turnForCheck get() = turn?.key
+    internal fun beginTurnForCheck() = beginTurn()
+    /** For the checks: one D-pad step towards a letter on the demo keyboard (true once it's there). */
+    internal fun stepDemoForCheck(label: String) = demo.stepTowards(label)
 
     private fun next() {
         if (page == pages.lastIndex) return finishTour()
@@ -2313,6 +3178,7 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
     private fun finishTour() {
         if (finishing) return
         finishing = true
+        dots.removeCallbacks(hint)
         val saved = KeyboardSettings.load(this)
         (if (whatsNew) saved.copy(whatsNewSeen = WhatsNew.VERSION)
         else saved.copy(tutorialDone = true, whatsNewSeen = WhatsNew.VERSION)).save(this)
@@ -2350,6 +3216,21 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
         private const val SCROLL_DP = 80f
         const val KEY_PAGE = "page"
         const val CLOSE_DELAY_MS = 140L
+        const val START_HOLD_MS = 600L      // hold Start this long to skip the tour
+        const val TURN_ROWS_ALPHA = 0.35f   // the button list steps back during your turn
+        const val HINT_AFTER_MS = 4000L     // nothing pressed this long: the clip plays once, as help
+        const val RT_HOLD_MS = 600L         // RT held this long counts as holding it
+        const val TURN_EDGE_DP = 2f
+        const val TURN_DONE_MS = 1100L      // "That's it" stays this long, then the next page
+        const val NUDGE_MS = 900L
+        const val STILL_TURN_MS = 2500L
+        const val TRIGGER_DOWN = 0.5f
+        const val TRIGGER_UP = 0.3f
+        private val DPAD_KEYS = setOf("Dup", "Ddown", "Dleft", "Dright")
+        /** "Your turn" on tour pages. The other checks page through with A and watch the demos, so they run without it. */
+        @JvmField internal var yourTurn = System.getProperty("inlay.checks.noTurns") == null
+        /** The button setup before the tour (off for the other checks, which test the tour itself). */
+        @JvmField internal var askSetup = System.getProperty("inlay.checks.noSetup") == null
         const val TV_SAFE = 0.05f
         const val BADGE_SCALE = Design.BADGE_ROW
         const val BADGE_GAP = Design.BADGE_GAP
@@ -2450,11 +3331,39 @@ class TutorialActivity : Activity(), KeyGridView.Listener {
  * and the selection in your highlight colour, drawn the same way as the TV preview line.
  */
 /** The demo apps' own text: Android's font, as a real app's text box would show (docs/visuals-src/VISUAL_SYSTEM.md §6b). */
+/** The goal's faint letters in the text box: secondary text at about 45 %. */
+/** The breath between two turns: long enough to see what you did, short enough to keep moving. */
+/** The controller picture when it only shows where a button is. */
+private const val WHERE_SCALE = 0.72f
+/** Guided turns: help after this long with no progress, the way to skip after this long. */
+private const val STUCK_MS = 12_000L
+private const val STUCK_SKIP_MS = 30_000L
+/** The same button this many times with nothing happening: a gentle word. */
+private const val SPAM_PRESSES = 3
+/** A turn starting again after going too far off; a turn's tip staying a moment longer. */
+private const val RESTART_MS = 1_400L
+private const val TIP_MS = 1_900L
+/** Twice, but slower than this and within this: "a little quicker" (the real double press is the keyboard's own). */
+private const val NEARLY_TWICE_MS = 1_500L
+/** The keyboard's own double press (GridKeyboardService.DOUBLE_PRESS_MS): the tour uses the same. */
+private const val KEYBOARD_TWICE_MS = 350L
+/** Close: how long the keyboard stays down before it comes back. */
+private const val CLOSED_MS = 900L
+/** A card note too long for its line shrinks to no less than this before it's cut. */
+private const val NOTE_MIN_SCALE = 0.82f
+/** Make it yours: each row of the card stays this long, to read in peace. */
+private const val READ_ROW_MS = 4_200L
+private const val TURN_GAP_MS = 650L
+private const val GHOST_ALPHA = 0x73
 private val DEMO_APP_FONT: android.graphics.Typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL)
 
 class DemoFieldView(context: android.content.Context) : View(context) {
 
     var placeholder = "Type with your controller"
+
+    /** What your turn asks you to type, shown faintly after what's typed so far (1.3). Gone once it doesn't match. */
+    var ghost: String? = null
+        set(v) { field = v; invalidate() }
 
     /** A small name tag at the right end of the box (the sound showcase shows the playing pack's name). Pops in when it changes. */
     var tag: String? = null
@@ -2499,7 +3408,7 @@ class DemoFieldView(context: android.content.Context) : View(context) {
         val padX = Design.SPACE_L * dp * scale
         val baseline = box.centerY() - (text.descent() + text.ascent()) / 2f
         var x = box.left + padX
-        if (before.isEmpty() && selected.isEmpty() && after.isEmpty()) {
+        if (before.isEmpty() && selected.isEmpty() && after.isEmpty() && ghost == null) {
             text.color = SettingsStyle.textSecondary
             // The cursor stands just before the hint, as in a real empty text box, never on top of its first letter
             canvas.drawText(placeholder, x + 4 * dp * scale, baseline, text)
@@ -2529,6 +3438,12 @@ class DemoFieldView(context: android.content.Context) : View(context) {
         // Text after the cursor is ordinary text, the same as before it: the cursor only sits between letters
         text.color = SettingsStyle.textPrimary
         canvas.drawText(after, x, baseline, text)
+        // The goal, faintly, right after what you've typed: what's still to come
+        val g = ghost
+        if (g != null && after.isEmpty() && selected.isEmpty() && g.startsWith(before) && g.length > before.length) {
+            text.color = Contrast.withAlpha(SettingsStyle.textSecondary, GHOST_ALPHA)
+            canvas.drawText(g.substring(before.length), x + 2 * dp * scale, baseline, text)
+        }
         drawTag(canvas, box)
     }
 
@@ -2673,20 +3588,39 @@ class StagePanel(context: android.content.Context, private val field: DemoFieldV
         return ((if (framed) 2 * pad else 0) + g + fit * (demo.previewUnitHeightPx() + f)).toInt()
     }
 
+    /**
+     * While the Keyboard size row plays: the window is measured for this size (Largest), and every size is drawn at
+     * that one scale inside it. Normal shows smaller, Largest fills the window, so the keys really grow, while the
+     * window (and the device picture beside it) keeps still. Before, each size was fitted to the same window, so the
+     * keys never grew and the picture was squeezed (Odin test, 5 Nov 2026). Null: each size fits the window itself.
+     */
+    var holdLevel: Int? = null
+        set(v) {
+            if (field == v) return
+            field = v
+            // Held: the keyboard sits on the window's bottom edge, like a real one growing up from the bottom
+            gravity = if (v != null) android.view.Gravity.BOTTOM else android.view.Gravity.TOP
+            requestLayout()
+        }
+
     override fun onMeasure(widthSpec: Int, heightSpec: Int) {
         if (!framed) { super.onMeasure(widthSpec, heightSpec); return }
         val w = MeasureSpec.getSize(widthSpec)
         val h = if (MeasureSpec.getMode(heightSpec) == MeasureSpec.UNSPECIFIED) Int.MAX_VALUE else MeasureSpec.getSize(heightSpec)
         val g = if (fieldShown) gap else 0
-        val fitW = (w - 2f * pad) / demo.previewUnitWidthPx()
-        val fitH = (h - 2f * pad - g) / (demo.previewUnitHeightPx() + if (fieldShown) fieldUnit else 0)
+        val level = holdLevel ?: demo.shownSizeLevel()
+        val fitW = (w - 2f * pad) / demo.previewUnitWidthPx(level)
+        val fitH = (h - 2f * pad - g) / (demo.previewUnitHeightPx(level) + if (fieldShown) fieldUnit else 0)
         val fit = minOf(1f, fitW, fitH).coerceAtLeast(0.3f)
         demo.previewFit = fit
         field.scale = fit
         (field.layoutParams as LayoutParams).height = (fieldUnit * fit).toInt()
         (clip.layoutParams as LayoutParams).topMargin = g
-        val panelW = minOf(w, (demo.previewUnitWidthPx() * fit + 2 * pad).toInt())
-        super.onMeasure(MeasureSpec.makeMeasureSpec(panelW, MeasureSpec.EXACTLY), heightSpec)
+        val panelW = minOf(w, (demo.previewUnitWidthPx(level) * fit + 2 * pad).toInt())
+        // Held: the window keeps the held size's height too
+        val held = holdLevel?.let { (2 * pad + g + fit * (demo.previewUnitHeightPx(it) + if (fieldShown) fieldUnit else 0)).toInt() }
+        super.onMeasure(MeasureSpec.makeMeasureSpec(panelW, MeasureSpec.EXACTLY),
+            if (held != null) MeasureSpec.makeMeasureSpec(minOf(held, h), MeasureSpec.EXACTLY) else heightSpec)
     }
 
     companion object {

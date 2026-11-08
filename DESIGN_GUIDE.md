@@ -33,7 +33,7 @@ When adding anything new, check it against these rules first.
 
 ## 3. Focus
 
-- Keyboard: the key under focus is filled with the **accent colour** plus a soft glow ring, and it jumps three quarters of the way to the next key on the very first frame, then settles (70 ms).
+- Keyboard: the key under focus is filled with the **accent colour** plus a soft glow ring, and it is on the next key in the very first frame; the spot it left fades out in 90 ms, so a press feels instant and the eye still sees where it came from. (Fluid glides: 90 % on the first frame, then 50 ms.)
 - **Rings sit on the element's own edge, never outside it** (keys, clipboard cards, accent cells, Settings tabs). An outside ring fills the gap and touches the neighbour. Glow: ring on the edge, a hairline of key, then the fill (nested corners). Lift grows by at most a quarter of the key gap. The accent tray fills exactly the tool strip's slot. Corner badges share the key corner's centre, at least 3 units in. (Design audit, 28 Oct 2026.)
 - Quiet labels (the space bar's language, the TV box's placeholder and word ghost) are dimmed only as far as 4.5 : 1, on every theme.
 - **Icons step aside for badges:** on keys too narrow for both, the shift, delete and enter icons move left (then down) so the corner badge never covers them; Round keys' badges fall back to the tight inset there. Checked for every key, style and platform at the Odin 2 Portal and Retroid Pocket Classic sizes (`HighlightGeometryTest`).
@@ -88,7 +88,7 @@ When adding anything new, check it against these rules first.
 
 | What | Duration | Curve |
 |---|---|---|
-| Highlight glide | 75 % jump on the first frame, then 70 ms, shortening to 35 ms while a direction repeats | emphasized decelerate |
+| Highlight move | Subtle: on the new key at once, the old spot fades in 90 ms. Fluid: 90 % on the first frame, then 50 ms (30 ms while repeating) | emphasized decelerate |
 | Key press squeeze | 110 ms | emphasized decelerate |
 | Hint chips fade | 140 ms | emphasized decelerate |
 | Switches, pickers, tabs | 200 ms | emphasized decelerate |
@@ -277,3 +277,5 @@ One place, then the checks tell you what else to do.
 3. **Device pictures changed?** Run `sh tools/video/brand-kit/build.sh`, then the layout audit (`touch app/build/visuals-layout`, run `LayoutAuditExport`, then `python3 tools/audit/layout_audit.py`).
 
 Fallbacks the checks allow, on purpose: a word on a key too narrow for it and its button badge steps left, shrinks by up to 15 %, steps below the badge, and only then does that key's badge step aside (phones held upright at the larger sizes). `CombinationsTest` lists where that happens.
+
+- **A preview is the real keyboard.** Every keyboard shown in Settings, the tour or What's new is drawn from the same settings as the one you type with, so it never shows a different top row, layout or key (Emre, 7 Nov 2026; VoiceKeyTest checks the Settings preview).

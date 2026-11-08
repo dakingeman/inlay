@@ -28,7 +28,8 @@ class SoundPacksTest {
 
     @Test fun everySoundFileBelongsToAPack() {
         val prefixes = SoundPack.values().map { it.file + "_" }
-        val strays = raw.keys.filter { !it.startsWith("words_") && prefixes.none(it::startsWith) }
+        // words_: the word lists; konami_: the Konami Code's build-up (1.3), not a key sound
+        val strays = raw.keys.filter { !it.startsWith("words_") && !it.startsWith("konami_") && prefixes.none(it::startsWith) }
         if (strays.isNotEmpty()) fail("These files in res/raw belong to no sound pack: ${strays.joinToString()}")
     }
 

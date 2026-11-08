@@ -19,7 +19,7 @@ key sounds 7 LU under the music, no limiter, compressor or ducking, every check,
 import os, sys, json
 import numpy as np
 import videosound as V
-from videosound import BEAT, SR, db
+from videosound import BEAT, BAR, SR, db
 import master6 as M
 
 # part: (track file, volume dB, lowest energy level it plays at)
@@ -61,6 +61,54 @@ def curves_from(profile, sc, en):
     kick = [(nm, KICK[0] + (KICK[1] - KICK[0]) * max(min(en[nm], 4) - 1, 0) / 3) for nm in st if nm != st[0]]
     return {"bed": bed, "kick": kick}
 
+def arcade(f, dur):
+    """The chip voice made arcade-like (Emre, 8 Nov: "same tone and melody, more of an arcade sound"), with in-tune
+    overtones only (1, 2, 4, 8x: a square's 3rd and 5th land off the scale on E and A): brighter, a blip an octave up
+    for the first frame, the volume stepping down in 1/60 s frames like an old sound chip, and a short echo a
+    sixteenth later, as arcade machines did."""
+    t = np.arange(int(SR * (dur + BEAT / 4 + 0.2))) / SR
+    def voice(t, f, amp):
+        w = np.sin(2 * np.pi * f * t) + 0.6 * np.sin(2 * np.pi * 2 * f * t) + 0.3 * np.sin(2 * np.pi * 4 * f * t) + 0.12 * np.sin(2 * np.pi * 8 * f * t)
+        blip = t < 1 / 60
+        w = np.where(blip, np.sin(2 * np.pi * 2 * f * t) + 0.3 * np.sin(2 * np.pi * 4 * f * t), w)   # the first frame an octave up
+        frames = np.floor(t * 60) / 60                                                                   # the volume in 1/60 s steps
+        env = np.where(t < dur, np.round(15 * np.exp(-frames / (dur * 0.6))) / 15, 0.0)
+        return amp * w * env * np.clip(t / 0.002, 0, 1)
+    s = voice(t, f, 1.0)
+    d = int(SR * BEAT / 4); echo = np.zeros_like(s); echo[d:] = voice(t[:-d], f, 0.35)                # the echo, a 16th later
+    s = V.lp(V.hp(s + echo, 150), 7000)
+    return np.vstack([s * 0.95, np.concatenate([np.zeros(int(SR * 0.004)), s[:-int(SR * 0.004)]])])   # a hair of width
+
+def touches(tch, parts, bars, sc, n):
+    """A version's own touches on the same song (1.3.0, Emre: "keep the soul of the song ... little iterations for each
+    What's new"). Each is tied to a scene of the video:
+      pan_phrases {scene: width}: the melody chimes answer themselves left and right, one bar each (1.3's Split page)
+      chip_melody {scene: dB}: the melody's own notes on the retro chip voice, an octave down, at the chimes' level + dB
+                               (1.3's secret page; turn the chimes off there with "off")"""
+    import energy as E
+    edges = lambda g: np.convolve(g, np.hanning(int(SR * 0.04)) / np.hanning(int(SR * 0.04)).sum(), "same")
+    for nm, width in tch.get("pan_phrases", {}).items():
+        p = np.zeros(n)
+        for bar in bars:
+            if bar["end"] or M.scene_at(sc, max(bar["t"], 0.0)) != nm: continue
+            a, b = int(max(bar["t"], 0) * SR), int((bar["t"] + BAR * BEAT) * SR)
+            p[a:min(b, n)] = width * (-1 if bar["i"] % 2 else 1)
+        ang = (edges(p) + 1) * np.pi / 4; gl, gr = np.cos(ang) * np.sqrt(2), np.sin(ang) * np.sqrt(2)
+        for k in ("motif", "motifdeep"):
+            if k in parts: parts[k] = parts[k] * np.vstack([gl, gr])[:, :parts[k].shape[1]]
+    for nm, vol in tch.get("chip_melody", {}).items():
+        x = np.zeros((2, n)); spots = []
+        for bar in bars:
+            if bar["end"] or not bar.get("phrase") or M.scene_at(sc, max(bar["t"], 0.0)) != nm: continue
+            for b, nt, ln in bar["phrase"]:
+                t = bar["t"] + b * BEAT
+                if 0 <= t < n / SR: E.put(x, arcade(V.n(nt) / 2, min(ln * BEAT * 0.9, 1.2)), t); spots.append(t)
+        ref = parts.get("motif")
+        if ref is not None and spots:
+            peak = max(np.abs(ref).max(), 1e-9); x = x / max(np.abs(x).max(), 1e-9) * peak * db(vol)
+        parts["chip"] = x
+        print(f"chip melody on {nm}: {len(spots)} notes")
+
 def render(profile, cues_p, folder, out):
     import pyloudnorm as pyln
     from scipy.signal import resample_poly, butter, sosfilt
@@ -74,6 +122,7 @@ def render(profile, cues_p, folder, out):
         if not os.path.exists(p): continue
         x = V.read_wav(p); parts[k] = x * db(vol) * M.bar_gates(x.shape[1], bars, sc, off, e0)
     n = parts["chords"].shape[1]; tt = np.arange(n) / SR; start = {nm: a for nm, a, b in sc}
+    touches(profile.get("touches", {}), parts, bars, sc, n)
     curve = lambda c: db(np.interp(tt, [start[k] for k, v in c], [v for k, v in c]))
     dip = M.kick_dip(n, bars, sc, MIX["kick"][2])
     parts["kick"] = parts["kick"] * curve(cv["kick"])
@@ -85,7 +134,10 @@ def render(profile, cues_p, folder, out):
     side = sosfilt(butter(2, 180, "highpass", fs=SR, output="sos"), side); mix = np.vstack([mid + side, mid - side])
     meter = pyln.Meter(SR); mix = V.clean_low_end(mix)
     fx = V.soften_fx(V.effects(video, cues, L)); fx = fx[:, :mix.shape[1]]
-    fxg = db(meter.integrated_loudness(mix.T) - V.MUSIC_OVER_FX - meter.integrated_loudness(fx.T))
+    # "key_sounds": false: music only (1.3.0's clip shows no button presses, only a few page turns, and five lone
+    # clicks measured 7 LU under the music come out far too loud)
+    if profile.get("key_sounds", True) is False: fx = np.zeros_like(mix)
+    fxg = db(meter.integrated_loudness(mix.T) - V.MUSIC_OVER_FX - meter.integrated_loudness(fx.T)) if fx.any() else 0.0
     g = db(-15 - meter.integrated_loudness(mix.T)); tp = 20 * np.log10(np.abs(resample_poly(mix * g, 4, 1, axis=1)).max())
     if tp > -1.1: g *= db(-1.1 - tp)
     music = V.fade_to_silence(mix * g, L)

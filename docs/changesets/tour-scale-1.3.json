@@ -1,0 +1,43 @@
+{
+ "name": "tour-scale-1.3",
+ "title": "Tour and What's new scale to any screen as one unit; step card fits its words; balance checks on 17 screens",
+ "recorded": "2026-11-04",
+ "base": "HEAD",
+ "files": [
+  {
+   "path": "app/src/main/java/com/example/gridime/TourScale.kt",
+   "before": null,
+   "after": "e6586af7ac4b9901a0ba4ba20fc05c2eb82bd5f0"
+  },
+  {
+   "path": "app/src/main/java/com/example/gridime/TutorialActivity.kt",
+   "before": "e0e9bf9dba2515b08a8e70bc50e63da360f56aae",
+   "after": "739b4ac5d46fe68dc29b3233843d6d643db54b94"
+  },
+  {
+   "path": "app/src/test/java/com/example/gridime/StageFitsTest.kt",
+   "before": "854b012fabd28e934fbfe763234cd3a049d67368",
+   "after": "1847e31507a75dd8d8958f2ec5f87d4feec539c6"
+  },
+  {
+   "path": "app/src/test/java/com/example/gridime/TourBalanceTest.kt",
+   "before": null,
+   "after": "f06bde3be863f98668259dc4bc6937d2e010d63a"
+  },
+  {
+   "path": "app/src/test/java/com/example/gridime/TourMarkerTest.kt",
+   "before": "1055450998f85bf8bd2b9730fac12e2c1f1aa521",
+   "after": "0be5db4ed4a4f69fcfd68e82bdcda06dfb605da3"
+  },
+  {
+   "path": "app/src/test/java/com/example/gridime/TourScaleShots.kt",
+   "before": null,
+   "after": "a83eae653360123a5fe10fc3e68364545a2527cf"
+  },
+  {
+   "path": "app/src/test/java/com/example/gridime/TourTemplateTest.kt",
+   "before": "7d68c1bc566e00e8368b9339398f9f5a4688f693",
+   "after": "b7b54ca8cf9dac9f3000eadb6e4203a9011dfee2"
+  }
+ ]
+}

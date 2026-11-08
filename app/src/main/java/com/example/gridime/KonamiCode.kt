@@ -16,16 +16,14 @@ import android.os.VibratorManager
  * starts over at step one. Buttons are matched by position, as the picture shows them.
  *
  * The build-up: presses 1 and 2 are only a very light double buzz, 3 and 4 a slightly stronger one, and a sound
- * fades in that climbs with every press to a short climax on the last one. Test builds can pick between four
- * build-up sounds (lab_<n>_<step>.ogg in the preview build's own resources); the release build has none of them
- * and stays silent, with the buzz only, until a sound is chosen for 1.3.
+ * fades in that climbs with every press, in Inlay's own key (C D E G A), into "Secret found" on the last one:
+ * a quick rising run into a bright 8-bit chord (konami_<step>.ogg, Emre's pick on 5 Nov; made in tools/sound-lab). The sound follows Inlay's own volume (Sound & haptics) and stays quiet when the device
+ * is on silent or vibrate, unless "Sound in silent mode" is on, the same rule as the key sounds.
  */
 class KonamiCode(private val context: Context, private val onFound: () -> Unit) {
     private var step = 0
     private var lastAt = 0L
     private val down = HashSet<String>()
-    var sound = 0
-        set(v) { if (field != v) { field = v; loaded.clear() } }
 
     /** A button went down (picture key names: Dup, Ddown, Dleft, Dright, A, B, …). */
     fun press(key: String) {
@@ -57,6 +55,8 @@ class KonamiCode(private val context: Context, private val onFound: () -> Unit) 
         else @Suppress("DEPRECATION") (context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator)
     /** Whether to buzz at all: follows Inlay's own Vibration switch (Sound & haptics). */
     var buzz: () -> Boolean = { true }
+    /** How loud the build-up plays, 0..1 (0: not at all): Inlay's volume, and the device's silent mode. */
+    var loudness: () -> Float = { 1f }
     /** Test builds tune the buzz by feel: [strength] 0..3 (Light, Medium, Strong, Max), [style] see [BUZZ_STYLES]. */
     var strength = 1
     var style = 2
@@ -140,14 +140,16 @@ class KonamiCode(private val context: Context, private val onFound: () -> Unit) 
     fun prepare() { for (n in 2..CODE.size) clip(n) }
     private fun clip(n: Int): Int? {
         loaded[n]?.let { return it }
-        val id = context.resources.getIdentifier("lab_${sound}_$n", "raw", context.packageName)
+        val id = context.resources.getIdentifier("konami_$n", "raw", context.packageName)
         if (id == 0) return null
         return pool.load(context, id, 1).also { loaded[n] = it }
     }
     private fun play(n: Int) {
         if (n < 2) return                                  // the first press is only the buzz; the sound starts, softly, on the second
+        val v = loudness().coerceIn(0f, 1f)
+        if (v <= 0f) return
         val id = clip(n) ?: return
-        pool.play(id, 1f, 1f, 1, 0, 1f)
+        pool.play(id, v, v, 1, 0, 1f)
     }
     fun release() = pool.release()
 
@@ -155,15 +157,14 @@ class KonamiCode(private val context: Context, private val onFound: () -> Unit) 
      * When the last press's clip reaches its final note (ms): the reward's words land on it. Measured from the clips
      * (where the loudest, last note starts). Without a sound, a short beat.
      */
-    val finalNoteMs: Long get() = if (clip(CODE.size) == null) 600L else FINAL_NOTE_MS.getOrElse(sound) { 600L }
+    val finalNoteMs: Long get() = if (clip(CODE.size) == null) 600L else FINAL_NOTE_MS
 
     companion object {
         val CODE = listOf("Dup", "Dup", "Ddown", "Ddown", "Dleft", "Dright", "Dleft", "Dright", "B", "A")
         const val MAX_GAP_MS = 3000L
         private const val TAG = "InlayKonami"
-        /** The build-up sounds a test build can pick from (their clips exist only in the preview build). */
-        val SOUNDS = listOf("Original", "Shapes", "Melody", "Arpeggio")
-        private val FINAL_NOTE_MS = listOf(730L, 730L, 460L, 450L)
+        /** Where "Secret found" reaches its bright chord (tools/sound-lab/finals.json). */
+        private const val FINAL_NOTE_MS = 270L
         val BUZZ_STRENGTHS = listOf("Light", "Medium", "Strong", "Max")
         val BUZZ_STYLES = listOf("Calibrated", "Taps", "Pulses", "Rumble")
         fun hasLab(context: Context) = context.packageName.endsWith(".preview")

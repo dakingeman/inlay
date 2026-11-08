@@ -12,8 +12,8 @@ android {
         applicationId = "io.github.dakingeman.inlay"
         minSdk = 29
         targetSdk = 37
-        versionCode = 5
-        versionName = "1.2.1"
+        versionCode = 6
+        versionName = "1.3.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -35,6 +35,9 @@ android {
     }
     testOptions {
         unitTests.isIncludeAndroidResources = true
+        // The tour's "Your turn" waits for you; the checks that page through the tour run without it (ButtonRolesTest
+        // and TourYourTurnTest switch it on)
+        unitTests.all { it.systemProperty("inlay.checks.noTurns", "1"); it.systemProperty("inlay.checks.noSetup", "1") }
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11

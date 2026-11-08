@@ -1,5 +1,43 @@
 # Changelog
 
+## 1.3.0 — Split keyboard, your own buttons and a new tour
+
+A new welcome tour that teaches every button by typing, a split keyboard for wide screens, and a setup that learns any controller's buttons. Plus quick symbols, Find in Settings, voice typing, each app's language remembered, and backups.
+
+**New**
+- **A new welcome tour.** You learn the controller by typing a few game names, one small turn at a time: a capital Z for Zelda, deleting the extra d in Metroidd, an accent for Pokémon, copying, undo and more. Each button shows up right on the key it works on. Nothing is blocked: a slip really types, the card says how to put it right, and help only comes if you've been stuck a while. The last page offers a second go at anything that took a few tries. Replay it any time in Settings → About.
+- **Split keyboard.** Two halves, one under each thumb, with your app showing between them. Settings → Look. Only on screens wide enough for it, and not in TV mode. In Split, long language names show as their code on the space bar (SV · FI, PT, UK).
+- **Show Inlay your buttons.** Press your four face buttons once (left, top, right, bottom), then pick which one selects and which one goes back. Delete and Space take the other two. It works with any controller, swapped or not, and each controller keeps its own setup. Settings → Device → Your buttons. It replaces Swap A/B and X/Y and the Typing button setting; what you had set is brought across.
+- **Find any setting.** RB in Settings, or the Find pill at the top. It always types in English, and a held D-pad repeats.
+- **Quick symbols.** Hold LT, press A on a symbol and let go: you're back on the letter you were on, like RT for one capital. A tap on LT still swaps to the symbols as before. And hold A on a symbol for its relatives: € gives $ £ ¥, - gives – and —, " gives “ ” „ « », plus ¿ ¡ ± ≠ °.
+- **Voice typing.** When you have a voice typing app that works with other keyboards (FUTO Voice Input is free and works offline), a microphone shows in the top row and hands over to it. Inlay itself never listens, needs no microphone permission and adds nothing to its size. Settings → Typing → Voice typing says whether it's ready, and how to set it up if not.
+- **Remember each app's language.** With two or more languages, each app gets back the one you last used in it. Off by default. Settings → Typing.
+- **Back up and restore.** Your settings and the words Inlay has learnt, in one file you keep wherever you like. The clipboard is never in it. Settings → About.
+- **Keyboard doesn't show up?** A row in Settings → About says whether Inlay is turned on and in use, and A goes straight to the fix.
+- **Hold the full stop for punctuation** (, ? ! ' " : ; …) and, in web address and email boxes, **hold .com for other endings** like .net, .org and your language's own (.de and .at in German).
+- **Pin a clip.** Press Y on a clip in the clipboard and it stays at the top, however much you copy after it. Up to four.
+- **D-pad speed.** How fast a held D-pad keeps moving the highlight, from Slowest to Fastest. Medium is the pace it always had. Settings → Device.
+- **Icons in the top row.** Select, Cut, Copy and Paste can show as icons, or icons and words, drawn to match the microphone, clock and settings icons. Words stay the default. Settings → Look → Top row.
+- **See where you are in Settings.** A slim bar beside each long page shows how much there is and where you are, lit in your colour as you move.
+- **Use the full screen height.** On Android 13 and newer with gesture navigation, Android adds an empty strip under the keyboard with a hide arrow and a keyboard switcher. Inlay now hides it and uses the room. B still hides the keyboard, and holding the settings key in the top row opens the keyboard switcher. On by default, Settings → Look. The idea comes from [Odin KB](https://github.com/duhmojo/odin-kb), thank you.
+
+**Changed**
+- **The highlight is on the next key the moment you press.** Subtle (the default) no longer glides; the spot it left fades out instead. Fluid still glides.
+- **Calmer Settings tabs.** A new page fades in quickly without blinking to black, and the Settings words are shorter and clearer.
+- **Letting go of A keeps the accent you're on**, the first one included, so é for Pokémon is hold, then let go. The plain letter is the first box in the row.
+- **Try your buttons opens full screen** by default, on the same background as the tour.
+- **The left stick resizes the keyboard in Settings** too, as it does in an app.
+
+**Fixes**
+- Back up and Restore closed Settings instead of opening the file picker.
+- Split filled only part of the window in some languages; both halves now fill in all 11.
+- Find closed its accents straight away, and a held D-pad didn't repeat there.
+- The RT tips covered the top row, so the highlight could land on something hidden.
+
+**Good to know on an AYN Odin:** holding LB and RB together for a second turns on the Odin's own virtual mouse (a cursor on the left stick, X opens recent apps). That's the Odin, not Inlay. Do the same again to turn it off. Settings → About mentions it too.
+
+One more thing is hidden somewhere. Happy hunting.
+
 ## 1.2.1 — Nintendo-layout handhelds
 
 **Fixes**

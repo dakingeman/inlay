@@ -23,7 +23,9 @@ enum class Language(
     val locale: Locale = Locale.ROOT,
     val lettersKey: String = "ABC",
     val currency: String = "€",
-    val accentFirst: String = ""
+    val accentFirst: String = "",
+    /** The short name, for a space bar too small for the whole one ("SV · FI"); the language code when not given. */
+    private val shortName: String? = null
 ) {
     ENGLISH("English", listOf("qwertyuiop", "asdfghjkl'", "zxcvbnm"),
         classicRow2 = "asdfghjkl", locale = Locale.ENGLISH, currency = "£"),
@@ -40,13 +42,16 @@ enum class Language(
     DANISH("Dansk", listOf("qwertyuiopå", "asdfghjklæø", "zxcvbnm"),
         locale = Locale.forLanguageTag("da"), accentFirst = "é"),
     SWEDISH("Svenska · Suomi", listOf("qwertyuiopå", "asdfghjklöä", "zxcvbnm"),
-        locale = Locale.forLanguageTag("sv"), accentFirst = "éšž"),
+        locale = Locale.forLanguageTag("sv"), accentFirst = "éšž", shortName = "SV · FI"),
     TURKISH("Türkçe", listOf("qwertyuıopğü", "asdfghjklşi'", "zxcvbnmöç"),
         locale = Locale.forLanguageTag("tr"), currency = "₺", accentFirst = "âîû"),
     RUSSIAN("Русский", listOf("йцукенгшщзхъ", "фывапролджэё", "ячсмитьбю"),
         locale = Locale.forLanguageTag("ru"), lettersKey = "АБВ", currency = "₽", accentFirst = "ё"),
     UKRAINIAN("Українська", listOf("йцукенгшщзхї", "фівапролджєґ", "ячсмитьбю"),
         locale = Locale.forLanguageTag("uk"), lettersKey = "АБВ", currency = "₴", accentFirst = "ґ");
+
+    /** On a small space bar: "EN", "DE", "SV · FI"... (the whole name when it fits: KeyGridView picks). */
+    val short: String get() = shortName ?: locale.language.uppercase(Locale.ROOT)
 
     /** Grid columns: the longest letter row. Every letter is exactly one column wide. */
     val columns: Int get() = rows.maxOf { it.length }
@@ -97,6 +102,53 @@ object Accents {
         val list = listOf(lower) + cycle.filter { it != lower }
         if (list.size < 2) return null
         return list.map { if (upper) language.upper(it.toString()) else it.toString() }
+    }
+
+    /**
+     * Hold A on the symbols page (1.3, Emre: "what people would actually use"): the symbol first, then its everyday
+     * relatives. Money signs (this language's own one included), proper dashes and quotes, ¿ ¡, ±, ≠ ≈ and °.
+     * Null for a symbol with none.
+     */
+    fun symbolVariants(c: Char, language: Language): List<String>? {
+        val money = "\$€£¥¢₹"
+        val list = when (c) {
+            in money, in language.currency -> (c.toString() + language.currency + money).toList().distinct()
+            '-' -> "-–—_".toList()
+            '"' -> "\"“”„«»".toList()
+            '\'' -> "'‘’‚‹›".toList()
+            '?' -> "?¿".toList()
+            '!' -> "!¡".toList()
+            '%' -> "%‰".toList()
+            '+' -> "+±".toList()
+            '=' -> "=≠≈".toList()
+            '*' -> "*•×".toList()
+            '/' -> "/÷\\".toList()
+            '0' -> "0°".toList()
+            else -> return null
+        }
+        return list.map { it.toString() }
+    }
+
+    /** Hold A on the full stop (1.3): the punctuation people reach for most, the full stop first (Gboard and iOS do the same). */
+    fun punctuation(c: Char): List<String>? = if (c == '.') listOf(".", ",", "?", "!", "'", "\"", ":", ";", "…") else null
+
+    /**
+     * Hold A on ".com" (1.3): five web endings, the common ones and the language's own. A cell each, two columns wide.
+     * Kept to five so they fit one row; ".com" stays first, so letting go at once keeps it.
+     */
+    fun domains(language: Language): List<String> = listOf(".com") + when (language) {
+        Language.ENGLISH -> listOf(".co.uk", ".net", ".org", ".io")
+        Language.GERMAN -> listOf(".de", ".at", ".ch", ".net")
+        Language.FRENCH -> listOf(".fr", ".be", ".ch", ".net")
+        Language.SPANISH -> listOf(".es", ".net", ".org", ".mx")
+        Language.PORTUGUESE -> listOf(".pt", ".com.br", ".net", ".org")
+        Language.NORWEGIAN -> listOf(".no", ".net", ".org", ".eu")
+        Language.DANISH -> listOf(".dk", ".net", ".org", ".eu")
+        Language.SWEDISH -> listOf(".se", ".fi", ".net", ".org")
+        Language.TURKISH -> listOf(".com.tr", ".net", ".org", ".tr")
+        Language.RUSSIAN -> listOf(".ru", ".net", ".org", ".рф")
+        Language.UKRAINIAN -> listOf(".ua", ".com.ua", ".net", ".org")
+        else -> listOf(".net", ".org", ".io", ".eu")
     }
 
     /** What [c] becomes on the next press, or null when it has no accented forms. */

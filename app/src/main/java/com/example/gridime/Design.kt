@@ -47,6 +47,16 @@ object Design {
     val SURFACE_BG: Int = Color.BLACK
     val SURFACE_CARD: Int = Color.parseColor("#111114")
     val SURFACE_RAISED: Int = Color.parseColor("#1C1C21")          // focused row
+    // What's new close-ups (WhatsNewShowcase): the keyboard's graphite, drawn small
+    val SHOWCASE_PANEL: Int = Color.parseColor("#0B0C0F")         // the window around a close-up
+    val SHOWCASE_KEY: Int = Color.parseColor("#1C1D22")           // a key
+    val SHOWCASE_KEY_INK: Int = Color.parseColor("#E8E8EA")       // its letter
+    val SHOWCASE_FIELD: Int = Color.parseColor("#121318")         // a text box
+    // The demo apps' flat cover art (docs/visuals-src/VISUAL_SYSTEM.md 6): base and shape tones
+    val COVER_BLUE: Int = Color.parseColor("#3F63B8"); val COVER_BLUE_SHAPE: Int = Color.parseColor("#5F89DB")
+    val COVER_TERRACOTTA: Int = Color.parseColor("#B65C34"); val COVER_TERRACOTTA_SHAPE: Int = Color.parseColor("#DA8459")
+    val COVER_GREEN: Int = Color.parseColor("#2F8A66"); val COVER_GREEN_SHAPE: Int = Color.parseColor("#50B08B")
+    val COVER_PURPLE: Int = Color.parseColor("#7650B8"); val COVER_PURPLE_SHAPE: Int = Color.parseColor("#9B79DA")
     val EDGE_CARD: Int = Color.parseColor("#14FFFFFF")             // 8 % white hairline
     val EDGE_DIVIDER: Int = Color.parseColor("#0FFFFFFF")          // 6 % white hairline
     val TEXT_PRIMARY: Int = Color.WHITE
@@ -64,7 +74,7 @@ object Design {
 
     // ---- The Konami Code's reward (SecretReward.kt): an old game screen ---------------
     val SECRET_INK: Int = Color.parseColor("#08090C")          // the screen's black
-    val SECRET_GREY: Int = Color.parseColor("#6E7180")         // quieter words, mid stars
+    val SECRET_GREY: Int = Color.parseColor("#7A7D8B")         // quieter words, mid stars: 4.87:1 on the screen's black (was 4.11, under the 4.5 text rule; 8 Nov)
     val SECRET_DIM: Int = Color.parseColor("#343640")          // far stars
     val SECRET_BODY: Int = Color.parseColor("#14151A")         // the lifted-out screen's bezel
     val SECRET_OUTLINE: Int = Color.parseColor("#A7AEBC")      // the bezel's outline: the device pictures' line colour
@@ -72,25 +82,68 @@ object Design {
     val SECRET_CARD_LINE: Int = Color.parseColor("#46548C")
     const val SECRET_DIM_ALPHA = 158                           // the page behind a lifted-out screen
     const val SECRET_SCANLINE_ALPHA = 48
-    /** The retro themes' pixel versions in the reward: the darker lip under each key (Grey brick, Indigo). */
-    val RETRO_BRICK_LIP: Int = Color.parseColor("#A8A8AA")
-    val RETRO_INDIGO_LIP: Int = Color.parseColor("#3E3F68")
-    /** The retro themes' own highlights (3:1 on their keys) and Indigo's coloured keys (Palette.retro). */
-    val RETRO_BRICK_HIGHLIGHT: Int = Color.parseColor("#2A4FB0")   // a blue pixel cursor
-    val RETRO_INDIGO_HIGHLIGHT: Int = Color.parseColor("#7CE08F")  // the green of a big A button
-    val RETRO_INDIGO_DELETE: Int = Color.parseColor("#D6303A")
-    val RETRO_INDIGO_LAYER: Int = Color.parseColor("#F2C400")
+    /** The retro themes' lips: the darker edge under each chunky key (the reward's pixel versions use them too). */
+    val RETRO_BRICK_LIP: Int = Color.parseColor("#A2A2A0")
+    val RETRO_INDIGO_LIP: Int = Color.parseColor("#3A3468")
+    val RETRO_JEWEL_LIP: Int = Color.parseColor("#070807")
+    /** 1.3 (5 Nov): colours sampled from photos of each console and its controller, kept flat. */
+    val RETRO_BRICK_HIGHLIGHT: Int = Color.parseColor("#2A4FB0")   // a blue cursor (the cross button's blue)
+    val RETRO_BRICK_SPECIAL: Int = Color.parseColor("#505052")     // the controller's dark grey buttons (space)
+    val RETRO_BRICK_RIDGE: Int = Color.parseColor("#8F8F8D")       // the lid's ridges along the top
+    val RETRO_BRICK_CIRCLE: Int = Color.parseColor("#F08A8A")      // the four symbols, two on each side:
+    val RETRO_BRICK_TRIANGLE: Int = Color.parseColor("#5CC9AE")    // shift and ?123 on the left,
+    val RETRO_BRICK_SQUARE: Int = Color.parseColor("#E99BD3")      // delete and Enter on the right
+    val RETRO_BRICK_CROSS: Int = Color.parseColor("#8FA9E8")
+    val RETRO_INDIGO_HIGHLIGHT: Int = Color.parseColor("#2FCB8C")  // the big A button's green, a touch lighter so it stands out 3:1 on the keys
+    val RETRO_INDIGO_DELETE: Int = Color.parseColor("#E8414B")     // the small red B
+    val RETRO_INDIGO_LAYER: Int = Color.parseColor("#F7C702")      // the yellow C-stick
+    val RETRO_INDIGO_VENT: Int = Color.parseColor("#332D5E")       // the side vent's grid along the top
+    val RETRO_JEWEL_GREEN: Int = Color.parseColor("#7DC243")       // the lit jewel (the space bar)
+    val RETRO_JEWEL_HIGHLIGHT: Int = Color.parseColor("#9BE04A")   // the jewel's glow, for the highlight and the controls
+    val RETRO_JEWEL_FIN: Int = Color.parseColor("#242624")         // the side fins along the top bar
+    val RETRO_JEWEL_FIN_BAR: Int = Color.parseColor("#121312")     // ...on their own darker band
+    const val RETRO_JEWEL_FIN_DP = 1.5f
+    const val RETRO_JEWEL_FIN_GAP_DP = 6f
+    /** Gloss white: waiting for the next secret (PS2, Xbox 360, Wii); kept in Palette.later. */
     val RETRO_WHITE_HIGHLIGHT: Int = Color.parseColor("#0E86BE")   // a soft blue glow, deep enough to show on white
-    val RETRO_BRICK_SPECIAL: Int = Color.parseColor("#5E5E66")     // the controller's darker grey (special keys, space)
-    val RETRO_BRICK_RIDGE: Int = Color.parseColor("#B8B8B6")       // the lid's ridges along the top
-    val RETRO_INDIGO_GLOSS: Int = Color.parseColor("#22FFFFFF")    // the glossy top of each key
     val RETRO_WHITE_STRIPE: Int = Color.parseColor("#E6E6E6")      // the menu's fine stripes
     val RETRO_WHITE_GLOSS: Int = Color.parseColor("#78EEF4FA")
     val RETRO_SHADOW: Int = Color.parseColor("#24000000")          // the white tiles' soft shadow
+    /** Button setup (ButtonSetupView): the four buttons as a big diamond, one thing to do at a time. */
+    const val SETUP_BUTTON_DP = 36f    // each button's circle
+    const val SETUP_SPREAD_DP = 86f    // from the middle to each button
+    const val SETUP_ROOM_DP = 540f     // the screen height those are made for (shorter screens scale them down)
+    const val SETUP_PULSE_MS = 1200L   // the button to press breathes once in this long
+    const val SETUP_SWELL_MS = 260L    // a pressed button swells for this long, so you see which one it heard
+    const val SETUP_FINISH_MS = 700L   // "Done" shows this long before the setup closes
+    const val SETUP_LEAVE_HOLD_MS = 800L // holding Start this long leaves the setup (nothing changes)
+    val SETUP_SELECT: Int = Color.parseColor("#6CC24A")   // Select: green, as a yes
+    val SETUP_CLOSE: Int = Color.parseColor("#F0503C")    // Close: red, as a no
+    /** A held D-pad: one move, this pause, then a move every [DPAD_REPEAT_MS] (the keyboard and Find share it). */
+    const val DPAD_REPEAT_DELAY_MS = 230L
+    const val DPAD_REPEAT_MS = 80L
+    /** D-pad speed (Settings → Device → Controls), Slowest to Fastest; Medium is the pace above (1.3, a held D-pad). */
+    val DPAD_REPEAT_DELAYS_MS = longArrayOf(380L, 300L, DPAD_REPEAT_DELAY_MS, 180L, 140L)
+    val DPAD_REPEATS_MS = longArrayOf(140L, 105L, DPAD_REPEAT_MS, 62L, 48L)
+    fun dpadDelay(speed: Int) = DPAD_REPEAT_DELAYS_MS[speed.coerceIn(0, DPAD_REPEAT_DELAYS_MS.lastIndex)]
+    fun dpadRepeat(speed: Int) = DPAD_REPEATS_MS[speed.coerceIn(0, DPAD_REPEATS_MS.lastIndex)]
     const val RETRO_LIP_SHADE = 0x40   // the lip: the key's own colour, a quarter darker
     const val RETRO_LIP_DP = 3f        // the darker lip under each chunky key
     const val RETRO_RIDGE_GAP_DP = 6f  // ridges: one line every 6 dp along the top
     const val RETRO_STRIPE_GAP_DP = 4f // stripes: one line every 4 dp
+    // Materials (1.3)
+    const val RETRO_GRAIN_TILE = 64    // the speckle's tile, in grains
+    const val RETRO_GRAIN_DP = 0.75f   // one grain, in dp: fine enough to read as texture, not noise
+    const val RETRO_JEWEL_GLOW = 0x78  // a lit button's bright centre (white over the key colour)
+    const val RETRO_JEWEL_RIM = 0x55   // ...and its darker rim
+    const val RETRO_X_BAND = 0.34f     // the lid's X: each arm's width, against the keyboard's height
+    const val RETRO_GRID_GAP_DP = 5f   // the vent grid: a square every 5 dp
+    const val RETRO_CLEARING_PAD_DP = 6f // the clear space round each top bar word on a patterned bar
+    const val RETRO_RIB_GAP_DP = 5f    // upright ribs: one every 5 dp
+    const val RETRO_JEWEL_SOFT = 150   // a flat jewel's soft glow: the lit centre at this strength, fading out
+    const val STROKE_JEWEL_RIM = 1.5f  // a lit key's darker rim
+    val RETRO_WHITE_CLEAR: Int = Color.parseColor("#00FFFFFF") // white with no strength: where a shine fades out
+    const val RETRO_INK_MIN = 4.6      // a coloured label must still read 4.5 : 1 (a little over, for soft edges)
     val LAB_PROBLEM: Int = Color.parseColor("#FF7878")         // test builds only: what went wrong, in red
     const val MOTION_SIGN = 520L       // the spark sign growing in (with its ring), after the tab has made room
     const val MOTION_SIGN_DELAY = 200L //   on a row: once the page has settled
@@ -116,6 +169,7 @@ object Design {
 
     // ---- Keyboard veils (alpha, 0-255) -------------------------------------------
     const val SCRIM_ACCENTS = 0xA6        // the keyboard dims behind the accent tray (65 %)
+    const val SPOTLIGHT_DIM = 0x66        // What's new's spotlight: everything round the focus dims (40 %, studio Motion recipe)
     const val SCRIM_ACCENTS_CLEAR = 0x8C  //   on the see-through theme, with black (55 %)
     const val TRAY_CLEAR = 0xE6           // the accent tray itself on the see-through theme (90 %)
     const val PANEL_TV = 0xF2             // the floating TV panel over the app or game (95 %)
@@ -168,9 +222,10 @@ object Design {
     const val TYPE_CHIP = 12f       // hint chips
 
     // ---- Motion (ms). Fast enough to never make you wait. ------------------
-    const val MOTION_FOCUS = 70L       // highlight glide between keys (only the last 25 %, see below)
-    const val MOTION_FOCUS_MIN = 35L   // while a direction is held and repeating
-    const val MOTION_FOCUS_JUMP = 0.75f // share of the way the highlight jumps on the very first frame
+    const val MOTION_FOCUS = 50L       // Fluid's highlight glide between keys (only the last 10 %, see below)
+    const val MOTION_GHOST = 90L       // Subtle: the highlight is on the new key at once; the spot it left fades this long
+    const val MOTION_FOCUS_MIN = 30L   // while a direction is held and repeating
+    const val MOTION_FOCUS_JUMP = 0.9f // share of the way the highlight jumps on the very first frame (8 Nov: snappier)
     const val MOTION_PRESS = 110L      // key squeeze and release
     const val PRESS_SQUEEZE = 0.92f    //   a pressed key shrinks to this, then springs back over MOTION_PRESS (no overshoot)
     const val PRESS_SQUEEZE_WRAP = 0.94f //   the gentler squeeze when the highlight wraps round to the other edge
@@ -178,7 +233,7 @@ object Design {
     /** Landscape screens at least this wide put things side by side (small 4:3 handhelds are about 480). */
     const val WIDE_MIN_DP = 440
     const val MOTION_CONTROL = 200L    // switches, option pickers, tabs
-    const val MOTION_PAGE = 200L       // settings page change
+    const val MOTION_PAGE = 160L       // settings page change (the new page comes up from 40 %, never from blank)
     const val MOTION_PANEL = 260L      // keyboard preview sliding in and out
     const val MOTION_REVEAL_WAIT = 150L // the accent tray waits this long (a tap never opens it), then
     const val MOTION_REVEAL = 200L     //   rises in this long

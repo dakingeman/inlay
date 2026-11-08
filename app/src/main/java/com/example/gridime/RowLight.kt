@@ -21,7 +21,9 @@ package com.example.gridime
  *    demo never presses, like Close the keyboard, included), so every row appears in every run or two.
  *    TourCaptionTest checks this on every page and device.
  */
-class RowLight(rows: List<List<HintPart>>, private val takeTurns: Boolean = true, private val onChange: (row: Int, byDemo: Boolean) -> Unit) {
+/** [dwell] and [idle]: how long a row stays at least, and before another takes its turn (the end pages read slower). */
+class RowLight(rows: List<List<HintPart>>, private val takeTurns: Boolean = true, private val dwell: Long = DWELL_MS,
+               private val idle: Long = IDLE_MS, private val onChange: (row: Int, byDemo: Boolean) -> Unit) {
 
     private enum class Kind { PRESS, HOLD, RELEASE }
     private class Row(val press: Set<String>, val held: Set<String>, val kind: Kind) { val size get() = press.size + held.size }
@@ -81,18 +83,18 @@ class RowLight(rows: List<List<HintPart>>, private val takeTurns: Boolean = true
         // already had one doesn't cut in, so the round goes through calmly, one row after another
         if (takeTurns && pick in shownThisRun && rows.indices.any { it !in shownThisRun }) return
         if (pick == current) { pending = -1; return }
-        if (now - lastSwitch >= DWELL_MS && owed.isEmpty()) show(pick, now, byDemo = true) else pending = pick
+        if (now - lastSwitch >= dwell && owed.isEmpty()) show(pick, now, byDemo = true) else pending = pick
     }
 
     /** Called a few times a second: shows a waiting row once the dwell is over, and fills quiet moments. */
     fun tick(now: Long) {
         if (rows.isEmpty()) return
-        if (!takeTurns) { if (pending >= 0 && now - lastSwitch >= DWELL_MS) { val p = pending; pending = -1; show(p, now, byDemo = true) }; return }
-        if (owed.isNotEmpty() && now - lastSwitch >= DWELL_MS) { show(owed.removeFirst(), now); return }
-        if (pending >= 0 && now - lastSwitch >= DWELL_MS) { val p = pending; pending = -1; show(p, now, byDemo = true); return }
+        if (!takeTurns) { if (pending >= 0 && now - lastSwitch >= dwell) { val p = pending; pending = -1; show(p, now, byDemo = true) }; return }
+        if (owed.isNotEmpty() && now - lastSwitch >= dwell) { show(owed.removeFirst(), now); return }
+        if (pending >= 0 && now - lastSwitch >= dwell) { val p = pending; pending = -1; show(p, now, byDemo = true); return }
         // A row that has had its time gives way to one that hasn't had its turn this run, even while the
         // demo keeps pressing the same button (typing presses A all the time): every row gets its moment
-        val quiet = now - lastSwitch >= IDLE_MS
+        val quiet = now - lastSwitch >= idle
         if (quiet && rows.size > 1) {
             val next = (1..rows.size).map { (current + it) % rows.size }.firstOrNull { it !in shownThisRun }
             if (next != null) { show(next, now); lastEvent = now }

@@ -3,7 +3,7 @@ package com.example.gridime
 /** DIGIT = a key on the optional number row. GAP = an empty word slot in the tool strip (never focused). */
 enum class KeyType { CHAR, SHIFT, LAYER, SPACE, ENTER, DELETE, TOOL, CLIP, EMPTY, DIGIT, GAP }
 enum class ShiftState { OFF, ONCE, LOCK }
-enum class Tool { SELECT, SELECT_ALL, CUT, COPY, PASTE, HISTORY, SETTINGS, WORD }
+enum class Tool { SELECT, SELECT_ALL, CUT, COPY, PASTE, HISTORY, SETTINGS, WORD, VOICE }
 enum class Layer { LETTERS, SYMBOLS, CLIPS, NUMPAD }
 
 /**
@@ -47,14 +47,19 @@ object Layouts {
      * The tool strip. While a word is being typed, [words] (most likely first) take the place
      * of Cut / Copy / Paste. Always three slots, so one or two words keep their normal size.
      */
-    fun toolRow(selectAllButton: Boolean, words: List<String> = emptyList()): List<Key> {
+    /** [voice]: a voice typing app is there to hand off to (1.3): a microphone joins the icons on the right. */
+    fun toolRow(selectAllButton: Boolean, words: List<String> = emptyList(), split: Boolean = false, voice: Boolean = false): List<Key> {
+        if (split) return splitToolRow(selectAllButton, words, voice)
         val select = Key(KeyType.TOOL, "Select", if (selectAllButton) 1.7f else 1.9f, Tool.SELECT, ControllerButton.SELECT)
-        val tail = listOf(
+        val tail = listOfNotNull(
+            if (voice) Key(KeyType.TOOL, "", 0.9f, Tool.VOICE) else null,
             Key(KeyType.TOOL, "", 0.9f, Tool.HISTORY),
             Key(KeyType.TOOL, "", 0.9f, Tool.SETTINGS)
         )
+        val icons = tail.sumOf { it.weight.toDouble() }.toFloat()
+        val give = icons - 1.8f                                    // what the microphone takes from Paste
         if (words.isNotEmpty()) {
-            val slot = (UNITS - select.weight - 1.8f) / 3f
+            val slot = (UNITS - select.weight - icons) / 3f
             val slots = (0 until 3).map { i ->
                 words.getOrNull(i)?.let {
                     Key(KeyType.TOOL, it, slot, Tool.WORD, if (i == 0) ControllerButton.R3 else null, best = i == 0)
@@ -68,17 +73,90 @@ object Layouts {
                 Key(KeyType.TOOL, "All", 1.3f, Tool.SELECT_ALL),
                 Key(KeyType.TOOL, "Cut", 1.0f, Tool.CUT),
                 Key(KeyType.TOOL, "Copy", 1.2f, Tool.COPY),
-                Key(KeyType.TOOL, "Paste", 3.0f, Tool.PASTE)
+                Key(KeyType.TOOL, "Paste", 3.0f - give, Tool.PASTE)
             ) + tail
         } else {
             listOf(
                 select,
                 Key(KeyType.TOOL, "Cut", 1.2f, Tool.CUT),
                 Key(KeyType.TOOL, "Copy", 1.3f, Tool.COPY),
-                Key(KeyType.TOOL, "Paste", 3.8f, Tool.PASTE)
+                Key(KeyType.TOOL, "Paste", 3.8f - give, Tool.PASTE)
             ) + tail
         }
     }
+
+    /**
+     * The tool strip for Split: each window gets its own part, and both parts are exactly half a row, so nothing
+     * straddles the middle. Left: Select, (All), Cut, Copy, or the first word. Right: Paste, or the other words, and
+     * the clipboard and Settings icons.
+     */
+    private fun splitToolRow(selectAllButton: Boolean, words: List<String>, voice: Boolean = false): List<Key> {
+        val half = UNITS / 2
+        val tail = listOfNotNull(if (voice) Key(KeyType.TOOL, "", 0.9f, Tool.VOICE) else null,
+            Key(KeyType.TOOL, "", 0.9f, Tool.HISTORY), Key(KeyType.TOOL, "", 0.9f, Tool.SETTINGS))
+        val icons = tail.sumOf { it.weight.toDouble() }.toFloat()
+        val select = Key(KeyType.TOOL, "Select", if (selectAllButton) 1.7f else 1.9f, Tool.SELECT, ControllerButton.SELECT)
+        if (words.isNotEmpty()) {
+            val first = Key(KeyType.TOOL, words[0], half - select.weight, Tool.WORD, ControllerButton.R3, best = true)
+            val slot = (half - icons) / 2f
+            val rest = (1..2).map { i -> words.getOrNull(i)?.let { Key(KeyType.TOOL, it, slot, Tool.WORD) } ?: Key(KeyType.GAP, weight = slot) }
+            return listOf(select, first) + rest + tail
+        }
+        val left = if (selectAllButton) listOf(select, Key(KeyType.TOOL, "All", 1.1f, Tool.SELECT_ALL),
+            Key(KeyType.TOOL, "Cut", 1.0f, Tool.CUT), Key(KeyType.TOOL, "Copy", 1.2f, Tool.COPY))
+        else listOf(select, Key(KeyType.TOOL, "Cut", 1.5f, Tool.CUT), Key(KeyType.TOOL, "Copy", 1.6f, Tool.COPY))
+        return left + Key(KeyType.TOOL, "Paste", half - icons, Tool.PASTE) + tail
+    }
+
+    /**
+     * Split: a row made ready for two windows. A space bar (or the empty clipboard's note) that runs across the middle
+     * becomes two, one in each window; the right-hand space bar has no badge, since Y already says where space is.
+     * Every other key stays as it is: [splitIndex] puts it on the side where the row's middle edge is nearest.
+     */
+    fun splitRow(row: List<Key>, half: Float? = null): List<Key> {
+        val mid = row.fold(0f) { a, k -> a + k.weight } / 2f
+        var x = 0f
+        val out = ArrayList<Key>(row.size + 1)
+        for (k in row) {
+            val l = x; val r = x + k.weight; x = r
+            if ((k.type == KeyType.SPACE || k.type == KeyType.EMPTY) && l < mid - SPLIT_EPS && r > mid + SPLIT_EPS) {
+                out += k.copy(weight = mid - l)
+                out += k.copy(weight = r - mid, hint = null, label = if (k.type == KeyType.EMPTY) "" else k.label)
+            } else out += k
+        }
+        if (half == null || out.size < 2) return out
+        // Each side fills its own window. With 11 columns a row splits 5 + 6: the five used to sit in a window sized
+        // for six, leaving a hole at its edge (Emre, 6 Nov, Swedish). Now the five are a little wider instead, the same
+        // in every row, so the columns still line up within each window.
+        val at = splitIndex(out)
+        val leftSum = out.take(at).sumOf { it.weight.toDouble() }.toFloat()
+        val rightSum = out.drop(at).sumOf { it.weight.toDouble() }.toFloat()
+        return out.mapIndexed { i, k -> k.copy(weight = k.weight * half / (if (i < at) leftSum else rightSum)) }
+    }
+
+    /**
+     * Split: how many keys of [row] go in the left window, at the key edge nearest the row's middle (on a tie, the
+     * left gets fewer). Always at least one key on each side when there are two or more.
+     */
+    fun splitIndex(row: List<Key>): Int {
+        if (row.size < 2) return row.size
+        val mid = row.fold(0f) { a, k -> a + k.weight } / 2f
+        var best = 1; var bestD = Float.MAX_VALUE; var x = 0f
+        for (i in 0 until row.size - 1) {
+            x += row[i].weight
+            val d = kotlin.math.abs(x - mid)
+            if (d < bestD - SPLIT_EPS) { bestD = d; best = i + 1 }
+        }
+        return best
+    }
+
+    /** Split: the widest half of a language's rows, in units (half a row, or one column more for odd columns). */
+    fun splitHalfUnits(language: Language): Float {
+        val cols = language.columns
+        return if (cols % 2 == 0) UNITS / 2 else ((cols + 1) / 2) * UNITS / cols
+    }
+
+    private const val SPLIT_EPS = 0.001f
 
     /**
      * The letter rows for a language. Every letter is one column wide, so the

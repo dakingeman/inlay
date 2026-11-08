@@ -17,7 +17,7 @@ import kotlin.math.sin
 
 /**
  * The Konami Code's reward, drawn in hard pixels like an old game screen: "Secret found" over streaking stars
- * (2.5 s), then the new themes as tiny keyboards and "3 new themes" (3 s). Nothing to navigate; any press skips it.
+ * (1.8 s), then each new theme in turn, and where the themes and their sound packs wait. Nothing to navigate; any press skips it.
  *
  * Two ways to show it:
  *  - on the device's own screen (full-screen Try your buttons with a handheld): [showOn] with that screen's rect;
@@ -39,15 +39,17 @@ class SecretScreen(context: Context) : View(context) {
      * line of words fits on one line with room to spare whatever the screen's shape; never finer than [MAX_COLS].
      */
     fun artSize(r: RectF): Pair<Int, Int> {
-        var px = min(r.width() / MIN_COLS, r.height() / MIN_ROWS)
+        val minCols = if (teaser) TEASER_COLS else MIN_COLS; val minRows = if (teaser) TEASER_ROWS else MIN_ROWS
+        var px = min(r.width() / minCols, r.height() / minRows)
         px = max(px, r.width() / MAX_COLS)
-        return Pair(max(MIN_COLS, (r.width() / px).toInt()), max(MIN_ROWS, (r.height() / px).toInt()))
+        return Pair(max(minCols, (r.width() / px).toInt()), max(minRows, (r.height() / px).toInt()))
     }
     /** How tall a letter is on screen (dp) for a screen [r]. */
     fun letterDp(r: RectF): Float { val (c, _) = artSize(r); return r.width() / c * 7f / dp }
 
     /** On the device's screen (in this view's coordinates); too small to read there, it lifts out instead. */
     fun showOn(screen: RectF) {
+        teaser = false
         val inset = 3f * dp
         val r = RectF(screen.left + inset, screen.top + inset, screen.right - inset, screen.bottom - inset)
         if (r.width() < 60f * dp || r.height() < 40f * dp || r.width() > width * 1.01f || r.height() > height * 1.01f ||
@@ -56,6 +58,7 @@ class SecretScreen(context: Context) : View(context) {
     }
     /** A retro screen lifted out of [source] into the middle of this view. */
     fun liftOut(source: RectF?) {
+        teaser = false
         lifted = true; from = source?.let { RectF(it) }
         val w = width.toFloat(); val h = height.toFloat()
         var sh = h * 0.62f; var sw = sh * 4f / 3f
@@ -63,8 +66,26 @@ class SecretScreen(context: Context) : View(context) {
         target = RectF((w - sw) / 2f, (h - sh) / 2f, (w + sw) / 2f, (h + sh) / 2f)
         start()
     }
+    /**
+     * What's new's teaser (1.3): the same retro screen with slowly drifting stars and "? ? ?", on [r] (this view's
+     * coordinates), until it's hidden. [framed]: a screen of its own, with the reward's bezel (a controller has none);
+     * nothing behind it is dimmed. [still]: motion is off, one calm frame.
+     */
+    fun showTeaser(r: RectF, framed: Boolean, still: Boolean) {
+        teaser = true; this.still = still
+        lifted = framed; from = null; target = RectF(r)
+        removeCallbacks(timeUp); started = SystemClock.uptimeMillis(); closing = 0L; visibility = VISIBLE; alpha = 1f; invalidate()
+    }
+    private var teaser = false
+    private var still = false
     private val timeUp = Runnable { finish() }
+    /**
+     * Android's "Remove animations" is on: the calm version (UX law, 8 Nov). The same moments in the same order, but
+     * each one simply appears: no streaking stars, no wipes, no glides, no growing screen.
+     */
+    internal var calm = false
     private fun start() {
+        calm = !android.animation.ValueAnimator.areAnimatorsEnabled()
         started = SystemClock.uptimeMillis(); closing = 0L; visibility = VISIBLE; alpha = 1f; invalidate()
         removeCallbacks(timeUp); postDelayed(timeUp, (TOTAL_S * 1000).toLong())       // ends on time even if not drawn
     }
@@ -95,13 +116,13 @@ class SecretScreen(context: Context) : View(context) {
         }
     }
     private fun drawReward(canvas: Canvas) {
-        val t = (SystemClock.uptimeMillis() - started) / 1000f
-        // where the screen is now: lifting out grows from the source over 400 ms
-        val e = if (lifted) ease(min(1f, t / 0.4f)) else 1f
+        val t = if (teaser && still) TEASER_STILL_S else (SystemClock.uptimeMillis() - started) / 1000f
+        // where the screen is now: lifting out grows from the source over 400 ms (the teaser's screen is simply there)
+        val e = if (lifted && !teaser && !calm) ease(min(1f, t / 0.4f)) else 1f
         val r = from?.let { RectF(it.left + (target.left - it.left) * e, it.top + (target.top - it.top) * e,
             it.right + (target.right - it.right) * e, it.bottom + (target.bottom - it.bottom) * e) } ?: target
         if (lifted) {
-            shade.color = Contrast.withAlpha(Color.BLACK, (Design.SECRET_DIM_ALPHA * e).toInt()); canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), shade)
+            if (!teaser) { shade.color = Contrast.withAlpha(Color.BLACK, (Design.SECRET_DIM_ALPHA * e).toInt()); canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), shade) }
             val bez = 10f * dp * e
             shade.color = BODY; canvas.drawRoundRect(r.left - bez, r.top - bez, r.right + bez, r.bottom + bez, 14f * dp, 14f * dp, shade)
             shade.style = Paint.Style.STROKE; shade.strokeWidth = 2.5f; shade.color = Contrast.withAlpha(Design.SECRET_OUTLINE, (255 * e).toInt())
@@ -116,7 +137,7 @@ class SecretScreen(context: Context) : View(context) {
         shade.color = Contrast.withAlpha(Color.BLACK, Design.SECRET_SCANLINE_ALPHA); val step = r.height() / rows
         var y = r.top + step - 1f; while (y < r.bottom) { canvas.drawRect(r.left, y, r.right, y + max(1f, step * 0.25f), shade); y += step }
         canvas.restore()
-        if (visibility == VISIBLE) postInvalidateOnAnimation()
+        if (visibility == VISIBLE && !(teaser && still)) postInvalidateOnAnimation()
     }
 
     /** Test builds compare reward designs (see [DESIGNS]). */
@@ -138,10 +159,11 @@ class SecretScreen(context: Context) : View(context) {
     internal fun scene(c: Canvas, w: Int, h: Int, t: Float) {
         c.drawColor(INK)
         text.color = WHITE; text.alpha = 255; textBounds.setEmpty(); textLines.clear(); boxes.clear(); clips.clear(); visible = android.graphics.Rect(0, 0, w, h)
+        if (teaser) { stars(c, w, h, t, warp = 0f); label(c, "? ? ?", w, h / 2 + 4); return }
         if (t < INTRO_S) {
             // the words land with the code's last note; stars rush out behind them and slow to a drift
-            stars(c, w, h, t, warp = max(0f, 1f - t / 0.9f))
-            text.alpha = (255 * min(1f, t / 0.08f)).toInt(); label(c, "Secret found", w, h / 2 + 4); text.alpha = 255
+            if (calm) stars(c, w, h, 0f, warp = 0f) else stars(c, w, h, t, warp = max(0f, 1f - t / 0.9f))
+            text.alpha = if (calm) 255 else (255 * min(1f, t / 0.08f)).toInt(); label(c, "Secret found", w, h / 2 + 4); text.alpha = 255
             return
         }
         val u = t - INTRO_S
@@ -160,9 +182,9 @@ class SecretScreen(context: Context) : View(context) {
         if (i >= THEMES.size) { endCard(c, w, h, u - THEMES.size * EACH_S); return }
         val f = u - i * EACH_S
         val th = THEMES[i]
-        val x = (w * (1f - SecretScreen.ease(min(1f, f / 0.22f)))).toInt()
+        val x = if (calm) 0 else (w * (1f - SecretScreen.ease(min(1f, f / 0.22f)))).toInt()
         if (i > 0 && x > 0) { val p = THEMES[i - 1]; clipIn(c, 0, 0, x, h); c.drawColor(p.bg); themeScreen(c, p, w, h, 1f); clipOut(c) }
-        clipIn(c, x, 0, w, h); c.drawColor(th.bg); themeScreen(c, th, w, h, max(0f, (f - 0.25f) / (EACH_S - 0.45f))); clipOut(c)
+        clipIn(c, x, 0, w, h); c.drawColor(th.bg); themeScreen(c, th, w, h, if (calm) 1f else max(0f, (f - 0.25f) / (EACH_S - 0.45f))); clipOut(c)
     }
 
     /** Level select: three cartridges on a shelf; a frame steps from one to the next, and the chosen one shows itself. */
@@ -296,13 +318,23 @@ class SecretScreen(context: Context) : View(context) {
     }
     private fun frame(c: Canvas, l: Int, t: Int, r: Int, b: Int, colour: Int) { ink.color = colour; frameF(c, l.toFloat(), t.toFloat(), r.toFloat(), b.toFloat()) }
 
-    /** The last card: "3 new themes", "in Look", and the same spark that waits on Look's tab. */
+    /**
+     * The last card: what was found and where it waits, two pairs, the sounds a beat after the themes:
+     * "3 new themes / in Look" and "3 sound packs / in Sound", each with the spark that waits on that tab.
+     */
     private fun endCard(c: Canvas, w: Int, h: Int, f: Float) {
-        val a = (255 * min(1f, f / 0.25f)).toInt()
-        text.color = WHITE; text.alpha = a; label(c, "3 new themes", w, h / 2 - 2)
-        text.color = GREY; text.alpha = a; label(c, "in Look", w, h / 2 + 12)
+        pair(c, w, h / 2 - 14, if (again) "3 themes" else "3 new themes", "in Look", f)
+        pair(c, w, h / 2 + 14, "3 sound packs", "in Sound", f - END_STAGGER_S)
+    }
+    /** Found before (a victory lap): the same reward, but nothing is "new" and no spark points anywhere. */
+    var again = false
+    private fun pair(c: Canvas, w: Int, baseline: Int, what: String, where: String, f: Float) {
+        if (f <= 0f) return
+        val a = if (calm) 255 else (255 * min(1f, f / 0.25f)).toInt()
+        text.color = WHITE; text.alpha = a; label(c, what, w, baseline)
+        text.color = GREY; text.alpha = a; label(c, where, w, baseline + 12)
         text.alpha = 255
-        if (f > 0.35f) PixelSpark.draw(c, w / 2f + tw("in Look") / 2f + 8f, h / 2f + 8f, 1f, ACCENT_SPARK, 1f, ink)
+        if (f > 0.35f && !again) PixelSpark.draw(c, w / 2f + tw(where) / 2f + 8f, baseline + 8f, 1f, ACCENT_SPARK, 1f, ink)
     }
 
     /** How many lines [s] takes (1, or 2 when too wide for one). */
@@ -339,11 +371,15 @@ class SecretScreen(context: Context) : View(context) {
         val DESIGNS = listOf("Spotlight", "Level select", "Power on", "Memory card", "Title screen")
         const val INTRO_S = 1.8f        // stars and "Secret found"
         const val EACH_S = 1.5f         // each theme's moment
-        const val TOTAL_S = INTRO_S + 3 * EACH_S + 1.8f
+        const val END_STAGGER_S = 0.5f  // the sound packs follow the themes
+        const val TOTAL_S = INTRO_S + 3 * EACH_S + 1.8f + END_STAGGER_S
         const val MIN_LETTER_DP = 10f   // smaller than this on the device's screen, and the reward lifts out
-        const val MIN_COLS = 112        // the longest line (12 letters, 96 px) plus a margin
+        const val MIN_COLS = 112        // the longest line (13 letters, 104 px) plus a margin
         const val MIN_ROWS = 72
         const val MAX_COLS = 176
+        const val TEASER_COLS = 64      // "? ? ?" is 40 px: a coarser screen, so it reads on the What's new picture
+        const val TEASER_ROWS = 44
+        const val TEASER_STILL_S = 6f
         private val INK = Design.SECRET_INK; private val WHITE = Design.INK_LIGHT
         private val GREY = Design.SECRET_GREY; private val DIM = Design.SECRET_DIM; private val BODY = Design.SECRET_BODY
         private val ACCENT_SPARK = Design.BRAND_ACCENT
@@ -352,10 +388,11 @@ class SecretScreen(context: Context) : View(context) {
         /** A theme as the reward draws it. [edge]: the darker lip under each key (0: an [outline] instead). */
         class Theme(val name: String, val bg: Int, val key: Int, val edge: Int, val outline: Int, val ink: Int, val special: IntArray, val accent: Int, val highlight: Glow)
         /** The three retro themes in pixels, from the themes themselves (Palette.retro), each with its own highlight. */
-        val THEMES: List<Theme> get() = Palette.retro.mapIndexed { i, t ->
-            Theme(t.name, t.background, t.key, edge = listOf(Design.RETRO_BRICK_LIP, Design.RETRO_INDIGO_LIP, 0)[i], outline = t.edge,
+        val THEMES: List<Theme> get() = Palette.retro.map { t ->
+            Theme(t.name, t.background, t.key, edge = t.look?.lip ?: 0, outline = t.edge,
                 ink = Contrast.inkFor(t.key), special = intArrayOf(t.specials[KeyType.LAYER] ?: t.special, t.specials[KeyType.DELETE] ?: t.special),
-                accent = t.ownHighlight ?: Design.BRAND_ACCENT, highlight = listOf(Glow.CURSOR, Glow.FILL, Glow.GLOW)[i])
+                accent = t.ownHighlight ?: Design.BRAND_ACCENT, highlight = when (t.ownStyle) {
+                    HighlightStyle.OUTLINE -> Glow.CURSOR; HighlightStyle.GLOW -> Glow.GLOW; else -> Glow.FILL })
         }
         fun ease(x: Float) = x * x * (3 - 2 * x)
     }

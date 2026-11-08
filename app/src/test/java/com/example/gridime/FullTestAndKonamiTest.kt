@@ -46,15 +46,24 @@ class FullTestAndKonamiTest {
         val v = a.window.decorView; val b = Bitmap.createBitmap(v.width, v.height, Bitmap.Config.ARGB_8888); v.draw(Canvas(b))
         File(dir, "$name.png").outputStream().use { b.compress(Bitmap.CompressFormat.PNG, 100, it) }
     }
-    private fun open(full: Boolean, picture: PictureChoice = PictureChoice.HANDHELD): SettingsActivity {
-        KeyboardSettings(tutorialDone = true, whatsNewSeen = WhatsNew.VERSION, buttonStyle = ButtonStyle.XBOX, picture = picture,
-            testFullScreen = full, showPreview = false).save(context)
+    private fun open(full: Boolean, picture: PictureChoice = PictureChoice.HANDHELD, style: ButtonStyle = ButtonStyle.XBOX, sticks: Boolean = false): SettingsActivity {
+        KeyboardSettings(tutorialDone = true, whatsNewSeen = WhatsNew.VERSION, buttonStyle = style, picture = picture,
+            testFullScreen = full, showPreview = false, verticalSticks = sticks).save(context)
         return Robolectric.buildActivity(SettingsActivity::class.java).setup().get().also { idle(1000) }
     }
 
-    private fun fullScreen(name: String, picture: PictureChoice) {
-        val a = open(full = true, picture = picture)
+    private fun fullScreen(name: String, picture: PictureChoice, style: ButtonStyle = ButtonStyle.XBOX, sticks: Boolean = false) {
+        val a = open(full = true, picture = picture, style = style, sticks = sticks)
         call(a, "startButtonTest"); idle(900)
+        // the words sit under the picture, never on it, and both stay on the screen (Emre, 8 Nov)
+        val cap = field(a, "fullCaption") as View; val column = field(a, "fullColumn") as View
+        val pic = field(a, "fullPicture") as DevicePictureView
+        val drawn = pic.drawnRect()
+        assertTrue("$name: the picture's drawing ends above the words (${pic.top + (drawn?.bottom ?: 0f)} vs ${cap.top})", pic.top + (drawn?.bottom ?: pic.height.toFloat()) <= cap.top + 0.5f)
+        assertTrue("$name: the words stay on the screen (${cap.bottom} of ${column.height})", cap.bottom <= column.height - column.paddingBottom + 1)
+        val roomW = column.width - column.paddingLeft - column.paddingRight
+        assertTrue("$name: the picture isn't squeezed (${pic.height} high, ${drawn?.width()} of $roomW wide)",
+            pic.height > column.height * 0.4f || (drawn?.width() ?: 0f) >= roomW * 0.9f)
         val overlay = field(a, "fullOverlay") as View; val big = field(a, "fullPicture") as DevicePictureView
         val small = field(a, "guidePicture") as DevicePictureView
         assertEquals(View.VISIBLE, overlay.visibility)
@@ -73,6 +82,13 @@ class FullTestAndKonamiTest {
     @Test @Config(sdk = [34], qualifiers = "w827dp-h412dp-land-xhdpi") fun fullOdinController() = fullScreen("odin-controller", PictureChoice.CONTROLLER)
     @Test @Config(sdk = [34], qualifiers = "w1097dp-h617dp-land-280dpi") fun full1080Vertical() = fullScreen("1080p-vertical", PictureChoice.VERTICAL)
     @Test @Config(sdk = [34], qualifiers = "w360dp-h640dp-port-xxhdpi") fun fullPhone() = fullScreen("phone-handheld", PictureChoice.HANDHELD)
+    @Test @Config(sdk = [34], qualifiers = "w360dp-h640dp-port-xxhdpi") fun fullPhoneVertical() = fullScreen("phone-vertical", PictureChoice.VERTICAL)
+    @Test @Config(sdk = [34], qualifiers = "w827dp-h412dp-land-xhdpi") fun fullOdinVerticalSticksPs() = fullScreen("odin-vertical-sticks-ps", PictureChoice.VERTICAL, ButtonStyle.PLAYSTATION, sticks = true)
+    @Test @Config(sdk = [34], qualifiers = "w827dp-h412dp-land-xhdpi") fun fullOdinVerticalSwitch() = fullScreen("odin-vertical-switch", PictureChoice.VERTICAL, ButtonStyle.SWITCH)
+    @Test @Config(sdk = [34], qualifiers = "w640dp-h480dp-land-mdpi") fun full43Vertical() = fullScreen("4by3-vertical", PictureChoice.VERTICAL)
+    @Test @Config(sdk = [34], qualifiers = "w640dp-h480dp-land-mdpi") fun full43Handheld() = fullScreen("4by3-handheld", PictureChoice.HANDHELD, ButtonStyle.PLAYSTATION)
+    @Test @Config(sdk = [34], qualifiers = "w600dp-h540dp-land-hdpi") fun fullSquareVerticalSticks() = fullScreen("square-vertical-sticks", PictureChoice.VERTICAL, sticks = true)
+    @Test @Config(sdk = [34], qualifiers = "w1097dp-h617dp-land-280dpi") fun full1080Controller() = fullScreen("1080p-controller-ps", PictureChoice.CONTROLLER, ButtonStyle.PLAYSTATION)
 
     @Test @Config(sdk = [34], qualifiers = "w827dp-h412dp-land-xhdpi") fun keyboardStepsAside() {
         val a = open(full = false)
@@ -114,14 +130,48 @@ class FullTestAndKonamiTest {
         idle((SecretScreen.TOTAL_S * 1000).toLong() - 2500)
         assertFalse("the test ended by itself", field(a, "testing") as Boolean)
         val tabs = field(a, "tabs") as TabBar
-        assertEquals("Look is marked", 1, tabs.marked)
+        val look = (call(a, "getLookIndex") as Int); val sound = (call(a, "getSoundIndex") as Int)
+        assertEquals("Look and Sound & haptics are marked, as the reward's last card says", setOf(look, sound), tabs.marks)
+        assertEquals("both signs grow in together", setOf(look, sound), tabs.growing)
         idle(300); shot(a, "reward-$name-3a")
         idle(2000); shot(a, "reward-$name-3")
         assertEquals(1f, tabs.signAlpha, 0.001f)
         // with the keyboard up the sign is a dot by Look's folded bar
         call(a, "togglePreview"); idle(1200); shot(a, "reward-$name-4")
-        assertTrue((field(a, "settings") as KeyboardSettings).secretNew)
+        (field(a, "settings") as KeyboardSettings).let { assertTrue(it.secretNew); assertTrue(it.secretSoundNew); assertTrue(it.secretSoundShown) }
         call(a, "endButtonTest")
+        // Sound & haptics: opening it clears the tab's sign, but the Sound pack row keeps its own spark until visited
+        call(a, "togglePreview"); idle(900)
+        SettingsActivity::class.java.getDeclaredMethod("showPage", Int::class.java, Int::class.java, Boolean::class.java)
+            .apply { isAccessible = true }.invoke(a, sound, 0, false); idle(900)
+        @Suppress("UNCHECKED_CAST") val rows = field(a, "focusableRows") as List<SettingRow>
+        val pack = rows.first { it.rowTitle == "Sound pack" }
+        assertTrue("the Sound pack row carries the spark, like the Theme row", pack.newMark)
+        assertFalse("the tab's sign has gone", sound in tabs.marks)
+        pack.requestFocusFromTouch(); idle(900); shot(a, "reward-$name-5-sound-row")
+        rows.first { it !== pack }.requestFocusFromTouch(); idle(300)
+        assertFalse("visited: the row's spark goes", pack.newMark)
+        assertFalse((field(a, "settings") as KeyboardSettings).secretSoundRowNew)
+    }
+    /** Found before: the code plays the whole reward again (a victory lap, to record and share), but nothing becomes new. */
+    @Test @Config(sdk = [34], qualifiers = "w827dp-h412dp-land-xhdpi") fun rewardAgain() {
+        KeyboardSettings(tutorialDone = true, whatsNewSeen = WhatsNew.VERSION, buttonStyle = ButtonStyle.XBOX, picture = PictureChoice.HANDHELD,
+            testFullScreen = true, showPreview = false, retroUnlocked = true, secretSoundShown = true).save(context)
+        val a = Robolectric.buildActivity(SettingsActivity::class.java).setup().get().also { idle(1000) }
+        call(a, "startButtonTest"); idle(900)
+        code.forEach { tap(a, it) }
+        assertEquals("the reward plays again", 1, a.secretsFound)
+        val screen = field(a, "secretScreen") as SecretScreen
+        assertTrue("the last card knows it's a victory lap", screen.again)
+        idle((SecretScreen.TOTAL_S * 1000).toLong() + 1500)
+        shot(a, "reward-again")
+        assertFalse("the reward ends by itself", field(a, "testing") as Boolean)
+        val tabs = field(a, "tabs") as TabBar
+        assertTrue("no tab is marked again: ${tabs.marks}", tabs.marks.isEmpty())
+        (field(a, "settings") as KeyboardSettings).let {
+            assertFalse("Look isn't new again", it.secretNew); assertFalse("the Theme row isn't new again", it.secretRowNew)
+            assertFalse("Sound isn't new again", it.secretSoundNew); assertFalse("the Sound pack row isn't new again", it.secretSoundRowNew)
+        }
     }
     @Test @Config(sdk = [34], qualifiers = "w827dp-h412dp-land-xhdpi") fun rewardOnScreen() = reward("onscreen", true, PictureChoice.HANDHELD)
     @Test @Config(sdk = [34], qualifiers = "w827dp-h412dp-land-xhdpi") fun rewardLifted() = reward("lifted", false, PictureChoice.HANDHELD)
@@ -134,12 +184,12 @@ class FullTestAndKonamiTest {
         assertFalse("skipped: the test is over", field(a, "testing") as Boolean)
     }
 
-    /** Frames of each reward design at 20 fps, drawn by the real view (for Emre's comparison sheet). */
-    private fun rewardFrames(name: String, full: Boolean, picture: PictureChoice, designs: List<Int> = SecretScreen.DESIGNS.indices.toList()) {
+    /** Frames of the reward (Spotlight) at 20 fps, drawn by the real view (for Emre's comparison sheet). */
+    private fun rewardFrames(name: String, full: Boolean, picture: PictureChoice, designs: List<Int> = listOf(0)) {
         val root = File("build/rewardframes"); if (!root.exists()) return
         for (d in designs) {
             KeyboardSettings(tutorialDone = true, whatsNewSeen = WhatsNew.VERSION, buttonStyle = ButtonStyle.XBOX, picture = picture,
-                testFullScreen = full, showPreview = false, labReward = d).save(context)
+                testFullScreen = full, showPreview = false).save(context)
             val a = Robolectric.buildActivity(SettingsActivity::class.java).setup().get().also { idle(1000) }
             call(a, "startButtonTest"); idle(900)
             code.forEach { tap(a, it) }
@@ -156,6 +206,7 @@ class FullTestAndKonamiTest {
     }
     @Test @Config(sdk = [34], qualifiers = "w827dp-h412dp-land-xhdpi") fun rewardFramesOdin() = rewardFrames("odin", true, PictureChoice.HANDHELD)
     @Test @Config(sdk = [34], qualifiers = "w827dp-h412dp-land-xhdpi") fun rewardFramesVertical() = rewardFrames("vertical", true, PictureChoice.VERTICAL)
+    @Test @Config(sdk = [34], qualifiers = "w835dp-h469dp-land-368dpi") fun rewardFramesController() = rewardFrames("controller", true, PictureChoice.CONTROLLER)
 
     /** Look and Sound & haptics with the Retro collection found, each retro theme on the keyboard (for Emre). */
     @Test @Config(sdk = [34], qualifiers = "w827dp-h412dp-land-xhdpi") fun retroLookShots() {
@@ -179,7 +230,7 @@ class FullTestAndKonamiTest {
         val a = open(full = false)
         @Suppress("UNCHECKED_CAST") val rows = field(a, "focusableRows") as List<View>
         fun texts(v: View): List<String> = if (v is android.widget.TextView) listOf(v.text.toString()) else if (v is android.view.ViewGroup) (0 until v.childCount).flatMap { texts(v.getChildAt(it)) } else emptyList()
-        val row = rows.first { texts(it).any { t -> t == "Full screen" } }
+        val row = rows.first { texts(it).any { t -> t == "Try your buttons" } }
         row.requestFocusFromTouch(); idle(1200); shot(a, "rows")
     }
 

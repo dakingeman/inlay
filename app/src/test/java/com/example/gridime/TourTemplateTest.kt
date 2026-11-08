@@ -50,6 +50,15 @@ class TourTemplateTest {
                     val tag = "${if (whatsNew) "What's new" else "tour"} page ${i + 1} \"$title\" ($pic${if (sticks) "+sticks" else ""}, $style)"
                     if (t.titleWrapped()) problems += "$tag: the title takes ${t.titleLines()} lines (${t.titleLinesAllowed} at most)"
                     t.rowsWrapped().forEach { problems += "$tag: the row \"$it\" doesn't fit on one line" }
+                    if (whatsNew) {
+                        // What's new: a designed close-up instead of the keyboard. It must be drawn big enough to read,
+                        // and keep one place and size on every page
+                        val (box, _) = t.showcaseForCheck() ?: run { problems += "$tag: no close-up"; return@forEachIndexed }
+                        t.showcaseTooSmallForCheck()?.let { problems += "$tag: the close-up is too small to read: $it" }
+                        // (each page's close-up is shaped for its feature, so they don't share one frame; StageFitsTest keeps each inside its room)
+                        if (box.isEmpty) problems += "$tag: the close-up has no size"
+                        return@forEachIndexed
+                    }
                     val (rect, fit) = t.stageForCheck()
                     val floor = t.minFitForCheck * (if (title.startsWith("A number row")) 0.88f else 1f)   // the extra row of keys
                     if (!onTv && fit < floor - 0.001f) problems += "$tag: the keyboard is drawn at ${"%.2f".format(fit)} of its size (at least ${"%.2f".format(floor)})"
@@ -82,4 +91,9 @@ class TourTemplateTest {
     @Test @Config(sdk = [34], qualifiers = "w853dp-h480dp-land-360dpi") fun hdLarge() = check()
     @Test @Config(sdk = [34], qualifiers = "w810dp-h540dp-land-xhdpi") fun threeTwo() = check()
     @Test @Config(sdk = [34], qualifiers = "w683dp-h512dp-land-xhdpi") fun fourThree() = check()
+
+    companion object {
+        /** What's new close-ups: one design unit at least this big, so their small words stay readable (about 7 dp and up). */
+        const val SHOWCASE_MIN_UNIT_DP = 0.55f
+    }
 }

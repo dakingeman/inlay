@@ -200,7 +200,7 @@ class ScreenshotTest {
         save(activity.window.decorView, "device-0-top")
         focus(activity) { it is ChoiceRow }                                     // What you're holding
         save(activity.window.decorView, "device-1-picture")
-        focus(activity) { it is ActionRow }                                     // Try your buttons
+        focus(activity) { it is ChoiceRow && it.rowTitle == "Try your buttons" }   // Try your buttons
         save(activity.window.decorView, "device-2-try")
     }
 

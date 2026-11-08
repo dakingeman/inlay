@@ -133,6 +133,15 @@ abstract class SettingRow(
     /** Called when Left is pressed on a row that has nothing to change. */
     var onLeaveLeft: (() -> Unit)? = null
 
+    /** The row's name as written (Find a setting searches it, and checks find rows by it). */
+    val rowTitle: String = title
+    /** The row's hint as written, for Find. */
+    val rowHint: String = subtitle ?: ""
+
+    private var flashLook: RowFlash? = null
+    /** Find went here: a short flash of your colour, so the eye lands on the row. */
+    fun flash() { setWillNotDraw(false); (flashLook ?: RowFlash(this).also { flashLook = it }).start() }
+
     protected val dp = resources.displayMetrics.density
     protected fun px(v: Float) = (v * dp).roundToInt()
     protected val stackedLayout = stacked
@@ -312,6 +321,7 @@ abstract class SettingRow(
     override fun onAttachedToWindow() { super.onAttachedToWindow(); if (newMark && markIn < 1f) growMark() }
     override fun dispatchDraw(canvas: android.graphics.Canvas) {
         super.dispatchDraw(canvas)
+        flashLook?.draw(canvas)
         if (!newMark || markIn <= 0f) return
         val layout = titleView.layout ?: return
         markRect.set(0, 0, titleView.width, titleView.height); offsetDescendantRectToMyCoords(titleView, markRect)
@@ -343,10 +353,13 @@ class ChoiceRow(
     subtitle: String?,
     options: List<String>,
     selected: Int,
+    /** A does this instead of moving to the next option (a row that both picks how and starts something). */
+    private val onActivate: (() -> Unit)? = null,
+    icons: List<(Canvas, Float, Float, Int) -> Unit>? = null,
     private val onChange: (Int) -> Unit
 ) : SettingRow(context, title, subtitle, stacked = options.size >= 3 || SettingsStyle.isNarrow(context)) {
 
-    private val segments = SegmentedView(context, options, selected) {
+    private val segments = SegmentedView(context, options, selected, icons) {
         sounds?.key()
         onChange(it)
     }
@@ -364,7 +377,7 @@ class ChoiceRow(
         return true
     }
 
-    override fun activate() = choose((segments.selectedIndex + 1) % count)
+    override fun activate() { onActivate?.invoke() ?: choose((segments.selectedIndex + 1) % count) }
 
     private fun choose(index: Int) {
         if (index == segments.selectedIndex) return
@@ -387,10 +400,12 @@ class StepperRow(
     selected: Int,
     /** One line per option, shown as the subtitle while that option is chosen (optional). */
     private val descriptions: List<String>? = null,
+    /** A line shown first instead of the chosen option's (something new to point at); stepping shows the option's again. */
+    lead: String? = null,
     /** True when [onChange] makes its own sound (e.g. a sound-pack sample). */
     private val silent: Boolean = false,
     private val onChange: (Int) -> Unit
-) : SettingRow(context, title, descriptions?.getOrNull(selected) ?: subtitle, stacked = SettingsStyle.isNarrow(context)) {
+) : SettingRow(context, title, lead ?: descriptions?.getOrNull(selected) ?: subtitle, stacked = SettingsStyle.isNarrow(context)) {
 
     private val stepper = StepperView(context, options, selected) { onChange(it) }
 
@@ -560,14 +575,26 @@ class SwatchRow(
     subtitle: String?,
     colours: List<Int>,
     selected: Int,
+    /** A first choice before the colours ("Match theme" and the theme's colour); picking it calls [onLead]. */
+    lead: Pair<String, Int>? = null,
+    leadSelected: Boolean = false,
+    private val onLead: () -> Unit = {},
     private val onChange: (Int) -> Unit
 ) : SettingRow(context, title, subtitle, stacked = true) {
 
-    private val grid = SwatchGridView(context, colours, selected) { onChange(it) }
+    private val hasLead = lead != null
+    private val grid = SwatchGridView(context, colours,
+        if (hasLead && leadSelected) 0 else if (selected < 0) -1 else selected + (if (hasLead) 1 else 0), lead) { pick(it) }
+
+    /** Grid picks count the lead: 0 is the lead, colours follow. */
+    private fun pick(i: Int) = if (hasLead && i == 0) onLead() else onChange(i - (if (hasLead) 1 else 0))
 
     init {
         setControl(grid)
     }
+
+    /** For the checks: the Match theme pill's colour, if there is one. */
+    internal val leadColourForCheck: Int? = lead?.second
 
     /** Clears the tick when a custom colour is chosen instead. */
     fun clearSelection() {
@@ -581,7 +608,7 @@ class SwatchRow(
         if (next != current) {
             grid.selectedIndex = next
             sounds?.move()
-            onChange(next)
+            pick(next)
         }
         return true
     }
@@ -708,6 +735,8 @@ class SegmentedView(
     context: Context,
     private val options: List<String>,
     initial: Int,
+    /** A small picture before each label (Typing button: which button it means), drawn in the label's colour. */
+    private val icons: List<(Canvas, Float, Float, Int) -> Unit>? = null,
     private val onTap: (Int) -> Unit
 ) : View(context) {
 
@@ -726,7 +755,8 @@ class SegmentedView(
     private val pad = 4f * dp
     private val baseTextSize = text.textSize
     /** Room each option would like: its longest label plus comfortable padding. */
-    private val naturalSegment: Float get() = options.maxOf { text.measureText(it) } + 32f * dp
+    private val iconRoom get() = if (icons == null) 0f else (ICON_DP + ICON_GAP_DP) * dp
+    private val naturalSegment: Float get() = options.maxOf { text.measureText(it) } + 32f * dp + iconRoom
     /** Room each option actually gets (less on narrow screens). */
     private val segmentWidth: Float get() = (width - 2 * pad) / options.size
 
@@ -742,7 +772,7 @@ class SegmentedView(
         // If the labels no longer fit, make the text a little smaller (never below 80 %)
         text.textSize = baseTextSize
         val widest = options.maxOf { text.measureText(it) }
-        val room = segmentWidth - 12f * dp
+        val room = segmentWidth - 12f * dp - iconRoom
         if (widest > room && widest > 0f) text.textSize = baseTextSize * maxOf(0.8f, room / widest)
     }
 
@@ -775,8 +805,21 @@ class SegmentedView(
         options.forEachIndexed { i, label ->
             val onIndicator = 1f - min(1f, abs(indicator - i))
             text.color = SettingsStyle.blend(SettingsStyle.textPrimary, SettingsStyle.onAccent, onIndicator)
-            canvas.drawText(label, pad + segmentWidth * (i + 0.5f), baseline, text)
+            val icon = icons?.getOrNull(i)
+            if (icon == null) canvas.drawText(label, pad + segmentWidth * (i + 0.5f), baseline, text)
+            else {
+                // the picture and the word as one centred group
+                val group = ICON_DP * dp + ICON_GAP_DP * dp + text.measureText(label)
+                val x0 = pad + segmentWidth * (i + 0.5f) - group / 2f
+                icon(canvas, x0 + ICON_DP * dp / 2f, h / 2f, text.color)
+                canvas.drawText(label, x0 + ICON_DP * dp + ICON_GAP_DP * dp + text.measureText(label) / 2f, baseline, text)
+            }
         }
+    }
+
+    companion object {
+        const val ICON_DP = 16f
+        const val ICON_GAP_DP = 7f
     }
 
     override fun onTouchEvent(e: MotionEvent): Boolean {
@@ -991,6 +1034,8 @@ class SwatchGridView(
     context: Context,
     private val colours: List<Int>,
     initial: Int,
+    /** An optional first choice before the colours: a pill with its words and a dot of its colour ("Match theme"). */
+    private val lead: Pair<String, Int>? = null,
     private val onTap: (Int) -> Unit
 ) : View(context) {
 
@@ -1001,9 +1046,13 @@ class SwatchGridView(
         strokeCap = Paint.Cap.ROUND
         strokeJoin = Paint.Join.ROUND
     }
-    val count: Int get() = colours.size
+    private val text = Paint(Paint.ANTI_ALIAS_FLAG).apply { textSize = Design.TYPE_CAPTION * resources.displayMetrics.scaledDensity; typeface = SettingsStyle.medium }
+    /** How many cells the lead pill takes: its words, its dot and the padding, rounded up to whole cells. */
+    private val leadCells: Int get() = lead?.let { ((text.measureText(it.first) + 44f * dp) / cell).toInt() + 1 } ?: 0
+    /** Everything you can pick: the lead (if any) first, then the colours. Indices count the lead too. */
+    val count: Int get() = colours.size + (if (lead != null) 1 else 0)
 
-    var selectedIndex = initial.coerceIn(-1, colours.lastIndex)       // -1 = none chosen
+    var selectedIndex = initial.coerceIn(-1, count - 1)       // -1 = none chosen
         set(v) {
             field = v
             invalidate()
@@ -1015,13 +1064,16 @@ class SwatchGridView(
             invalidate()
         }
 
-    private val rows get() = (colours.size + columns - 1) / columns
+    /** The grid slot where pick [i] starts: the lead takes the first [leadCells] slots of the first row. */
+    private fun slot(i: Int) = if (lead == null) i else if (i == 0) 0 else leadCells + i - 1
+    private val slots get() = colours.size + leadCells
+    private val rows get() = (slots + columns - 1) / columns
 
     override fun onMeasure(widthSpec: Int, heightSpec: Int) {
         val room = if (MeasureSpec.getMode(widthSpec) == MeasureSpec.UNSPECIFIED) Int.MAX_VALUE
         else MeasureSpec.getSize(widthSpec)
-        columns = (room / cell).toInt().coerceIn(1, MAX_COLUMNS)
-        setMeasuredDimension((cell * columns).roundToInt(), (cell * rows).roundToInt())
+        columns = (room / cell).toInt().coerceIn(maxOf(1, leadCells), MAX_COLUMNS + leadCells)
+        setMeasuredDimension((cell * minOf(columns, slots)).roundToInt(), (cell * rows).roundToInt())
     }
 
     private companion object {
@@ -1030,9 +1082,31 @@ class SwatchGridView(
 
     override fun onDraw(canvas: Canvas) {
         val r = 12f * dp
-        colours.forEachIndexed { i, colour ->
-            val cx = cell * (i % columns) + cell / 2f
-            val cy = cell * (i / columns) + cell / 2f
+        lead?.let { (words, colour) ->
+            // The pill: a soft plate, a dot of the theme's colour (ticked when chosen), its words
+            val w = leadCells * cell - 8f * dp; val top = cell / 2f - 16f * dp
+            paint.style = Paint.Style.FILL; paint.color = SettingsStyle.track
+            canvas.drawRoundRect(4f * dp, top, 4f * dp + w, top + 32f * dp, 16f * dp, 16f * dp, paint)
+            val cx = 4f * dp + 16f * dp; val cy = cell / 2f
+            paint.color = colour; canvas.drawCircle(cx, cy, 10f * dp, paint)
+            if (selectedIndex == 0) {
+                paint.style = Paint.Style.STROKE
+                Icons.line(paint, dp * Design.ICON_CHECK_WEIGHT, Contrast.inkFor(colour))
+                Icons.check(canvas, cx, cy, 10f * dp, paint)
+            }
+            text.color = SettingsStyle.textPrimary
+            canvas.drawText(words, cx + 16f * dp, cy - (text.descent() + text.ascent()) / 2f, text)
+            if (selectedIndex == 0 && showCursor) {
+                paint.style = Paint.Style.STROKE; paint.strokeWidth = Design.STROKE_FOCUS * dp; paint.color = Color.WHITE
+                canvas.drawRoundRect(4f * dp - 3f * dp, top - 3f * dp, 4f * dp + w + 3f * dp, top + 35f * dp, 19f * dp, 19f * dp, paint)
+            }
+        }
+        val first = if (lead != null) 1 else 0
+        colours.forEachIndexed { c, colour ->
+            val i = c + first
+            val at = slot(i)
+            val cx = cell * (at % columns) + cell / 2f
+            val cy = cell * (at / columns) + cell / 2f
             paint.style = Paint.Style.FILL
             paint.color = colour
             canvas.drawCircle(cx, cy, r, paint)
@@ -1051,8 +1125,9 @@ class SwatchGridView(
 
     override fun onTouchEvent(e: MotionEvent): Boolean {
         if (e.actionMasked == MotionEvent.ACTION_UP) {
-            val index = (e.y / cell).toInt() * columns + (e.x / cell).toInt()
-            if (index in colours.indices && index != selectedIndex) {
+            val at = (e.y / cell).toInt() * columns + (e.x / cell).toInt()
+            val index = (0 until count).firstOrNull { i -> val st = slot(i); at in st until st + (if (lead != null && i == 0) leadCells else 1) } ?: -1
+            if (index >= 0 && index != selectedIndex) {
                 selectedIndex = index
                 SettingRow.sounds?.move()
                 onTap(index)
@@ -1142,14 +1217,17 @@ class BadgeLineView(
 
     /** In a column wider than this line, sit at its end (next to the words that follow), not at its start. */
     var alignEnd = false
+    /** Every line centred (a caption under a picture), wrapped lines too. */
+    var alignCentre = false
 
     override fun onDraw(canvas: Canvas) {
-        if (lines.size == 1) {
-            val w = painter.measureLine(parts, text)
-            painter.drawLine(canvas, parts, if (alignEnd) width - dp - w else dp, height / 2f, text)   // the 1 dp margin each side the width includes
-            return
+        fun x(line: List<HintPart>) = when {
+            alignCentre -> (width - painter.measureLine(line, text)) / 2f
+            alignEnd -> width - dp - painter.measureLine(line, text)
+            else -> dp                                           // the 1 dp margin each side the width includes
         }
-        lines.forEachIndexed { i, line -> painter.drawLine(canvas, line, dp, 2 * dp + rowHeight / 2 + i * rowStep, text) }
+        if (lines.size == 1) { painter.drawLine(canvas, parts, x(parts), height / 2f, text); return }
+        lines.forEachIndexed { i, line -> painter.drawLine(canvas, line, x(line), 2 * dp + rowHeight / 2 + i * rowStep, text) }
     }
 }
 
@@ -1230,7 +1308,7 @@ class SetupRow(
     context: Context,
     enabled: Boolean,
     private val onAct: () -> Unit
-) : SettingRow(context, "Set up Inlay", "Two quick steps, then you can type with your controller anywhere", stacked = true) {
+) : SettingRow(context, "Set up Inlay", "Two quick steps to type with your controller anywhere", stacked = true) {
 
     init {
         val body = LinearLayout(context).apply {
@@ -1377,5 +1455,23 @@ class AccentButton(context: Context) : TextView(context) {
         canvas.drawRoundRect(0f, 0f, width.toFloat(), h, h / 2f, h / 2f, fill)
         if (currentTextColor != SettingsStyle.onAccent) setTextColor(SettingsStyle.onAccent)
         super.onDraw(canvas)
+    }
+}
+
+/**
+ * Four face buttons as a small diamond, one of them filled: "this one". The Typing button choice draws the bottom
+ * or the right one, so the choice reads without knowing the words (or the letters, which differ by controller).
+ */
+object FaceDiamond {
+    private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+    /** [which]: the position filled, ControllerButton.A bottom, B right, X left, Y top. */
+    fun draw(canvas: Canvas, cx: Float, cy: Float, dp: Float, which: ControllerButton, colour: Int) {
+        val gap = 5.2f * dp; val r = 2.6f * dp
+        for ((b, x, y) in listOf(Triple(ControllerButton.Y, 0f, -1f), Triple(ControllerButton.B, 1f, 0f),
+                Triple(ControllerButton.A, 0f, 1f), Triple(ControllerButton.X, -1f, 0f))) {
+            paint.color = colour
+            if (b == which) { paint.style = Paint.Style.FILL; canvas.drawCircle(cx + x * gap, cy + y * gap, r + 0.6f * dp, paint) }
+            else { paint.style = Paint.Style.STROKE; paint.strokeWidth = Design.STROKE_ICON * dp * 0.6f; canvas.drawCircle(cx + x * gap, cy + y * gap, r, paint) }
+        }
     }
 }

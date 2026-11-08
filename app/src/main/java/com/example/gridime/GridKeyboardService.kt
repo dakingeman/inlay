@@ -126,6 +126,8 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
     private var lastL2Time = 0L
     private var r2Held = false
     private var r2UsedAsModifier = false
+    private var ltHeld = false                 // LT down: a key typed meanwhile makes it a quick symbol
+    private var ltUsed = false
     private var r2LastRelease = 0L
 
     private var lastSpaceTime = 0L
@@ -205,12 +207,24 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
             view.listener = this
             view.feedback = feedback
             view.applySettings(settings.forControls(Controls.of(this@GridKeyboardService, settings)))
-            view.setClips(history.all)
+            view.setClips(history.all, history.pinnedCount)
             view.onClipsClosed = { settleClipRemoval() }
             gridView = view
             updateClipPreview()
             view.setTvMode(tvModeActive())
         }
+    }
+
+    // =====================================================================
+    // VOICE TYPING (1.3): handed to the voice app you have (Google's, or an offline one such as FUTO Voice Input),
+    // like most keyboards do. Inlay itself never listens, and needs no internet. The voice app comes back by itself.
+    // =====================================================================
+    /** The voice typing app to hand off to, and its voice mode, or null when there's none. */
+    private fun voiceIme() = VoiceInput.ready(this)
+
+    private fun startVoice() {
+        val (id, subtype) = voiceIme() ?: return openSettings(VOICE_ROW)
+        runCatching { if (subtype != null) switchInputMethod(id, subtype) else switchInputMethod(id) }
     }
 
     /** Keep the keyboard visible even though a gamepad counts as a hardware keyboard. */
@@ -246,6 +260,11 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
         setExtractViewShown(false)
         // Pick up anything changed in the Settings app
         settings = KeyboardSettings.load(this)
+        applyFullHeight()                           // "Use the full screen height" may have changed
+        // Remember each app's language (when on): this app gets back the one you last used in it
+        settings.languageFor(info?.packageName)?.let { i ->
+            if (i != settings.activeLanguage) { settings = settings.copy(activeLanguage = i); settings.save(this) }
+        }
         feedback.update(settings)
         history.reload()
         userWords.save(); userWords.reload()
@@ -253,7 +272,7 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
         gridView?.apply {
             applySettings(settings.forControls(Controls.of(this@GridKeyboardService, settings)))
             settleClipRemoval()
-            setClips(history.all)
+            setClips(history.all, history.pinnedCount)
             closeClips(focusOnHistoryButton = false)
             // A restart of the same box (chat apps after Send) keeps the layer and highlight
             val kind = fieldKind(info)
@@ -301,6 +320,75 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
         resetHeldInputs()
     }
 
+    // =====================================================================
+    // USE THE FULL SCREEN HEIGHT (1.3, idea from Odin KB; FullHeight.kt): Android 13+'s empty band under the keyboard
+    // (gesture navigation) goes, and its room with it. Re-checked on every layout, as Android brings the band back.
+    // =====================================================================
+    private var fullHeightWatch: android.view.ViewTreeObserver.OnPreDrawListener? = null
+    private var bandHidden = false
+    private var skippedFrames = 0
+    private var navColourWas: Int? = null
+
+    override fun onWindowShown() {
+        super.onWindowShown()
+        applyFullHeight()
+    }
+
+    private fun applyFullHeight() {
+        val win = window?.window ?: return
+        val decor = win.decorView
+        if (!FullHeight.wanted(settings)) {
+            fullHeightWatch?.let { decor.viewTreeObserver.removeOnPreDrawListener(it) }; fullHeightWatch = null
+            if (bandHidden) { FullHeight.showBand(decor); bandHidden = false; decor.requestApplyInsets() }
+            navColourWas?.let { @Suppress("DEPRECATION") win.navigationBarColor = it }; navColourWas = null
+            if (android.os.Build.VERSION.SDK_INT >= 30) win.setDecorFitsSystemWindows(true)
+            return
+        }
+
+        // the band's place shows what's behind it (the Clear theme reaches the bottom), with no contrast scrim
+        @Suppress("DEPRECATION") run { if (navColourWas == null) navColourWas = win.navigationBarColor; win.navigationBarColor = android.graphics.Color.TRANSPARENT }
+        if (android.os.Build.VERSION.SDK_INT >= 29) win.isNavigationBarContrastEnforced = false
+        tidyBand(decor)
+        // Checked just before every frame is drawn: when Android has brought the band (or its room) back, that frame is
+        // skipped and laid out again without it, so a wrong frame never reaches the screen. (On a layout listener, the
+        // frame with the band was drawn first: the keyboard jumped up and flickered as it closed. Emre, 8 Nov.)
+        if (fullHeightWatch == null) {
+            // (at most two frames in a row are skipped, so the keyboard can never stall if Android keeps putting it back)
+            val watch = android.view.ViewTreeObserver.OnPreDrawListener {
+                val stale = FullHeight.wanted(settings) && tidyBand(decor) && skippedFrames < 2
+                skippedFrames = if (stale) skippedFrames + 1 else 0
+                !stale
+            }
+            decor.viewTreeObserver.addOnPreDrawListener(watch); fullHeightWatch = watch
+        }
+    }
+
+    /**
+     * Hides the band; only once it was found is its room taken back (with no band, the room may be a real system bar's).
+     * True when something had to change (the frame about to be drawn is then out of date).
+     */
+    private fun tidyBand(decor: View): Boolean {
+        val band = FullHeight.hideBand(decor) ?: return false
+        // Once the band is known to be there: the window doesn't make room for it in the first place, so there's no room
+        // for Android to put back as the keyboard opens or closes (with no band, the room may be real buttons': kept)
+        if (!bandHidden && android.os.Build.VERSION.SDK_INT >= 30) window?.window?.setDecorFitsSystemWindows(false)
+        bandHidden = true
+        val room = gridView?.let { FullHeight.dropRoomBelow(it, decor) } ?: false
+        return band || room
+    }
+
+    /** With the band gone, the app is told exactly where the keyboard starts, so it fits above it and every key takes touches. */
+    override fun onComputeInsets(outInsets: Insets) {
+        super.onComputeInsets(outInsets)
+        if (!bandHidden || !FullHeight.wanted(settings)) return
+        val v = gridView ?: return
+        if (!v.isShown) return
+        val at = IntArray(2); v.getLocationInWindow(at)
+        outInsets.contentTopInsets = at[1]
+        outInsets.visibleTopInsets = at[1]
+        outInsets.touchableInsets = Insets.TOUCHABLE_INSETS_VISIBLE
+    }
+
     private fun resetHeldInputs() {
         settleClipRemoval()
         gridView?.resetAccents()
@@ -314,6 +402,7 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
         hatDx = 0
         hatDy = 0
         r2Held = false
+        ltHeld = false
         rightTriggerDown = false
         leftTriggerDown = false
         gridView?.setHeldShift(false)
@@ -362,6 +451,11 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
      */
     private fun refreshSuggestions() {
         val grid = gridView ?: return
+        // The RT chips offer Accent only when it would do something: a letter with accents just before the cursor
+        // (in boxes that don't share their text, it never can; victorcoe saw it offered there, 4 Nov 2026).
+        // One question to the app, shared with the suggestions below (see SPEED above)
+        val typed = if (selStart == selEnd && currentInputConnection != null && !isPassword()) wordBeforeCursor() else ""   // never reads a password
+        grid.accentReady = typed.lastOrNull()?.let { Accents.variants(it, settings.language) } != null
         val info = currentInputEditorInfo
         val textBox = info != null && (info.inputType and InputType.TYPE_MASK_CLASS) == InputType.TYPE_CLASS_TEXT
         if (!settings.wordSuggestions || !textBox || fieldKind(info) != FieldKind.TEXT || isPassword() || selStart != selEnd) {
@@ -369,7 +463,6 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
             return
         }
         val ic = currentInputConnection ?: return grid.setSuggestions(emptyList(), "")
-        val typed = wordBeforeCursor()
         val nextChar = ic.getTextAfterCursor(1, 0)?.firstOrNull()
         if (typed.isEmpty() || (nextChar != null && nextChar.isLetter())) {
             grid.setSuggestions(emptyList(), "")
@@ -472,12 +565,19 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
                 scheduleAppSync()
             }
             Tool.HISTORY -> gridView?.toggleClips()
+            Tool.VOICE -> { feedback.confirm(); startVoice() }
             Tool.WORD -> Unit                    // words come in through onWord
             Tool.SETTINGS -> {
                 feedback.confirm()
                 openSettings()
             }
         }
+    }
+
+    /** The settings key held: Android's keyboard picker (the switcher the full screen height takes off the system band). */
+    override fun onToolHold(tool: Tool) {
+        if (tool != Tool.SETTINGS) return
+        runCatching { getSystemService(android.view.inputmethod.InputMethodManager::class.java)?.showInputMethodPicker() }
     }
 
     override fun onWord(word: String) {
@@ -510,11 +610,13 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
         scheduleAppSync()
     }
 
-    private fun openSettings() {
+    /** Settings, opened at the row called [row] when one's given (the microphone with no voice app: Voice typing). */
+    private fun openSettings(row: String? = null) {
         requestHideSelf(0)
         startActivity(
             Intent(this, SettingsActivity::class.java)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                .apply { if (row != null) putExtra(SettingsActivity.EXTRA_GO_TO, row) }
         )
     }
 
@@ -752,7 +854,7 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
             clipText()?.let {
                 settleClipRemoval()
                 history.add(it)
-                gridView?.setClips(history.all)
+                gridView?.setClips(history.all, history.pinnedCount)
             }
         }
         updateClipPreview()
@@ -768,10 +870,10 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
     // Face buttons are turned into their positions as they arrive (FaceButtons); what isn't ours goes on
     // to the app exactly as the device sent it.
     override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean =
-        keyDown(FaceButtons.code(keyCode, settings.swapFaceButtons), event, keyCode)
+        keyDown(FaceButtons.code(keyCode, event.deviceId), event, keyCode)
 
     override fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean =
-        keyUp(FaceButtons.code(keyCode, settings.swapFaceButtons), event, keyCode)
+        keyUp(FaceButtons.code(keyCode, event.deviceId), event, keyCode)
 
     private fun keyDown(keyCode: Int, event: KeyEvent, rawCode: Int): Boolean {
         val grid = gridView
@@ -791,12 +893,14 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
             // A, or OK on a TV remote: types, and starts the hold for accents
             KeyEvent.KEYCODE_BUTTON_A, KeyEvent.KEYCODE_DPAD_CENTER -> if (first) {
                 if (r2Held) r2UsedAsModifier = true
+                if (ltHeld) ltUsed = true
                 grid.pressA()                                    // types, and starts the hold for accents
             }
             KeyEvent.KEYCODE_BUTTON_THUMBR -> if (first) takeBestWord()
             KeyEvent.KEYCODE_BUTTON_X -> if (first) onXButton(grid)
             KeyEvent.KEYCODE_BUTTON_Y -> if (first) {
-                if (r2Held) {
+                if (grid.isClipsOpen()) pinFocusedClip(grid)
+                else if (r2Held) {
                     r2UsedAsModifier = true
                     cycleAccent()
                 } else {
@@ -845,10 +949,11 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
         when (keyCode) {
             KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_DPAD_DOWN,
             KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_DPAD_RIGHT -> stopNav()
-            KeyEvent.KEYCODE_BUTTON_A, KeyEvent.KEYCODE_DPAD_CENTER -> gridView?.releaseA()
+            KeyEvent.KEYCODE_BUTTON_A, KeyEvent.KEYCODE_DPAD_CENTER -> gridView?.releaseA(remote = keyCode == KeyEvent.KEYCODE_DPAD_CENTER)
             KeyEvent.KEYCODE_BUTTON_X -> deleteRepeater.stop()
             KeyEvent.KEYCODE_BUTTON_L1, KeyEvent.KEYCODE_BUTTON_R1 -> cursorRepeater.stop()
             KeyEvent.KEYCODE_BUTTON_R2 -> r2Up()
+            KeyEvent.KEYCODE_BUTTON_L2 -> ltUp()
             KeyEvent.KEYCODE_BUTTON_B, KeyEvent.KEYCODE_BACK -> {
                 val consumed = bConsumed
                 bConsumed = false
@@ -882,10 +987,24 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
         }
     }
 
+    /** Y on a clip: pins it (it moves up with the pins and stays) or unpins it; the highlight follows the clip. */
+    private fun pinFocusedClip(grid: KeyGridView) {
+        if (grid.focusedClipIndex() == grid.removedClip) return     // a removed slot: X brings it back first
+        settleClipRemoval()                                         // another pending removal goes through first
+        val at = grid.focusedClipIndex() ?: return
+        val before = history.pinnedCount
+        when (history.togglePin(at)) {
+            ClipboardHistory.Pin.PINNED -> { feedback.on(); grid.setClips(history.all, history.pinnedCount); grid.focusClip(before) }
+            ClipboardHistory.Pin.UNPINNED -> { feedback.off(); grid.setClips(history.all, history.pinnedCount); grid.focusClip(history.pinnedCount) }
+            ClipboardHistory.Pin.FULL -> feedback.back()
+            null -> Unit
+        }
+    }
+
     /** Removing clips with a way back (see [ClipRemoval]); the history changes for real when it commits. */
     private val clipRemoval = ClipRemoval { index ->
         history.removeAt(index)
-        gridView?.apply { removedClip = null; setClips(history.all) }
+        gridView?.apply { removedClip = null; setClips(history.all, history.pinnedCount) }
     }
     private val clipTick = object : Runnable {
         override fun run() {
@@ -911,12 +1030,22 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
             switchLanguage()
             return
         }
-        gridView?.toggleLayer()
+        ltHeld = true
+        ltUsed = false
+        gridView?.quickLayerStart()
+    }
+
+    /** LT let go: if a symbol was typed while it was held, back to the letters (a quick symbol). */
+    private fun ltUp() {
+        if (!ltHeld) return
+        ltHeld = false
+        if (ltUsed) gridView?.commitAccents()            // a symbol's variants still open: keep the one showing
+        gridView?.quickLayerEnd(ltUsed)
     }
 
     /** RT + LT: the next language in the quick switch. Saved, so it stays after closing. */
     private fun switchLanguage() {
-        settings = KeyboardSettings.load(this).nextLanguage()
+        settings = KeyboardSettings.load(this).nextLanguage().rememberLanguage(currentInputEditorInfo?.packageName)
         settings.save(this)
         gridView?.apply {
             applySettings(settings.forControls(Controls.of(this@GridKeyboardService, settings)))
@@ -959,8 +1088,15 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
         if (gridView == null || !isInputViewShown) return false
         if (!event.isFromSource(InputDevice.SOURCE_JOYSTICK)) return false
         if (event.action == MotionEvent.ACTION_MOVE) {
-            readTriggers(event)
-            readDirections(event)
+            // Android bundles joystick samples into one event per screen frame. A quick D-pad or trigger tap can
+            // start and end inside one bundle, so every sample is read in order, not just the last one: otherwise
+            // fast taps went missing and the highlight seemed to lag behind the D-pad (forevernolv, 1.2 post)
+            for (i in 0 until event.historySize) {
+                readTriggers({ a -> event.getHistoricalAxisValue(a, i) })
+                readDirections({ a -> event.getHistoricalAxisValue(a, i) }, event.getHistoricalEventTime(i))
+            }
+            readTriggers({ a -> event.getAxisValue(a) })
+            readDirections({ a -> event.getAxisValue(a) }, event.eventTime)
             if (settings.rightStick) readRightStick(event)
         }
         // Claim every joystick sample. If any slipped through, Android would turn
@@ -968,14 +1104,16 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
         return true
     }
 
-    private fun readTriggers(event: MotionEvent) {
-        val lt = max(event.getAxisValue(MotionEvent.AXIS_LTRIGGER), event.getAxisValue(MotionEvent.AXIS_BRAKE))
-        val rt = max(event.getAxisValue(MotionEvent.AXIS_RTRIGGER), event.getAxisValue(MotionEvent.AXIS_GAS))
+    /** One joystick sample: [axis] reads an axis's value at that moment. */
+    private fun readTriggers(axis: (Int) -> Float) {
+        val lt = max(axis(MotionEvent.AXIS_LTRIGGER), axis(MotionEvent.AXIS_BRAKE))
+        val rt = max(axis(MotionEvent.AXIS_RTRIGGER), axis(MotionEvent.AXIS_GAS))
         if (!leftTriggerDown && lt > TRIGGER_PRESS) {
             leftTriggerDown = true
             onL2()
         } else if (leftTriggerDown && lt < TRIGGER_RELEASE) {
             leftTriggerDown = false
+            ltUp()
         }
         if (!rightTriggerDown && rt > TRIGGER_PRESS) {
             rightTriggerDown = true
@@ -986,14 +1124,10 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
         }
     }
 
-    private fun readDirections(event: MotionEvent) {
-        val stickChanged = stick.update(
-            event.getAxisValue(MotionEvent.AXIS_X),
-            event.getAxisValue(MotionEvent.AXIS_Y),
-            SystemClock.uptimeMillis()
-        )
-        val hx = hatValue(event.getAxisValue(MotionEvent.AXIS_HAT_X))
-        val hy = hatValue(event.getAxisValue(MotionEvent.AXIS_HAT_Y))
+    private fun readDirections(axis: (Int) -> Float, time: Long) {
+        val stickChanged = stick.update(axis(MotionEvent.AXIS_X), axis(MotionEvent.AXIS_Y), time)
+        val hx = hatValue(axis(MotionEvent.AXIS_HAT_X))
+        val hy = hatValue(axis(MotionEvent.AXIS_HAT_Y))
         val hatChanged = hx != hatDx || hy != hatDy
         hatDx = hx
         hatDy = hy
@@ -1112,11 +1246,11 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
         navDx = dx
         navDy = dy
         val speed = settings.stickSpeed.coerceIn(0, STICK_INTERVAL_MS.lastIndex)
-        val base = if (fromStick) STICK_INTERVAL_MS[speed] else DPAD_INTERVAL_MS
-        val delay = if (fromStick) STICK_DELAY_MS[speed] else DPAD_DELAY_MS
+        val base = if (fromStick) STICK_INTERVAL_MS[speed] else Design.dpadRepeat(settings.dpadSpeed)
+        val delay = if (fromStick) STICK_DELAY_MS[speed] else Design.dpadDelay(settings.dpadSpeed)
         navRepeater.start(delay, { n ->
             // The stick works like a gas pedal: a light push repeats gently, a full push at
-            // the chosen Stick speed. The D-pad always repeats at its own steady pace.
+            // the chosen Stick speed. The D-pad repeats at its own steady pace (D-pad speed).
             val pedal = if (fromStick) STICK_LIGHT_PUSH - (STICK_LIGHT_PUSH - 1f) * stick.strength else 1f
             val interval = base * pedal
             max((interval * 0.5f).toLong(), (interval * 0.92.pow(n)).toLong())
@@ -1132,14 +1266,14 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
     }
 
     private companion object {
+        /** The Settings row the microphone opens when there's no voice app yet. */
+        const val VOICE_ROW = "Voice typing"
         /** Same key as ClipDescription.EXTRA_IS_SENSITIVE, spelled out so it also works before Android 13. */
         private const val EXTRA_IS_SENSITIVE = "android.content.extra.IS_SENSITIVE"
 
         // Navigation timing
         // Speed: the first step is always instant; these only set how soon a held
         // direction starts repeating and how fast it goes.
-        const val DPAD_DELAY_MS = 230L
-        const val DPAD_INTERVAL_MS = 80L
         // Medium matches the D-pad. These are the speeds at a full push.
         val STICK_DELAY_MS = longArrayOf(330L, 280L, 230L, 200L, 170L)      // slow ... fast
         val STICK_INTERVAL_MS = longArrayOf(130L, 105L, 80L, 65L, 52L)

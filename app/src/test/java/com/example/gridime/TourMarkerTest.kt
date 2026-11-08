@@ -68,7 +68,8 @@ class TourMarkerTest {
                 val pages = t.pageCheck()
                 // The pages that show every device get a wider column than the others (a controller shows at a good size)
                 val (regular, showcase, wanted) = t.columnsForCheck()
-                if (wanted > regular && regular > 0 && showcase <= regular)
+                // (0: no page here shows every device, like a TV remote's What's new in 1.3)
+                if (wanted > regular && regular > 0 && showcase in 1..regular)
                     problems += "$screen, $dev, ${if (whatsNew) "What's new" else "tour"}: the showcase column ($showcase px) is no wider than the others ($regular px)"
                 pages.forEachIndexed { p, (title, rows) ->
                     idle(2600)                                         // past the first row's fade

@@ -1,0 +1,56 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="inlay.css">
+<script src="../../design/tokens.js"></script><script src="backdrop.js"></script>
+<!-- Release cover (1.3): the app's own "New in" pill, the lockup, and the real Split keyboard window, on the Inlay backdrop. -->
+<style>
+.abs{position:absolute}
+.pill{display:inline-block;font-family:A;font-weight:500;color:var(--teal);background:color-mix(in srgb, var(--teal) 15%, transparent);border-radius:999px;line-height:1;white-space:nowrap}
+.lock{display:block}
+.win{display:block;border-radius:var(--wr);overflow:hidden}
+.win img{display:block;width:100%;height:100%}
+.title{font-family:A;font-weight:700;color:var(--paper);line-height:1.12;letter-spacing:-.01em}
+.sub{font-family:I;color:#E3E6EB;line-height:1.4}
+</style></head><body><div id="c" class="canvas"></div>
+<script>
+const q=new URLSearchParams(location.search), id=q.get('id'), W=+q.get('w')||1280, H=+q.get('h')||640;
+const c=document.getElementById('c'); Object.assign(c.style,{width:W+'px',height:H+'px'});
+const K={src:q.get('keys')?'cover/'+q.get('keys')+'.png':'cover/split-keys.png',w:3260,h:712,gapL:1348,gapR:1912};   // the app's own Split keyboard, drawn at 4x
+const pill=(t,fs)=>`<span class="pill" style="font-size:${fs}px;padding:${fs*.36}px ${fs*.62}px">${t}</span>`;
+const kb=(x,y,w)=>`<img class="abs" src="${K.src}" style="left:${x}px;top:${y}px;width:${w}px">`;
+const lock=(x,y,h,center)=>`<img class="abs lock" src="../brand/inlay-lockup-clear-dark.svg" style="${center?`left:50%;transform:translateX(-50%)`:`left:${x}px`};top:${y}px;height:${h}px">`;
+const r3=(tag)=>`${lock(72,56,60)}<div class="abs" style="right:72px;top:56px;height:60px;display:flex;align-items:center">${tag}</div>
+   <div class="abs title" style="left:72px;top:150px;font-size:92px">Split keyboard</div>
+   ${kb(72,640-64-1136*712/3260,1136)}`;
+const L={
+ // Round 4 (Emre's pick A3): bigger logo, "Version 1.3" top right, a line saying split isn't the only news
+ 'R4':()=>{const sq=H>=W, m=72, kw=W-2*m, kh=K.h*kw/K.w, tf=sq?50:40, tag=`<span class="pill" style="font-size:${tf}px;font-weight:700;padding:${tf*.35}px ${tf*.65}px;background:color-mix(in srgb, var(--teal) 18%, transparent)">Version 1.3</span>`;
+   const lh=sq?108:76, hy=sq?m:52, ty=sq?290:150, ts=sq?128:84, sy=sq?ty+ts*1.12*2+24:ty+ts*1.12+10;
+   return `${lock(m,hy,lh)}<div class="abs" style="right:${m}px;top:${hy}px;height:${lh}px;display:flex;align-items:center">${tag}</div>
+   <div class="abs title" style="left:${m}px;top:${ty}px;font-size:${ts}px">${sq?'Split<br>keyboard':'Split keyboard'}</div>
+   <div class="abs sub" style="left:${m}px;right:${m}px;top:${sy}px;font-size:${sq?40:32}px">${(q.get("sub")||"Plus your own buttons, a new tour and more").replace(sq?"> and </span>":"\u0000","><br>and </span>")}</div>
+   ${kb(m,H-(sq?m:48)-kh,kw)}`},
+
+ // Round 3: A with a bigger logo and the version tag top right, level with the logo
+ 'R3-A1':()=>r3(pill('New in 1.3',40)),
+ 'R3-A2':()=>r3(`<span class="pill" style="font-size:44px;font-weight:700;padding:16px 28px;background:color-mix(in srgb, var(--teal) 18%, transparent)">1.3</span>`),
+ 'R3-A3':()=>r3(`<span class="pill" style="font-size:40px;font-weight:700;padding:14px 26px;background:color-mix(in srgb, var(--teal) 18%, transparent)">Version 1.3</span>`),
+
+ // A, refined: the feature as the headline, the keyboard big along the bottom
+ 'R2-A':()=>`${lock(72,56,40)}<div class="abs" style="left:72px;top:120px">${pill('New in 1.3',30)}
+   <div class="title" style="font-size:80px;margin-top:16px">Split keyboard</div></div>
+   ${kb(72,640-64-1136*712/3260,1136)}`,
+ // B, refined: logo and the version, nothing else
+ 'R2-B':()=>`${lock(0,176,112,1)}<div class="abs" style="left:0;right:0;top:360px;text-align:center">${pill('New in 1.3',52)}</div>`,
+ // The version as the hero: one big tag, the logo above, three words below
+ 'R2-C':()=>`${lock(0,96,64,1)}<div class="abs" style="left:0;right:0;top:214px;text-align:center">${pill('1.3',150)}</div>
+   <div class="abs sub" style="left:0;right:0;top:500px;text-align:center;font-size:30px">Split keyboard · your own buttons · a new tour</div>`,
+ // The split gap carries the message: logo and tag sit where your app would show
+ 'R2-D':()=>{const w=1180,s=w/K.w,x=(1280-w)/2,h=K.h*s,y=(640-h)/2,gx=x+K.gapL*s,gw=(K.gapR-K.gapL)*s;
+   return `${kb(x,y,w)}<div class="abs" style="left:${gx}px;width:${gw}px;top:${y}px;height:${h}px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:28px">
+   <img class="lock" src="../brand/inlay-lockup-clear-dark.svg" style="height:38px">${pill('New in 1.3',26)}</div>`},
+};
+c.innerHTML=L[id]();
+document.title='size';
+document.fonts.ready.then(()=>Promise.all([...document.images].map(i=>i.decode()))).then(()=>{
+  inlayBackdrop(c,id,1,{motif:'none'}); document.title='done';
+});
+</script></body></html>

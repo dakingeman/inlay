@@ -325,6 +325,18 @@ class Feedback(context: Context) {
                 R.raw.retro_move, R.raw.retro_type, R.raw.retro_space, R.raw.retro_delete, R.raw.retro_on,
                 R.raw.retro_off, R.raw.retro_lock, R.raw.retro_select_all, R.raw.retro_confirm, R.raw.retro_back
             )
+            SoundPack.BRICK -> intArrayOf(
+                R.raw.brick_move, R.raw.brick_type, R.raw.brick_space, R.raw.brick_delete, R.raw.brick_on,
+                R.raw.brick_off, R.raw.brick_lock, R.raw.brick_select_all, R.raw.brick_confirm, R.raw.brick_back
+            )
+            SoundPack.INDIGO -> intArrayOf(
+                R.raw.indigo_move, R.raw.indigo_type, R.raw.indigo_space, R.raw.indigo_delete, R.raw.indigo_on,
+                R.raw.indigo_off, R.raw.indigo_lock, R.raw.indigo_select_all, R.raw.indigo_confirm, R.raw.indigo_back
+            )
+            SoundPack.JEWEL -> intArrayOf(
+                R.raw.jewel_move, R.raw.jewel_type, R.raw.jewel_space, R.raw.jewel_delete, R.raw.jewel_on,
+                R.raw.jewel_off, R.raw.jewel_lock, R.raw.jewel_select_all, R.raw.jewel_confirm, R.raw.jewel_back
+            )
         }
 
         /** The three extra letter sounds of a pack (with the main one, four in all). */
@@ -338,6 +350,9 @@ class Feedback(context: Context) {
             SoundPack.GLASS -> intArrayOf(R.raw.glass_type1, R.raw.glass_type2, R.raw.glass_type3)
             SoundPack.POP -> intArrayOf(R.raw.pop_type1, R.raw.pop_type2, R.raw.pop_type3)
             SoundPack.RETRO -> intArrayOf(R.raw.retro_type1, R.raw.retro_type2, R.raw.retro_type3)
+            SoundPack.BRICK -> intArrayOf(R.raw.brick_type1, R.raw.brick_type2, R.raw.brick_type3)
+            SoundPack.INDIGO -> intArrayOf(R.raw.indigo_type1, R.raw.indigo_type2, R.raw.indigo_type3)
+            SoundPack.JEWEL -> intArrayOf(R.raw.jewel_type1, R.raw.jewel_type2, R.raw.jewel_type3)
         }
 
         /**
