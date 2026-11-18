@@ -333,6 +333,7 @@ data class KeyboardSettings(
     val languagePerApp: Boolean = false,  // 1.3: each app gets back the language you last used in it (HeliBoard's idea; off by default)
     val appLanguages: String = "",        // "package=LANGUAGE|…", the newest first, at most APP_LANGUAGES_MAX
     val faceSetups: String = "",          // each controller's own: "descriptor=setup|descriptor=setup" (a few at most)
+    val buttonRemap: String = "",         // remapped shoulders and triggers, "button:job,..." (ButtonRemap.kt); empty = none
     val testFullScreen: Boolean = true,  // Try your buttons shows the device across the whole screen
     val labBuzzStrength: Int = 1,         // test builds only: Light, Medium, Strong, Max (Emre: Medium)
     val labBuzzStyle: Int = 2,            // test builds only: Calibrated, Taps, Pulses, Rumble (Emre: Pulses or Rumble)
@@ -369,6 +370,8 @@ data class KeyboardSettings(
     val face: FaceSetup get() = FaceSetup.parse(faceSetup) ?: FaceSetup.fromOld(swapFaceButtons, typeOnRight)
     /** Has the button setup been done (once, on any controller)? */
     val faceSetUp: Boolean get() = FaceSetup.parse(faceSetup) != null
+    /** The remapped shoulders and triggers (parsed once per change; nothing moved when empty or odd). */
+    val remap: ButtonRemap get() = ButtonRemap.cachedParse(buttonRemap)
     val faceByController: Map<String, FaceSetup> get() = faceSetups.split("|").mapNotNull { e ->
         val i = e.indexOf('='); if (i <= 0) null else FaceSetup.parse(e.substring(i + 1))?.let { e.substring(0, i) to it } }.toMap()
     /** With a new setup for [controller] (null: no lasting name): it becomes the one in use, and that controller's own. */
@@ -446,6 +449,7 @@ data class KeyboardSettings(
             .put(K_TYPE_RIGHT, typeOnRight)
             .put(K_FACE_SETUP, faceSetup)
             .put(K_FACE_SETUPS, faceSetups)
+            .put(K_BUTTON_REMAP, buttonRemap)
             .put(K_LANG_PER_APP, languagePerApp)
             .put(K_VOICE_KEY, voiceKey)
             .put(K_FULL_HEIGHT, fullHeight)
@@ -532,6 +536,7 @@ data class KeyboardSettings(
         private const val K_FACE_SETUP = "face_setup"
         const val MAX_CONTROLLERS = 6          // each remembers its own button setup; the oldest goes after six
         private const val K_FACE_SETUPS = "face_setups"
+        private const val K_BUTTON_REMAP = "button_remap"
         private const val K_LANG_PER_APP = "language_per_app"
         private const val K_VOICE_KEY = "voice_key"
         private const val K_FULL_HEIGHT = "full_height"
@@ -686,6 +691,7 @@ data class KeyboardSettings(
                 typeOnRight = p.bool(K_TYPE_RIGHT, d.typeOnRight),
                 faceSetup = p.str(K_FACE_SETUP) ?: d.faceSetup,
                 faceSetups = p.str(K_FACE_SETUPS) ?: d.faceSetups,
+                buttonRemap = p.str(K_BUTTON_REMAP) ?: d.buttonRemap,
                 languagePerApp = p.bool(K_LANG_PER_APP, d.languagePerApp),
                 voiceKey = p.bool(K_VOICE_KEY, d.voiceKey),
                 fullHeight = p.bool(K_FULL_HEIGHT, d.fullHeight),

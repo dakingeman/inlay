@@ -74,7 +74,13 @@ class BadgePainter(private val dp: Float) {
     private fun tailWidth(presses: Int): Float =
         if (presses > 1) countPaint().measureText(countText(presses)) + 5f * dp * scale else 0f
 
-    fun width(button: ControllerButton, presses: Int = 1): Float = baseWidth(button) + tailWidth(presses)
+    /**
+     * Which badge a job shows: the button that does it. The keyboard sets this to follow Button mapping
+     * (ButtonRemap.shownButton); everywhere else it's the job's own button.
+     */
+    var shownAs: (ControllerButton) -> ControllerButton = { it }
+
+    fun width(button: ControllerButton, presses: Int = 1): Float = baseWidth(shownAs(button)) + tailWidth(presses)
 
     // ---- Held: the button sits in a HOLD capsule with a double outline ---------------------
     private fun holdPaint() = label.apply { textSize = 6.5f * dp * scale; letterSpacing = 0.14f }
@@ -133,8 +139,11 @@ class BadgePainter(private val dp: Float) {
     }
 
     /** Draws with the left edge at [left], vertically centred on [centerY]. Returns the right edge. */
-    fun draw(canvas: Canvas, button: ControllerButton, left: Float, centerY: Float, presses: Int = 1, edged: Boolean = true): Float {
-        val w = width(button, presses)
+    fun draw(canvas: Canvas, button: ControllerButton, left: Float, centerY: Float, presses: Int = 1, edged: Boolean = true): Float =
+        drawShown(canvas, shownAs(button), left, centerY, presses, edged)
+
+    private fun drawShown(canvas: Canvas, button: ControllerButton, left: Float, centerY: Float, presses: Int, edged: Boolean): Float {
+        val w = baseWidth(button) + tailWidth(presses)
         val r = radius
         val box = RectF(left, centerY - r, left + w, centerY + r)
         fill.color = plate

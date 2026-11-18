@@ -121,6 +121,8 @@ class KeyGridView(context: Context) : View(context) {
     private var chipEdge = Contrast.withAlpha(Color.WHITE, Design.ALPHA_FAINT_STRONG)
 
     private val badges = BadgePainter(dp)
+    /** The real keyboard sets this: its hint badges then show the buttons Button mapping put each job on (ButtonRemap). */
+    var followsRemap = false
 
     /** The tool strip: word suggestions take the place of Cut / Copy / Paste while a word is being typed. */
     /** The microphone comes from the settings alone, so every keyboard drawn (the real one, Settings' preview, the tour)
@@ -134,6 +136,7 @@ class KeyGridView(context: Context) : View(context) {
 
     fun applySettings(s: KeyboardSettings) {
         ButtonRoles.apply(s)
+        badges.shownAs = s.remap.takeIf { followsRemap && !it.isIdentity }?.let { r -> { b: ControllerButton -> r.shownButton(b) } } ?: { it }
         toolStyle = s.toolStyle
         val layoutChanged = s.layout != settings.layout || s.language != settings.language || s.smartKeys != settings.smartKeys ||
             s.selectAllButton != settings.selectAllButton || s.numberRow != settings.numberRow || s.split != settings.split

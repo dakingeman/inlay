@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+**New**
+- **Button mapping.** Settings → Device → Button mapping puts any keyboard function on the button you want, like a game's controls: pick a function (Backspace, say), then press the button for it. The button that had it takes the other one's old function, so nothing is ever lost. Twelve functions: type, close, backspace, space, cursor left and right, symbols, shift, select text, enter, resize and take suggestion. The D-pad stays fixed and cancels while Settings waits. The keyboard's button hints follow the mapping; Settings and the tour keep the buttons as they are. Reset button mapping puts everything back. Saved in settings.json as `button_remap`, and included in Back up and restore.
+
 ## 1.3.0 — Split keyboard, your own buttons and a new tour
 
 A new welcome tour that teaches every button by typing, a split keyboard for wide screens, and a setup that learns any controller's buttons. Plus quick symbols, Find in Settings, voice typing, each app's language remembered, and backups.
