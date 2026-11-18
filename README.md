@@ -156,6 +156,24 @@ The welcome tour opens the first time, and you can replay it any time from **Abo
 
 Settings → Button guide shows the same list in your controller's own icons, and leaves out anything you've switched off.
 
+### Button mapping
+
+Settings → Device → **Button mapping** has a row for each keyboard function, showing the button it's on. Highlight one (**Backspace button**, say), press **A**, then press the button you want for it. If that button already had a function, the two swap: put Backspace on L1 and X moves the cursor left instead. Every function always stays on exactly one button. **Reset button mapping** puts them all back.
+
+| Function | Out of the box |
+|---|---|
+| Type, Close, Backspace, Space | A, B, X, Y (as set in Your buttons) |
+| Cursor left, Cursor right | L1, R1 |
+| Symbols, Shift | LT, RT |
+| Select text, Enter | Select, Start |
+| Resize, Take suggestion | L3, R3 |
+
+- The D-pad can't be mapped: it always moves the highlight, and while Settings waits for a button it cancels. Settings stops waiting after 8 seconds anyway.
+- Combos go with the function: with Shift on another button, hold that button for RT's combos (undo, accent, language, jump a word).
+- Face buttons are taken after Your buttons. If you redo Your buttons later, check your mapping again.
+- Only the keyboard follows the mapping, and its hint badges show the mapped buttons. Settings, the tour and Try your buttons use the real buttons, so you can always undo it in Settings.
+- Stored in `settings.json` in Inlay's private app storage, as `"button_remap": "102:99,99:102"` (button:function pairs of Android key codes, a function named by the button that has it out of the box: A 96, B 97, X 99, Y 100, L1 102, R1 103, LT 104, RT 105, L3 106, R3 107, Start 108, Select 109; empty means nothing is mapped). Back up and restore carries it along.
+
 </details>
 
 ## Questions

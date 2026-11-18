@@ -204,6 +204,7 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
         // behind it. Every other theme paints its own solid background, so nothing changes there.
         window.window?.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT))
         return KeyGridView(this).also { view ->
+            view.followsRemap = true                    // the real keyboard's hints show the mapped buttons
             view.listener = this
             view.feedback = feedback
             view.applySettings(settings.forControls(Controls.of(this@GridKeyboardService, settings)))
@@ -405,6 +406,7 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
         ltHeld = false
         rightTriggerDown = false
         leftTriggerDown = false
+        movedTriggersDown.clear()
         gridView?.setHeldShift(false)
     }
 
@@ -869,11 +871,56 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
     // =====================================================================
     // Face buttons are turned into their positions as they arrive (FaceButtons); what isn't ours goes on
     // to the app exactly as the device sent it.
-    override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean =
-        keyDown(FaceButtons.code(keyCode, event.deviceId), event, keyCode)
+    // Button mapping (ButtonRemap) comes after that: a press does the function its button is mapped to.
+    override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
+        val code = FaceButtons.code(keyCode, event.deviceId)
+        if (isMovedTrigger(code) && gridView != null && isInputViewShown) {
+            if (event.repeatCount > 0 || !movedTrigger(code, true)) return true
+        }
+        return keyDown(roleOf(code), event, keyCode)
+    }
 
-    override fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean =
-        keyUp(FaceButtons.code(keyCode, event.deviceId), event, keyCode)
+    override fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean {
+        val code = FaceButtons.code(keyCode, event.deviceId)
+        if (isMovedTrigger(code) && gridView != null && isInputViewShown && !movedTrigger(code, false)) return true
+        return keyUp(roleOf(code), event, keyCode)
+    }
+
+    /** The function a press does after mapping (ButtonRemap); anything that can't be mapped comes back as it is. */
+    private fun roleOf(code: Int): Int = settings.remap.role(code)
+
+    /** A trigger mapped to another function (a trigger keeping its own goes the old way, untouched). */
+    private fun isMovedTrigger(code: Int) =
+        (code == KeyEvent.KEYCODE_BUTTON_L2 || code == KeyEvent.KEYCODE_BUTTON_R2) && roleOf(code) != code
+
+    // Many controllers send a trigger twice, as a button and as an axis. LT and RT's own jobs already take one and
+    // ignore the other; a trigger doing another function (Backspace, say) must too, or it would delete twice.
+    private val movedTriggersDown = mutableSetOf<Int>()
+    private val movedTriggerUpAt = HashMap<Int, Long>()
+
+    /** True when this down (or up) of a mapped trigger is the first of its pair and should act. */
+    private fun movedTrigger(button: Int, down: Boolean): Boolean {
+        val now = SystemClock.uptimeMillis()
+        return if (down) {
+            if (button in movedTriggersDown || now - (movedTriggerUpAt[button] ?: 0L) < TRIGGER_DEDUPE_MS) false
+            else { movedTriggersDown += button; true }
+        } else {
+            if (!movedTriggersDown.remove(button)) false else { movedTriggerUpAt[button] = now; true }
+        }
+    }
+
+    /** A trigger pulled or let go (joystick signal): its own job as before, or the function it's mapped to. */
+    private fun triggerRole(button: Int, down: Boolean) {
+        if (!isMovedTrigger(button)) {
+            if (button == KeyEvent.KEYCODE_BUTTON_L2) { if (down) onL2() else ltUp() }
+            else { if (down) r2Down() else r2Up() }
+            return
+        }
+        if (!movedTrigger(button, down)) return
+        val now = SystemClock.uptimeMillis()
+        val event = KeyEvent(now, now, if (down) KeyEvent.ACTION_DOWN else KeyEvent.ACTION_UP, button, 0)
+        if (down) keyDown(roleOf(button), event, button) else keyUp(roleOf(button), event, button)
+    }
 
     private fun keyDown(keyCode: Int, event: KeyEvent, rawCode: Int): Boolean {
         val grid = gridView
@@ -1110,17 +1157,17 @@ class GridKeyboardService : InputMethodService(), KeyGridView.Listener {
         val rt = max(axis(MotionEvent.AXIS_RTRIGGER), axis(MotionEvent.AXIS_GAS))
         if (!leftTriggerDown && lt > TRIGGER_PRESS) {
             leftTriggerDown = true
-            onL2()
+            triggerRole(KeyEvent.KEYCODE_BUTTON_L2, true)
         } else if (leftTriggerDown && lt < TRIGGER_RELEASE) {
             leftTriggerDown = false
-            ltUp()
+            triggerRole(KeyEvent.KEYCODE_BUTTON_L2, false)
         }
         if (!rightTriggerDown && rt > TRIGGER_PRESS) {
             rightTriggerDown = true
-            r2Down()
+            triggerRole(KeyEvent.KEYCODE_BUTTON_R2, true)
         } else if (rightTriggerDown && rt < TRIGGER_RELEASE) {
             rightTriggerDown = false
-            r2Up()
+            triggerRole(KeyEvent.KEYCODE_BUTTON_R2, false)
         }
     }
 

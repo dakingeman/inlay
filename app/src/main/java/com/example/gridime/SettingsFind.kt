@@ -27,7 +27,7 @@ object SettingsFind {
      * The everyday words for a row, by its name as written (before any " · " detail). Keep them few and real: words someone would type when
      * looking for that thing. A row renamed here without its words is caught by SettingsFindTest.
      */
-    val WORDS: Map<String, String> = mapOf(
+    val WORDS: Map<String, String> = ButtonRemap.FIND_WORDS + mapOf(
         "What you're holding" to "device picture handheld controller gamepad remote vertical",
         "Button icons" to "xbox playstation nintendo switch symbols badges labels",
         "Your buttons" to "swap a b x y nintendo layout swapped wrong button retroid thor reversed opposite confirm select close back which button types right bottom typing button set up setup",

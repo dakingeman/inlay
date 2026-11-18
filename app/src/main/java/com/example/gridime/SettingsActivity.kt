@@ -6,6 +6,7 @@ import android.app.Activity
 import android.media.AudioManager
 import android.content.Intent
 import android.os.Bundle
+import android.os.SystemClock
 import android.provider.Settings
 import android.view.Gravity
 import android.view.KeyEvent
@@ -221,6 +222,7 @@ class SettingsActivity : Activity() {
         val pictureChanged = changed.picture != settings.picture || changed.verticalSticks != settings.verticalSticks
         // A second language brings "Remember each app's language" (and one alone takes it away), straight away
         val languagesChanged = (changed.languages.size >= 2) != (settings.languages.size >= 2)
+        val remapChanged = changed.buttonRemap != settings.buttonRemap
         settings = changed
         ButtonRoles.apply(settings)
         if (accentChanged) {
@@ -235,7 +237,7 @@ class SettingsActivity : Activity() {
         preview.setTvMode(settings.tvMode == TvMode.ON)
         preview.setPreview("ocarina of time", "", "")
         if (pictureChanged) { tabs.remote = controls.remote; tabs.findKey = !controls.remote; refreshControlBar() }
-        if ((clearChanged || pictureChanged || languagesChanged) && !styleChanged) {
+        if ((clearChanged || pictureChanged || languagesChanged || remapChanged) && !styleChanged) {
             val focused = focusableRows.indexOfFirst { it.hasFocus() }.coerceAtLeast(0)
             showPage(currentPage, focusIndex = focused, animate = false)
         }
@@ -265,6 +267,88 @@ class SettingsActivity : Activity() {
             if (newOne || told) newMark = true
             if (told) onFound = { newMark = false; settings = settings.copy(buttonsRowNew = false); settings.save(this@SettingsActivity) }
         }
+    }
+
+    // ---- Button mapping: pick a function, then press the button for it (ButtonRemap.kt) ---------------------------
+    // The button that had the function takes the other one's (a swap), so every function stays on some button.
+    // Only the keyboard follows this; Settings and the tour keep the buttons as they are, so it can always be undone here.
+    private fun mapRows(): List<SettingRow> {
+        val r = settings.remap
+        return ButtonRemap.BUTTONS.map { job -> ButtonMapRow(this, job, r.buttonFor(job)) { row -> startMapping(row) } } +
+            ActionRow(this, ButtonRemap.RESET_ROW,
+                if (r.isIdentity) "Every function is on its own button" else "Put every function back on its own button") {
+                endMapping(); if (!settings.remap.isIdentity) update(settings.copy(buttonRemap = ""))
+            }
+    }
+
+    /** The row waiting for a button, and since when (the A that started it is still being let go). */
+    private var mapping: ButtonMapRow? = null
+    private var mappingSince = 0L
+    /** After a button is taken: its own let-go, and a trigger's twin signal, mustn't reach Settings. */
+    private var mappingEatUp = -1
+    private var mappingQuietUntil = 0L
+    private val mappingTimeout = Runnable { endMapping(); feedback.back() }
+
+    private fun startMapping(row: ButtonMapRow) {
+        endMapping()
+        mapping = row
+        mappingSince = SystemClock.uptimeMillis()
+        row.listen(true)
+        scroll.postDelayed(mappingTimeout, MAPPING_WAIT_MS)
+    }
+
+    /** Stops waiting, the row showing its button again. */
+    private fun endMapping() {
+        scroll.removeCallbacks(mappingTimeout)
+        mapping?.listen(false)
+        mapping = null
+    }
+
+    /** [button] pressed while waiting: it gets the row's function (a swap with the button that had it). */
+    private fun takeMapping(button: Int, raw: Int) {
+        val row = mapping ?: return
+        endMapping()
+        mappingEatUp = raw
+        mappingQuietUntil = SystemClock.uptimeMillis() + MAPPING_QUIET_MS
+        if (button == KeyEvent.KEYCODE_BUTTON_L2) jumpLt = true          // its axis mustn't jump a section
+        if (button == KeyEvent.KEYCODE_BUTTON_R2) jumpRt = true
+        feedback.confirm()
+        val next = settings.remap.with(button, row.job)
+        if (next != settings.remap) update(settings.copy(buttonRemap = next.save()))
+        showRowAgain(row.rowTitle, flash = true)
+    }
+
+    /** A press while a row waits (or just after): null when it's not for Button mapping. */
+    private fun mappingKey(raw: KeyEvent): Boolean? {
+        val now = SystemClock.uptimeMillis()
+        if (mapping == null) {
+            if (raw.action == KeyEvent.ACTION_UP && raw.keyCode == mappingEatUp) { mappingEatUp = -1; return true }
+            if (now < mappingQuietUntil && (raw.keyCode == KeyEvent.KEYCODE_BUTTON_L2 || raw.keyCode == KeyEvent.KEYCODE_BUTTON_R2)) return true
+            return null
+        }
+        if (raw.downTime < mappingSince || raw.action != KeyEvent.ACTION_DOWN || raw.repeatCount > 0) return true
+        val code = FaceButtons.code(raw.keyCode, raw.deviceId)
+        when {
+            code in ButtonRemap.BUTTONS -> takeMapping(code, raw.keyCode)
+            raw.keyCode in MAPPING_CANCEL -> { endMapping(); feedback.back() }
+        }
+        return true
+    }
+
+    /** Triggers that only report as an axis can be picked too. */
+    private fun mappingMotion(event: android.view.MotionEvent): Boolean {
+        if (mapping == null) return SystemClock.uptimeMillis() < mappingQuietUntil
+        if (!event.isFromSource(android.view.InputDevice.SOURCE_JOYSTICK)) return true
+        fun v(a: Int) = event.getAxisValue(a)
+        val lt = maxOf(v(android.view.MotionEvent.AXIS_LTRIGGER), v(android.view.MotionEvent.AXIS_BRAKE))
+        val rt = maxOf(v(android.view.MotionEvent.AXIS_RTRIGGER), v(android.view.MotionEvent.AXIS_GAS))
+        when {
+            lt > 0.45f -> takeMapping(KeyEvent.KEYCODE_BUTTON_L2, -1)
+            rt > 0.45f -> takeMapping(KeyEvent.KEYCODE_BUTTON_R2, -1)
+            kotlin.math.abs(v(android.view.MotionEvent.AXIS_HAT_X)) > 0.5f || kotlin.math.abs(v(android.view.MotionEvent.AXIS_HAT_Y)) > 0.5f ->
+                { endMapping(); feedback.back() }
+        }
+        return true
     }
 
     /** The last controller a face button came from (so a new one can be offered its own setup). */
@@ -1012,6 +1096,7 @@ class SettingsActivity : Activity() {
         // Face buttons by position, before anything else sees them (FaceButtons)
         // The button setup reads every press as it arrives, before anything turns it into a job
         if (setup != null) return setupKey(raw)
+        mappingKey(raw)?.let { return it }
         if (FaceSetup.isFace(raw.keyCode) && raw.action == KeyEvent.ACTION_DOWN) lastFaceDevice = raw.deviceId
         val event = FaceButtons.event(raw)
         if (testing && testKey(event)) return true
@@ -1667,6 +1752,8 @@ class SettingsActivity : Activity() {
                     update(settings.copy(testFullScreen = it == 1))
                 },
             )),
+            // Button mapping (ButtonRemap.kt): pick a function, then press its button. A remote has no buttons to map
+            Section(ButtonRemap.SECTION, if (c.remote) emptyList() else mapRows()),
             Section("Controls", (if (c.sticks) listOf(
             SliderRow(this, "Stick speed", "How fast the left stick moves the highlight. A\u00A0lighter push goes slower",
                 0, 4, settings.stickSpeed, { STICK_LABELS[it] }) {
@@ -2108,6 +2195,7 @@ class SettingsActivity : Activity() {
 
     /** Triggers and D-pads that report as axes light up too. */
     override fun dispatchGenericMotionEvent(event: android.view.MotionEvent): Boolean {
+        if (mappingMotion(event)) return true
         if (finding) { findMotion(event); return true }
         if (!testing) { readJumpTriggers(event); return super.dispatchGenericMotionEvent(event) }
         if (revealing) return true
@@ -2289,6 +2377,11 @@ class SettingsActivity : Activity() {
         const val SHEET_FADE_DP = 12f
         const val EDGE_FADE_DP = 16f        // the page's soft top and bottom edges
         const val COMPACT_ROOM_DP = 150f    // less room than this above the keyboard: rows hide their hints while it's open
+        const val MAPPING_WAIT_MS = 8000L        // Button mapping stops waiting for a button after this long
+        const val MAPPING_QUIET_MS = 300L        //   and a trigger's twin signal right after it is ignored
+        /** Pressed while Button mapping waits: stop waiting (the D-pad can't be mapped, so it's always free to say no). */
+        val MAPPING_CANCEL = setOf(KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_DPAD_DOWN, KeyEvent.KEYCODE_DPAD_LEFT,
+            KeyEvent.KEYCODE_DPAD_RIGHT, KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_BACK)
         const val BUTTON_TEST_IDLE_MS = 8000L    // the button test ends on its own after this long without a press
         const val BUTTON_TEST_STOP_MS = 700L     // holding B (Back) this long ends it
         const val FULL_TEST_MS = 400L            // Try your buttons growing to full screen, and back
